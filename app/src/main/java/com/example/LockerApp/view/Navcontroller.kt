@@ -3,10 +3,12 @@ package com.example.LockerApp.view
 import android.app.Application
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.LockerApp.model.LockerDatabase
+import com.example.LockerApp.viewmodel.AccountViewModel
 import com.example.LockerApp.viewmodel.LockerViewModel
 import com.example.LockerApp.viewmodel.LockerViewModelFactory
 import com.example.LockerApp.viewmodel.MqttViewModel
@@ -28,6 +30,8 @@ fun LockerApp() {
     // สร้าง LockerViewModel โดยใช้ ViewModelFactory
     val lockerViewModel = LockerViewModelFactory(lockerDao, compartmentDao).create(LockerViewModel::class.java) // ส่ง compartmentDao
 
+    val accountViewModel: AccountViewModel = viewModel()
+
     NavHost(
         navController = navController,
         startDestination = "mqtt_screen"
@@ -46,7 +50,8 @@ fun LockerApp() {
                 mqttViewModel = mqttViewModel,
                 navController = navController,
                 lockerDao = lockerDao,
-                compartmentDao = compartmentDao // ส่ง compartmentDao
+                compartmentDao = compartmentDao,
+                accountViewModel = accountViewModel// ส่ง compartmentDao
             )
         }
 

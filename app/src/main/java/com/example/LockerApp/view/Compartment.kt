@@ -1,35 +1,25 @@
 package com.example.LockerApp.view
 
-
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.Button
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.LockerApp.viewmodel.LockerViewModel
+import android.graphics.Bitmap
+import android.graphics.Color
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material.Card
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.TextField
+import androidx.compose.material.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.unit.dp
+import com.example.LockerApp.model.Compartment
+import com.example.LockerApp.viewmodel.LockerViewModel
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
+import androidx.compose.foundation.Image
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.runtime.*
-import com.example.LockerApp.model.Compartment
-
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun CompartmentUI(lockerId: Int, viewModel: LockerViewModel = viewModel()) {
@@ -98,6 +88,8 @@ fun CompartmentUI(lockerId: Int, viewModel: LockerViewModel = viewModel()) {
     }
 }
 
+
+
 @Composable
 fun AddCompartmentCard(
     onAdd: () -> Unit,
@@ -110,6 +102,8 @@ fun AddCompartmentCard(
     picItem: String,
     onPicItemChange: (String) -> Unit
 ) {
+    var showQRCode by remember { mutableStateOf(true) } // ตั้งค่าเป็น true เพื่อให้แสดง QR Code ทันที
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -129,11 +123,47 @@ fun AddCompartmentCard(
             Spacer(modifier = Modifier.height(8.dp))
             TextField(value = picItem, onValueChange = onPicItemChange, label = { Text("Item Picture URL") })
             Spacer(modifier = Modifier.height(8.dp))
-            Button(onClick = onAdd) {
+
+            // แสดง QR Code เมื่อ showQRCode เป็น true
+            if (showQRCode) {
+                Spacer(modifier = Modifier.height(16.dp))
+                val qrCodeBitmap = generateQRCode("https://drive.google.com/drive/folders/1D9ako6sSs4peHLsoEzXRsPKa24B22_6F?usp=drive_link")
+                Image(bitmap = qrCodeBitmap.asImageBitmap(), contentDescription = "QR Code", modifier = Modifier.size(150.dp))
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(onClick = {
+                onAdd()
+                // ปิดการแสดง QR Code ถ้าต้องการให้มันหายไปหลังจากเพิ่มข้อมูล
+                showQRCode = false
+            }) {
                 Text("Add Compartment")
             }
         }
     }
+}
+
+fun generateQRCode(content: String): Bitmap {
+    val qrCodeWriter = QRCodeWriter()
+    val bitMatrix = qrCodeWriter.encode(content, BarcodeFormat.QR_CODE, 200, 200)
+
+    val width = bitMatrix.width
+    val height = bitMatrix.height
+    val pixels = IntArray(width * height)
+
+    for (y in 0 until height) {
+        for (x in 0 until width) {
+            pixels[y * width + x] = if (bitMatrix.get(x, y)) {
+                Color.BLACK
+            } else {
+                Color.WHITE
+            }
+        }
+    }
+
+    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
+    bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
+    return bitmap
 }
 
 @Composable

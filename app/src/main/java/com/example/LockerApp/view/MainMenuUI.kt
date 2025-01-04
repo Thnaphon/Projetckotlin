@@ -1,5 +1,6 @@
 package com.example.LockerApp.view
 
+import ParticipantScreen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +18,7 @@ import androidx.compose.material.Icon
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -34,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.example.LockerApp.model.CompartmentDao
 import com.example.LockerApp.model.LockerDao
+import com.example.LockerApp.viewmodel.AccountViewModel
 import com.example.LockerApp.viewmodel.LockerViewModel
 import com.example.LockerApp.viewmodel.MqttViewModel
 
@@ -44,7 +47,8 @@ fun MainMenuUI(
     mqttViewModel: MqttViewModel,
     navController: NavHostController,
     lockerDao: LockerDao,
-    compartmentDao: CompartmentDao
+    compartmentDao: CompartmentDao,
+    accountViewModel: AccountViewModel
 ) {
     var showBorrowUI by remember { mutableStateOf(false) }
     var showLockerUI by remember { mutableStateOf(false) }
@@ -52,7 +56,7 @@ fun MainMenuUI(
     var showCompartmentUI by remember { mutableStateOf(false) }
     var showReturnUI by remember { mutableStateOf(false) } // เพิ่มตัวแปรควบคุมการแสดง ReturnUI
     var lockerId by remember { mutableStateOf("") }
-
+    var showParticipantUI by remember { mutableStateOf(false) }
     Row(modifier = Modifier.fillMaxSize()) {
         // Sidebar
         Column(
@@ -92,10 +96,18 @@ fun MainMenuUI(
                 showCompartmentUI = false
                 showReturnUI = false // ปิด ReturnUI
             }
+            MenuItem(icon = Icons.Default.AccountCircle, label = "Participant") {
+                showBorrowUI = false
+                showLockerUI = false
+                showAddLockerUI = false
+                showCompartmentUI = false
+                showReturnUI = false
+                showParticipantUI = true // เพิ่มสถานะการแสดงหน้า Participant
+            }
         }
 
         // Content Area
-        Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
             when {
                 showBorrowUI -> {
                     BorrowUI(viewModel = viewModel, mqttViewModel = mqttViewModel)
@@ -115,6 +127,9 @@ fun MainMenuUI(
                 }
                 showCompartmentUI -> {
                     CompartmentUI(lockerId = lockerId.toInt())
+                }
+                showParticipantUI -> {
+                    ParticipantScreen(accountViewModel= accountViewModel) // แสดงหน้า Participant ที่นี่
                 }
                 else -> {
                     Text("Content Area", style = MaterialTheme.typography.h4)

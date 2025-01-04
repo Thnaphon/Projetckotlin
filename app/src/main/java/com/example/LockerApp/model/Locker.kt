@@ -1,8 +1,10 @@
 package com.example.LockerApp.model
 
 import android.content.Context
+import androidx.lifecycle.LiveData
 import androidx.room.Dao
 import androidx.room.Database
+import androidx.room.Delete
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Insert
@@ -11,7 +13,7 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
-
+import androidx.room.Update
 
 
 // Entity สำหรับ Locker
@@ -53,7 +55,7 @@ data class Faces(
 // Entity สำหรับ Account
 @Entity(tableName = "account")
 data class Account(
-    @PrimaryKey val AccountID: String,
+    @PrimaryKey(autoGenerate = true) val AccountID: Long = 0,
     val Name: String,
     val Phone: String,
     val Role: String,
@@ -82,7 +84,7 @@ data class User(
 )
 data class Service(
     @PrimaryKey(autoGenerate = true) val ServiceID: Int = 0,
-    val AccountID: String,
+    val AccountID: Int,
     val Username: String,
     val Password: String,
     val id_face: Int
@@ -167,7 +169,14 @@ interface AccountDao {
     suspend fun insertAccount(account: Account)
 
     @Query("SELECT * FROM account")
-    suspend fun getAllAccounts(): List<Account>
+    fun getAllAccounts(): LiveData<List<Account>>
+
+    @Delete
+    suspend fun deleteAccount(account: Account)
+
+
+    @Update
+    suspend fun updateAccount(account: Account)
 }
 
 // DAO สำหรับ User
@@ -178,6 +187,8 @@ interface UserDao {
 
     @Query("SELECT * FROM user WHERE AccountID = :accountId")
     suspend fun getUserByAccount(accountId: String): User?
+
+
 }
 
 // DAO สำหรับ Service
