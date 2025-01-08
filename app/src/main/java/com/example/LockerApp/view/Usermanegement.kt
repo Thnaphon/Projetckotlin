@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,6 +33,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import com.example.LockerApp.model.Account
 import com.example.LockerApp.model.AccountDao
 import com.example.LockerApp.viewmodel.AccountViewModel
@@ -39,7 +41,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun ParticipantScreen(accountViewModel: AccountViewModel) {
+fun ParticipantScreen(accountViewModel: AccountViewModel,navController: NavController) {
     var isEditDialogVisible by remember { mutableStateOf(false) }
     var isEditMode by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
@@ -65,8 +67,8 @@ fun ParticipantScreen(accountViewModel: AccountViewModel) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom=16.dp, start = 16.dp, end = 16.dp)
-                 // เว้นพื้นที่สำหรับฟอร์มกรอกข้อมูลด้านล่าง
+                .padding(bottom = 16.dp, start = 16.dp, end = 16.dp)
+            // เว้นพื้นที่สำหรับฟอร์มกรอกข้อมูลด้านล่าง
         ) {
             // Row สำหรับ meta data
             Row(
@@ -245,14 +247,27 @@ fun ParticipantScreen(accountViewModel: AccountViewModel) {
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
+                        IconButton(
+                            onClick = {navController.navigate("face_detection")},
+                            modifier = Modifier.align(Alignment.CenterVertically) // ทำให้ปุ่มอยู่ในแนวตั้งกลาง
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Star, // ใช้ไอคอนกล้อง
+                                contentDescription = "Capture Photo",
+                                tint = Color.White
+                            )
+                        }
+
+                        // ช่องกรอกชื่อ
                         TextField(
                             value = name,
                             onValueChange = { name = it },
                             label = { Text("Name", color = Color.White) },
                             textStyle = TextStyle(color = Color.White),
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f) // กำหนดให้ TextField ขยายให้เต็มพื้นที่ที่เหลือ
                         )
 
+                        // ช่องกรอกตำแหน่ง
                         TextField(
                             value = role,
                             onValueChange = { role = it },
@@ -261,6 +276,7 @@ fun ParticipantScreen(accountViewModel: AccountViewModel) {
                             modifier = Modifier.weight(1f)
                         )
 
+                        // ช่องกรอกหมายเลขโทรศัพท์
                         TextField(
                             value = phone,
                             onValueChange = { phone = it },
@@ -270,43 +286,55 @@ fun ParticipantScreen(accountViewModel: AccountViewModel) {
                         )
                     }
 
-                    Row(
-                        horizontalArrangement = Arrangement.End,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        TextButton(onClick = {
-                            isEditDialogVisible = false
-                        },modifier = Modifier.padding( top = 16.dp)) {
-                            Text("Cancel", color = Color.White)
-                        }
+                }
 
-                        TextButton(
-                            onClick = {
-                                if (isEditMode && accountIdToEdit != null) {
-                                    val updatedUser = Account(
-                                        AccountID = accountIdToEdit!!,
-                                        Name = name,
-                                        Phone = phone,
-                                        Role = role,
-                                        CreatedDate = userDetails.firstOrNull { it.AccountID == accountIdToEdit }?.CreatedDate ?: currentDate
-                                    )
-                                    accountViewModel.updateAccount(updatedUser)
-                                } else {
-                                    val newUser = Account(Name = name, Phone = phone, Role = role, CreatedDate = currentDate)
-                                    accountViewModel.insertAccount(newUser)
-                                }
-                                isEditDialogVisible = false
-                            },
-                            modifier = Modifier
-                                .padding(start = 8.dp, top = 16.dp)
-                                .background(Color.White, shape = RoundedCornerShape(8.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.End,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("Apply", color = Color(0xFF2A3D4F))
-                        }
+                            TextButton(onClick = {
+                                isEditDialogVisible = false
+                            }, modifier = Modifier.padding(top = 16.dp)) {
+                                Text("Cancel", color = Color.White)
+                            }
 
+                            TextButton(
+                                onClick = {
+                                    if (isEditMode && accountIdToEdit != null) {
+                                        val embeddingString = ","
+                                        val updatedUser = Account(
+                                            AccountID = accountIdToEdit!!,
+                                            Name = name,
+                                            Phone = phone,
+                                            Role = role,
+                                            embedding = embeddingString,
+                                            CreatedDate = userDetails.firstOrNull { it.AccountID == accountIdToEdit }?.CreatedDate
+                                                ?: currentDate
+                                        )
+                                        accountViewModel.updateAccount(updatedUser)
+                                    } else {
+                                        val embeddingString = ","
+                                        val newUser = Account(
+                                            Name = name,
+                                            Phone = phone,
+                                            Role = role,
+                                            embedding = embeddingString,
+                                            CreatedDate = currentDate
+                                        )
+                                        accountViewModel.insertAccount(newUser)
+                                    }
+                                    isEditDialogVisible = false
+                                },
+                                modifier = Modifier
+                                    .padding(start = 8.dp, top = 16.dp)
+                                    .background(Color.White, shape = RoundedCornerShape(8.dp))
+                            ) {
+                                Text("Apply", color = Color(0xFF2A3D4F))
+                            }
+
+                        }
                     }
                 }
             }
         }
-    }
-}
+

@@ -70,5 +70,8 @@ fun LockerApp() {
                 mqttViewModel = mqttViewModel
             )
         }
+        composable("face_detection") { // เพิ่มการนำทางไปยังหน้า FaceDetectionPage
+            FaceDetectionPage(navController = navController)
+        }
     }
 }

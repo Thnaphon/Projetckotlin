@@ -129,7 +129,7 @@ fun MainMenuUI(
                     CompartmentUI(lockerId = lockerId.toInt())
                 }
                 showParticipantUI -> {
-                    ParticipantScreen(accountViewModel= accountViewModel) // แสดงหน้า Participant ที่นี่
+                    ParticipantScreen(accountViewModel= accountViewModel,navController = navController) // แสดงหน้า Participant ที่นี่
                 }
                 else -> {
                     Text("Content Area", style = MaterialTheme.typography.h4)
