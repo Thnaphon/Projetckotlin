@@ -4,6 +4,7 @@ plugins {
     id("kotlin-kapt")
 }
 
+
 android {
     namespace = "com.example.LockerApp"
     compileSdk = 34
@@ -30,26 +31,30 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
+
     kotlinOptions {
         jvmTarget = "1.8"
     }
+
     buildFeatures {
         compose = true
+        mlModelBinding = true
     }
+
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.1"
     }
+
     packaging {
         resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/DEPENDENCIES"
         }
     }
-
-
 }
 
 dependencies {
@@ -63,6 +68,9 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.runtime.livedata)
+    implementation(libs.play.services.drive)
+    implementation(libs.tensorflow.lite.support)
+    implementation(libs.tensorflow.lite.metadata)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -99,12 +107,42 @@ dependencies {
 
 
     //Google Drive
-    //implementation ("com.google.android.gms:play-services-auth:21.2.0") // สำหรับ Google Sign-In
-    //implementation ("com.google.api-client:google-api-client-android:2.7.0") // สำหรับ Google Drive API
-    //implementation ("com.google.apis:google-api-services-drive:v3-rev305-1.25.0") // Google Drive API
+    implementation("com.google.api-client:google-api-client-android:1.34.1")
+    implementation("com.google.apis:google-api-services-drive:v3-rev136-1.25.0")
+    implementation("com.google.android.gms:play-services-auth:20.5.0")
+    implementation("com.google.http-client:google-http-client-gson:1.41.1")
+    implementation("com.google.code.gson:gson:2.8.9")
+
+
+
+
     //db
     implementation ("androidx.room:room-runtime:2.6.1")
     kapt("androidx.room:room-compiler:2.6.1")
     implementation ("androidx.room:room-ktx:2.6.1")
 
+
+    implementation ("io.coil-kt:coil-compose:2.3.0")
+
+
+
+
+    // Android Testing
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4:1.7.3")
+    androidTestImplementation("androidx.compose.ui:ui-test-manifest:1.7.3")
+
+
+    implementation("androidx.navigation:navigation-compose:2.8.2")
+    implementation("com.google.mlkit:face-detection:16.1.7")
+    implementation("androidx.camera:camera-core:1.3.4")
+    implementation("androidx.camera:camera-camera2:1.3.4")
+    implementation("androidx.camera:camera-lifecycle:1.3.4")
+    implementation("androidx.camera:camera-view:1.3.4")
+    implementation("androidx.camera:camera-extensions:1.3.4")
+
+    implementation("org.tensorflow:tensorflow-lite:2.16.1")
+    implementation("org.tensorflow:tensorflow-lite-gpu:2.16.1")
+    implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
 }
