@@ -48,12 +48,18 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.graphics.BlendMode.Companion.Screen
 import androidx.compose.ui.graphics.Color
+import android.graphics.ImageFormat
+import android.graphics.BitmapFactory
 import com.google.mlkit.vision.common.internal.ImageUtils
 
 
 @SuppressLint("UnsafeOptInUsageError")
 @Composable
-fun FaceDetectionPage(navController: NavHostController, modifier: Modifier = Modifier) {
+fun FaceDetectionPage(navController: NavHostController,
+                      modifier: Modifier = Modifier,
+                      participantName: String,
+                      participantPhone: String,
+                      participantRole: String) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
@@ -74,6 +80,7 @@ fun FaceDetectionPage(navController: NavHostController, modifier: Modifier = Mod
             context
         )
     }
+
 
     // State variables
     var capturedFace by remember { mutableStateOf<Bitmap?>(null) }
@@ -256,10 +263,11 @@ fun FaceDetectionPage(navController: NavHostController, modifier: Modifier = Mod
                             // Get embedding
                             val recognition = faceClassifier.recognizeImage(resizedFaceBitmap, true)
 
-                            // Update state variables to show the dialog
+                            // Register face using the participant's info from ParticipantScreen
                             recognition?.let {
-                                pendingRecognition = it
-                                showDialog = true
+                                faceClassifier.register(participantName, participantRole, participantPhone,  it)
+                                Toast.makeText(context, "Face registered for $participantName", Toast.LENGTH_SHORT).show()
+
                             } ?: run {
                                 Toast.makeText(context, "Failed to register face", Toast.LENGTH_SHORT).show()
                             }
@@ -276,6 +284,9 @@ fun FaceDetectionPage(navController: NavHostController, modifier: Modifier = Mod
                 showRegisterDialog(
                     context = context,
                     recognition = pendingRecognition!!,
+                    participantName = participantName,
+                    participantRole = participantRole,
+                    participantPhone = participantPhone,
                     faceClassifier = faceClassifier,
                     onDismiss = {
                         showDialog = false
@@ -335,29 +346,72 @@ fun FaceDetectionPage(navController: NavHostController, modifier: Modifier = Mod
 }
 
 // Helper function to convert mediaImage to Bitmap
-private fun mediaImageToBitmap(mediaImage: android.media.Image, rotationDegrees: Int): Bitmap {
-    val nv21 = yuv420888ToNv21(mediaImage) //oldversion
-    //val nv21 = ImageUtils.convertYUV420ToNV21(mediaImage)
-    val yuvImage = YuvImage(
-        nv21,
-        android.graphics.ImageFormat.NV21,
-        mediaImage.width,
-        mediaImage.height,
-        null
-    )
+private fun mediaImageToBitmap(mediaImage: Image, rotationDegrees: Int): Bitmap {
+    val width = mediaImage.width
+    val height = mediaImage.height
 
-    val out = ByteArrayOutputStream()
-    yuvImage.compressToJpeg(
-        Rect(0, 0, mediaImage.width, mediaImage.height),
-        100,
-        out
-    )
-    val imageBytes = out.toByteArray()
-    var bitmap = android.graphics.BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+    // Get the YUV planes
+    val yPlane = mediaImage.planes[0]
+    val uPlane = mediaImage.planes[1]
+    val vPlane = mediaImage.planes[2]
 
-    // Rotate the bitmap
-    val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
-    bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    // Get plane buffers
+    val yBuffer = yPlane.buffer
+    val uBuffer = uPlane.buffer
+    val vBuffer = vPlane.buffer
+
+    // Get plane pixels strides
+    val yPixelStride = yPlane.pixelStride
+    val yRowStride = yPlane.rowStride
+    val uPixelStride = uPlane.pixelStride
+    val uRowStride = uPlane.rowStride
+    val vPixelStride = vPlane.pixelStride
+    val vRowStride = vPlane.rowStride
+
+    // Create output buffer
+    val outputArray = IntArray(width * height)
+
+    var outputIndex = 0
+
+    for (y in 0 until height) {
+        val yRowIndex = y * yRowStride
+        val uvRowIndex = (y shr 1) * uRowStride
+
+        for (x in 0 until width) {
+            val uvx = x shr 1
+
+            // Extract YUV values
+            val yValue = yBuffer.get(yRowIndex + x * yPixelStride).toInt() and 0xFF
+            val uValue = uBuffer.get(uvRowIndex + uvx * uPixelStride).toInt() and 0xFF
+            val vValue = vBuffer.get(uvRowIndex + uvx * vPixelStride).toInt() and 0xFF
+
+            // YUV to RGB conversion
+            var r = yValue + (1.370705f * (vValue - 128)).toInt()
+            var g = yValue - (0.698001f * (vValue - 128)).toInt() - (0.337633f * (uValue - 128)).toInt()
+            var b = yValue + (1.732446f * (uValue - 128)).toInt()
+
+            // Clamp RGB values
+            r = r.coerceIn(0, 255)
+            g = g.coerceIn(0, 255)
+            b = b.coerceIn(0, 255)
+
+            // Pack RGB into output pixel
+            outputArray[outputIndex++] = 0xff000000.toInt() or (r shl 16) or (g shl 8) or b
+        }
+    }
+
+    // Create bitmap from the RGB array
+    var bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    bitmap.setPixels(outputArray, 0, width, 0, 0, width, height)
+
+    // Apply rotation if needed
+    if (rotationDegrees != 0) {
+        val matrix = Matrix().apply {
+            postRotate(rotationDegrees.toFloat())
+        }
+        bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    }
+
     return bitmap
 }
 
@@ -423,28 +477,25 @@ private fun saveImageToGallery(context: Context, bitmap: Bitmap, title: String) 
 fun showRegisterDialog(
     context: Context,
     recognition: FaceClassifier.Recognition,
+    participantName: String,  // <- pass the name from participant
+    participantRole: String,
+    participantPhone: String,
     faceClassifier: FaceClassifier,
     onDismiss: () -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = "Register Face") },
         text = {
-            Column {
-                Text(text = "Enter your name:")
-                TextField(value = name, onValueChange = { name = it })
-            }
+            // Just show read-only text, no text field for name
+            Text(text = "Register face for: $participantName")
         },
         confirmButton = {
             TextButton(onClick = {
-                if (name.isNotBlank()) {
-                    faceClassifier.register(name, recognition)
-                    Toast.makeText(context, "Face registered successfully", Toast.LENGTH_SHORT).show()
-                    onDismiss()
-                } else {
-                    Toast.makeText(context, "Please enter a name", Toast.LENGTH_SHORT).show()
-                }
+                // Use the participantName from caller
+                faceClassifier.register(participantName, participantRole, participantPhone, recognition)
+                Toast.makeText(context, "Face registered successfully", Toast.LENGTH_SHORT).show()
+                onDismiss()
             }) {
                 Text("Register")
             }

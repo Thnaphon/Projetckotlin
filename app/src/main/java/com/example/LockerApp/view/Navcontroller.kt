@@ -7,6 +7,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.LockerApp.model.LockerDatabase
 import com.example.LockerApp.viewmodel.AccountViewModel
 import com.example.LockerApp.viewmodel.LockerViewModel
@@ -70,8 +71,23 @@ fun LockerApp() {
                 mqttViewModel = mqttViewModel
             )
         }
-        composable("face_detection") { // เพิ่มการนำทางไปยังหน้า FaceDetectionPage
-            FaceDetectionPage(navController = navController)
+        composable(route = "face_detection?name={name}&role={role}&phone={phone}",
+            arguments = listOf(
+                navArgument("name") { defaultValue = "" },
+                navArgument("role") { defaultValue = "" },
+                navArgument("phone") { defaultValue = "" },
+            )
+        )  { // เพิ่มการนำทางไปยังหน้า FaceDetectionPage
+            val name = it.arguments?.getString("name") ?: ""
+            val role = it.arguments?.getString("role") ?: ""
+            val phone = it.arguments?.getString("phone") ?: ""
+            FaceDetectionPage(
+                navController = navController,
+                participantName = name,
+                participantRole = role,
+                participantPhone = phone
+            )
+
         }
     }
 }

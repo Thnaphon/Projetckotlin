@@ -248,8 +248,11 @@ fun ParticipantScreen(accountViewModel: AccountViewModel,navController: NavContr
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         IconButton(
-                            onClick = {navController.navigate("face_detection")},
+                            onClick = {navController.navigate(
+                                "face_detection?name=${name}&phone=${phone}&role=${role}"
+                            )},
                             modifier = Modifier.align(Alignment.CenterVertically) // ทำให้ปุ่มอยู่ในแนวตั้งกลาง
+
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Star, // ใช้ไอคอนกล้อง

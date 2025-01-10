@@ -19,9 +19,12 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 interface FaceClassifier {
-    fun register(name: String?, recognition: Recognition?)
+    fun register(name: String?, phone: String? , role: String?, recognition: Recognition?)
+
     fun recognizeImage(bitmap: Bitmap?, getExtra: Boolean): Recognition?
     class Recognition {
         val id: String?
@@ -100,15 +103,16 @@ class TFLiteFaceRecognition private constructor(ctx: Context) : FaceClassifier {
     private val accountDao: AccountDao = LockerDatabase.getDatabase(ctx).accountDao()
     var registered = mutableMapOf<String?, FaceClassifier.Recognition>()
 
-    override fun register(name: String?, rec: FaceClassifier.Recognition?) {
+    override fun register(name: String?, role: String?, phone: String? , rec: FaceClassifier.Recognition?) {
         // แปลง embedding เป็นสตริง (ใช้ JSON หรือ ค่าคั่นด้วยคอมม่า)
+        val currentDate = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
         val embeddingString = rec?.embeeding?.let { it as Array<FloatArray> }?.first()?.joinToString(",")
         val account = Account(
             Name = name ?: "Unknown",
-            Phone = "", // ใส่ข้อมูลให้เหมาะสม
-            Role = "", // ใส่ข้อมูลให้เหมาะสม
+            Role = role ?:"Unassign",
+            Phone = phone ?:"Unassign",
             embedding = embeddingString ?: "",
-            CreatedDate = System.currentTimeMillis().toString()
+            CreatedDate = currentDate
         )
 
         // ใช้ CoroutineScope แทน viewModelScope
