@@ -61,7 +61,13 @@ interface FaceClassifier {
             embeeding = embedding
             crop = null
         }
-
+        fun getEmbeddingAsFloatArray(): FloatArray {
+            return when (embeeding) {
+                is Array<*> -> (embeeding as Array<FloatArray>)[0]
+                is FloatArray -> embeeding as FloatArray
+                else -> throw IllegalStateException("Invalid embedding format")
+            }
+        }
         fun getLocation(): RectF {
             return RectF(location)
         }
@@ -103,50 +109,111 @@ class TFLiteFaceRecognition private constructor(ctx: Context) : FaceClassifier {
     private val accountDao: AccountDao = LockerDatabase.getDatabase(ctx).accountDao()
     var registered = mutableMapOf<String?, FaceClassifier.Recognition>()
 
-    override fun register(name: String?, role: String?, phone: String? , rec: FaceClassifier.Recognition?) {
-        // แปลง embedding เป็นสตริง (ใช้ JSON หรือ ค่าคั่นด้วยคอมม่า)
-        val currentDate = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-        val embeddingString = rec?.embeeding?.let { it as Array<FloatArray> }?.first()?.joinToString(",")
+    override fun register(name: String?, role: String?, phone: String?, rec: FaceClassifier.Recognition?) {
+        val embeddingString = rec?.embeeding?.let {
+            val array = (it as Array<FloatArray>)[0]
+            Log.d("FaceReg", "Registering embedding for $name: ${array.contentToString()}")
+            array.joinToString(",")
+        } ?: ""
+
+
+        // Store in database
         val account = Account(
             Name = name ?: "Unknown",
-            Role = role ?:"Unassign",
-            Phone = phone ?:"Unassign",
-            embedding = embeddingString ?: "",
-            CreatedDate = currentDate
+            Role = role ?: "Unassign",
+            Phone = phone ?: "Unassign",
+            embedding = embeddingString,
+            CreatedDate = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
         )
 
-        // ใช้ CoroutineScope แทน viewModelScope
         CoroutineScope(Dispatchers.IO).launch {
-            accountDao.insertAccount(account)
+            try {
+                accountDao.insertAccount(account)
+                // Update local cache immediately
+                if (rec != null) {
+                    registered[name] = rec
+                    Log.d("FaceRec", "Registered new face for $name")
+                }
+            } catch (e: Exception) {
+                Log.e("FaceRec", "Error registering face: ${e.message}")
+            }
+        }
+    }
+    private suspend fun loadRegisteredFaces() {
+        try {
+            val accounts = accountDao.getAllAccountsSync()
+            accounts.forEach { account ->
+                if (account.embedding.isNotEmpty()) {
+                    val embeddingArray = account.embedding
+                        .split(",")
+                        .filter { it.isNotEmpty() }
+                        .map { it.toFloat() }
+                        .toFloatArray()
+
+                    // Create wrapper array
+                    val embeddingWrapper = Array(1) { embeddingArray }
+
+                    registered[account.Name] = FaceClassifier.Recognition(
+                        account.Name,
+                        embeddingWrapper
+                    )
+                    Log.d("FaceRec", "Loaded face for ${account.Name}")
+                }
+            }
+            Log.d("FaceRec", "Loaded ${registered.size} faces from database")
+        } catch (e: Exception) {
+            Log.e("FaceRec", "Error loading faces: ${e.message}")
         }
     }
 
     init {
-        // โหลดข้อมูลจากฐานข้อมูล
         CoroutineScope(Dispatchers.IO).launch {
+            loadRegisteredFaces()
             val accounts = accountDao.getAllAccounts().value ?: emptyList()
             accounts.forEach { account ->
-                // แปลง embedding ที่เก็บในฐานข้อมูลจาก String กลับเป็น Array<FloatArray>
-                val embeddingArray = account.embedding.split(",").map { it.toFloat() }.toFloatArray()
+                val embeddingArray = account.embedding
+                    .split(",")
+                    .filter { it.isNotEmpty() }
+                    .map { it.toFloat() }
+                    .toFloatArray()
+
+                // Create as Array<FloatArray>
+                val embeddingArrayWrapper = Array(1) { embeddingArray }
+
                 registered[account.Name] = FaceClassifier.Recognition(
                     account.Name,
-                    embeddingArray
+                    embeddingArrayWrapper
                 )
             }
         }
+    }
+
+    fun getEmbeddingString(embedding: Array<FloatArray>): String {
+        return embedding[0].joinToString(",")
+    }
+
+    fun parseEmbeddingString(embeddingString: String): FloatArray {
+        return embeddingString.split(",")
+            .filter { it.isNotEmpty() }
+            .map { it.toFloat() }
+            .toFloatArray()
     }
 
     // ค้นหาค่าที่ใกล้ที่สุดจากฐานข้อมูล
     private fun findNearest(emb: FloatArray): Pair<String?, Float>? {
         var ret: Pair<String?, Float>? = null
         for ((name, value) in registered) {
-            val knownEmb = value.embeeding as FloatArray
+            val knownEmb = value.getEmbeddingAsFloatArray()
+            Log.d("tryResiN", "Comparing $name embedding: ${knownEmb.contentToString()}")
+
             var distance = 0f
             for (i in emb.indices) {
                 val diff = emb[i] - knownEmb[i]
                 distance += diff * diff
             }
             distance = Math.sqrt(distance.toDouble()).toFloat()
+
+            Log.d("tryResiN", "Distance for $name: $distance")
             if (ret == null || distance < ret.second) {
                 ret = Pair(name, distance)
             }
@@ -176,14 +243,17 @@ class TFLiteFaceRecognition private constructor(ctx: Context) : FaceClassifier {
         embeedings = Array(1) { FloatArray(OUTPUT_SIZE) }
         outputMap[0] = embeedings
         tfLite!!.runForMultipleInputsOutputs(inputArray, outputMap)
-
+        Log.d("tryResr",embeedings[0].contentToString())
         var distance = Float.MAX_VALUE
         var label: String? = "Unknown"
+        Log.d("FaceRec", "Registered faces count: ${registered.size}")
+
         if (registered.isNotEmpty()) {
             val nearest = findNearest(embeedings[0])
             if (nearest != null) {
                 val name = nearest.first
                 val dist = nearest.second
+                Log.d("FaceRec", "Found match: ${nearest.first} with distance: ${nearest.second}")
                 if (dist < THRESHOLD) {
                     label = name
                     distance = dist

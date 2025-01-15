@@ -3,6 +3,7 @@ package com.example.LockerApp.view
 import android.app.Application
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -10,6 +11,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.LockerApp.model.LockerDatabase
 import com.example.LockerApp.viewmodel.AccountViewModel
+import com.example.LockerApp.viewmodel.FaceLoginViewModel
 import com.example.LockerApp.viewmodel.LockerViewModel
 import com.example.LockerApp.viewmodel.LockerViewModelFactory
 import com.example.LockerApp.viewmodel.MqttViewModel
@@ -35,7 +37,8 @@ fun LockerApp() {
 
     NavHost(
         navController = navController,
-        startDestination = "mqtt_screen"
+//        startDestination = "mqtt_screen"
+        startDestination = "face_login"
     ) {
         composable("mqtt_screen") {
             MqttScreen(
@@ -43,7 +46,24 @@ fun LockerApp() {
                 navController = navController
             )
         }
+        composable("face_login") {
+            val context = LocalContext.current
+            val viewModel: FaceLoginViewModel = viewModel(
+                factory = ViewModelProvider.AndroidViewModelFactory.getInstance(
+                    context.applicationContext as Application
+                )
+            )
 
+            FaceLoginPage(
+                navController = navController,
+                viewModel = viewModel,
+                onLoginSuccess = { name, role, phone ->
+                    navController.navigate("main_menu") {
+                        popUpTo("face_login") { inclusive = true }
+                    }
+                }
+            )
+        }
         composable("main_menu") {
             MainMenuUI(
                 viewModel = lockerViewModel,

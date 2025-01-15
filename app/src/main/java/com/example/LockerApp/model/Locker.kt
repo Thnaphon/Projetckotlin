@@ -132,9 +132,14 @@ interface AccountDao {
     @Query("SELECT * FROM account")
     fun getAllAccounts(): LiveData<List<Account>>
 
+    @Query("SELECT * FROM account")
+    suspend fun getAllAccountsSync(): List<Account>
+
     @Delete
     suspend fun deleteAccount(account: Account)
 
+    @Query("SELECT * FROM account WHERE Name = :name LIMIT 1")
+    suspend fun getUserByName(name: String): Account?
 
     @Update
     suspend fun updateAccount(account: Account)

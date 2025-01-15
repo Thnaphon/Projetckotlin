@@ -201,6 +201,7 @@ fun ParticipantScreen(accountViewModel: AccountViewModel,navController: NavContr
                                 Text(user.Role, Modifier.weight(1f))
                                 Text(user.Phone, Modifier.weight(1f))
                                 Text(user.CreatedDate, Modifier.weight(1f))
+                                //Text(user.embedding, Modifier.weight(1f))
                                 IconButton(onClick = {
                                     name = user.Name
                                     role = user.Role

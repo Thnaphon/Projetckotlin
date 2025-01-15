@@ -346,7 +346,7 @@ fun FaceDetectionPage(navController: NavHostController,
 }
 
 // Helper function to convert mediaImage to Bitmap
-private fun mediaImageToBitmap(mediaImage: Image, rotationDegrees: Int): Bitmap {
+fun mediaImageToBitmap(mediaImage: Image, rotationDegrees: Int): Bitmap {
     val width = mediaImage.width
     val height = mediaImage.height
 
