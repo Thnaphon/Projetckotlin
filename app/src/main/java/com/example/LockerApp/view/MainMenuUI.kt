@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,6 +60,7 @@ fun MainMenuUI(
     var showReturnUI by remember { mutableStateOf(false) } // เพิ่มตัวแปรควบคุมการแสดง ReturnUI
     var lockerId by remember { mutableStateOf("") }
     var showParticipantUI by remember { mutableStateOf(false) }
+    var showUsageHistoryScreen by remember { mutableStateOf(false) }
     Row(modifier = Modifier.fillMaxSize()) {
         // Sidebar
         Column(
@@ -81,6 +83,7 @@ fun MainMenuUI(
                 showAddLockerUI = false
                 showCompartmentUI = false
                 showReturnUI = false // ปิด ReturnUI
+                showParticipantUI = false
             }
             MenuItem(icon = Icons.Default.KeyboardArrowDown, label = "Return") {
                 showBorrowUI = false
@@ -88,6 +91,7 @@ fun MainMenuUI(
                 showAddLockerUI = false
                 showCompartmentUI = false
                 showReturnUI = true // แสดง ReturnUI
+                showParticipantUI = false
             }
 
             // ปุ่มสำหรับโชว์ล็อคเกอร์
@@ -97,6 +101,7 @@ fun MainMenuUI(
                 showAddLockerUI = false
                 showCompartmentUI = false
                 showReturnUI = false // ปิด ReturnUI
+                showParticipantUI = false
             }
             MenuItem(icon = Icons.Default.AccountCircle, label = "Participant") {
                 showBorrowUI = false
@@ -105,6 +110,15 @@ fun MainMenuUI(
                 showCompartmentUI = false
                 showReturnUI = false
                 showParticipantUI = true // เพิ่มสถานะการแสดงหน้า Participant
+            }
+            MenuItem(icon = Icons.Default.Share, label = "Participant") {
+                showBorrowUI = false
+                showLockerUI = false
+                showAddLockerUI = false
+                showCompartmentUI = false
+                showReturnUI = false
+                showParticipantUI = false
+                showUsageHistoryScreen = true// เพิ่มสถานะการแสดงหน้า Participant
             }
         }
 
@@ -132,6 +146,9 @@ fun MainMenuUI(
                 }
                 showParticipantUI -> {
                     ParticipantScreen(accountViewModel= accountViewModel,navController = navController) // แสดงหน้า Participant ที่นี่
+                }
+                showUsageHistoryScreen -> {
+                    UsageHistoryScreen(usageLockerViewModel=  usageLockerViewModel, navController = navController) // แสดงหน้า Participant ที่นี่
                 }
                 else -> {
                     Text("Content Area", style = MaterialTheme.typography.h4)

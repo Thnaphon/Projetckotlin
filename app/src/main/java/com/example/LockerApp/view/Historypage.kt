@@ -66,13 +66,6 @@ import com.example.LockerApp.viewmodel.UsageLockerViewModel
 
 @Composable
 fun UsageHistoryScreen(usageLockerViewModel: UsageLockerViewModel, navController: NavController) {
-    var isEditDialogVisible by remember { mutableStateOf(false) }
-    var isEditMode by remember { mutableStateOf(false) }
-    var lockerId by remember { mutableStateOf(0) }
-    var accountId by remember { mutableStateOf(0) }
-    var usageTime by remember { mutableStateOf("") }
-    var usage by remember { mutableStateOf("") }
-    var capPic by remember { mutableStateOf("") }
     var searchQuery by remember { mutableStateOf("") }
 
     // ดึงข้อมูลจาก ViewModel
