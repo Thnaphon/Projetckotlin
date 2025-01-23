@@ -61,7 +61,6 @@ fun CompartmentUI(lockerId: Int, viewModel: LockerViewModel = viewModel()) {
                                             Status = status,
                                             LockerID = lockerId,
                                             Name_Item = nameItem,
-                                            detail_item = detailItem,
                                             pic_item = picItem
                                         )
                                     )
@@ -185,7 +184,6 @@ fun CompartmentCard(compartment: Compartment) {
             Spacer(modifier = Modifier.height(8.dp))
             Text("Item Name: ${compartment.Name_Item}", style = MaterialTheme.typography.body2)
             Spacer(modifier = Modifier.height(8.dp))
-            Text("Item Detail: ${compartment.detail_item}", style = MaterialTheme.typography.body2)
         }
     }
 }

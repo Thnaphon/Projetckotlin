@@ -15,6 +15,7 @@ import com.example.LockerApp.viewmodel.FaceLoginViewModel
 import com.example.LockerApp.viewmodel.LockerViewModel
 import com.example.LockerApp.viewmodel.LockerViewModelFactory
 import com.example.LockerApp.viewmodel.MqttViewModel
+import com.example.LockerApp.viewmodel.UsageLockerViewModel
 
 
 @Composable
@@ -34,18 +35,26 @@ fun LockerApp() {
     val lockerViewModel = LockerViewModelFactory(lockerDao, compartmentDao).create(LockerViewModel::class.java) // ส่ง compartmentDao
 
     val accountViewModel: AccountViewModel = viewModel()
+    val usageLockerViewModel: UsageLockerViewModel = viewModel()
 
     NavHost(
         navController = navController,
 //        startDestination = "mqtt_screen"
-        startDestination = "face_login"
+        startDestination = "UsageHistoryScreen"
     ) {
-        composable("mqtt_screen") {
-            MqttScreen(
-                viewModel = mqttViewModel,
+        composable("WelcomePage") {
+            WelcomePage(
                 navController = navController
             )
         }
+        composable("UsageHistoryScreen") {
+            UsageHistoryScreen(
+                usageLockerViewModel = usageLockerViewModel,
+                navController = navController
+            )
+        }
+
+
         composable("face_login") {
             val context = LocalContext.current
             val viewModel: FaceLoginViewModel = viewModel(
@@ -72,7 +81,8 @@ fun LockerApp() {
                 navController = navController,
                 lockerDao = lockerDao,
                 compartmentDao = compartmentDao,
-                accountViewModel = accountViewModel// ส่ง compartmentDao
+                accountViewModel = accountViewModel,
+                usageLockerViewModel = usageLockerViewModel// ส่ง compartmentDao
             )
         }
 

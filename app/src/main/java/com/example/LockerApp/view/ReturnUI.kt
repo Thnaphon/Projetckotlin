@@ -36,13 +36,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import com.example.LockerApp.viewmodel.LockerViewModel
 import com.example.LockerApp.viewmodel.MqttViewModel
+import com.example.LockerApp.viewmodel.UsageLockerViewModel
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlin.math.ceil
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel) {
+fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLockerViewModel: UsageLockerViewModel) {
     var selectedLocker by remember { mutableStateOf(0) } // เริ่มต้นที่ All Lockers
     val lockers = listOf(1, 2, 3) // รายชื่อ locker ที่มี
     val compartments by viewModel.getCompartmentsByLocker(selectedLocker).collectAsState(initial = emptyList())
@@ -117,6 +118,11 @@ fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel) {
                                 viewModel.getMqttTopicForCompartment(compartment.CompartmentID).onEach { topicMqtt ->
                                     mqttViewModel.sendMessage("$topicMqtt/${compartment.CompartmentID}/open", " ")
                                     mqttViewModel.subscribeToTopic("$topicMqtt/${compartment.CompartmentID}/status")
+                                    val usageTime = System.currentTimeMillis().toString()
+                                    val usage = "Return" // ใช้คำว่า "Borrow" หรือสถานะที่เหมาะสม
+                                    val AccountID:Int = 10
+                                    val Status = "Success"
+                                    usageLockerViewModel.insertUsageLocker(compartment.LockerID, compartment.CompartmentID, usageTime, usage,AccountID,Status)
                                 }.launchIn(viewModel.viewModelScope)
                             },
                         elevation = 4.dp

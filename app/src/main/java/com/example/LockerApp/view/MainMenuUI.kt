@@ -39,6 +39,7 @@ import com.example.LockerApp.model.LockerDao
 import com.example.LockerApp.viewmodel.AccountViewModel
 import com.example.LockerApp.viewmodel.LockerViewModel
 import com.example.LockerApp.viewmodel.MqttViewModel
+import com.example.LockerApp.viewmodel.UsageLockerViewModel
 
 @Composable
 fun MainMenuUI(
@@ -48,7 +49,8 @@ fun MainMenuUI(
     navController: NavHostController,
     lockerDao: LockerDao,
     compartmentDao: CompartmentDao,
-    accountViewModel: AccountViewModel
+    accountViewModel: AccountViewModel,
+    usageLockerViewModel: UsageLockerViewModel
 ) {
     var showBorrowUI by remember { mutableStateOf(false) }
     var showLockerUI by remember { mutableStateOf(false) }
@@ -110,10 +112,10 @@ fun MainMenuUI(
         Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
             when {
                 showBorrowUI -> {
-                    BorrowUI(viewModel = viewModel, mqttViewModel = mqttViewModel)
+                    BorrowUI(viewModel = viewModel, mqttViewModel = mqttViewModel,usageLockerViewModel= usageLockerViewModel)
                 }
                 showReturnUI -> {
-                    ReturnUI(viewModel = viewModel, mqttViewModel = mqttViewModel) // เพิ่มการเรียก ReturnUI
+                    ReturnUI(viewModel = viewModel, mqttViewModel = mqttViewModel,usageLockerViewModel= usageLockerViewModel) // เพิ่มการเรียก ReturnUI
                 }
                 showLockerUI -> {
                     LockerUI(navController = navController, lockerDao = lockerDao, compartmentDao = compartmentDao) { id ->

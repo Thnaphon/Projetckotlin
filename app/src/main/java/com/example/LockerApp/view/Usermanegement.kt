@@ -47,7 +47,7 @@ fun ParticipantScreen(accountViewModel: AccountViewModel,navController: NavContr
     var name by remember { mutableStateOf("") }
     var role by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
-    var accountIdToEdit by remember { mutableStateOf<Long?>(null) }
+    var accountIdToEdit by remember { mutableStateOf<Int?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     val currentDate = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
     val userDetails by accountViewModel.userDetails.observeAsState(emptyList())

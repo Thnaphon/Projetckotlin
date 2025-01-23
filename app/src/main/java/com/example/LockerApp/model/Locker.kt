@@ -40,7 +40,6 @@ data class Compartment(
     val Status: String,
     val LockerID: Int,
     val Name_Item: String,
-    val detail_item: String,
     val pic_item: String
 )
 
@@ -48,7 +47,7 @@ data class Compartment(
 // Entity สำหรับ Account
 @Entity(tableName = "account")
 data class Account(
-    @PrimaryKey(autoGenerate = true) val AccountID: Long = 0,
+    @PrimaryKey(autoGenerate = true) val AccountID: Int = 0,
     val Name: String,
     val Phone: String,
     val Role: String,
@@ -56,39 +55,43 @@ data class Account(
     val CreatedDate: String // ควรใช้ date หรือ datetime format
 )
 
-// Entity สำหรับ User (เชื่อมโยงกับ Account) - เปลี่ยนความสัมพันธ์เป็น 1:1
 
 
-// Entity สำหรับ Service - เปลี่ยนความสัมพันธ์เป็น 1:1
-@Entity(tableName = "service",
-    foreignKeys = [ForeignKey(entity = Account::class,
-        parentColumns = ["AccountID"],
-        childColumns = ["AccountID"],
-        onDelete = ForeignKey.CASCADE)]
-)
-data class Service(
-    @PrimaryKey(autoGenerate = true) val ServiceID: Int = 0,
-    val AccountID: Int,
-    val Username: String,
-    val Password: String,
-    val id_face: Int
-)
+
+
 
 // Entity สำหรับ UsageLocker
 @Entity(tableName = "usage_locker",
-    foreignKeys = [ForeignKey(entity = Locker::class,
-        parentColumns = ["LockerID"],
-        childColumns = ["LockerID"],
-        onDelete = ForeignKey.CASCADE)]
+    foreignKeys = [
+        ForeignKey(
+            entity = Locker::class,
+            parentColumns = ["LockerID"],
+            childColumns = ["LockerID"],
+            onDelete = ForeignKey.CASCADE),
+//        ForeignKey(
+//            entity = Account::class,
+//            parentColumns = ["AccountID"],
+//            childColumns = ["AccountID"],
+//            onDelete = ForeignKey.CASCADE
+//        ),
+        ForeignKey(
+            entity = Compartment::class,
+            parentColumns = ["CompartmentID"],
+            childColumns = ["CompartmentID"],
+            onDelete = ForeignKey.CASCADE
+)
+    ]
 )
 data class UsageLocker(
     @PrimaryKey(autoGenerate = true) val UsageLockerID: Int = 0,
     val LockerID: Int,
-    val UserID: String, // เชื่อมโยงกับ User
-    val UsageTime: String // เวลาในการใช้งาน
-)
+    val CompartmentID: Int ,
+//    val AccountID: Int,
+    val UsageTime: String,
+    val Usage : String,
+    val Status: String
 
-// Entity สำหรับ Backup - เปลี่ยนความสัมพันธ์กับ User เป็น 1:N และกับ Service เป็น 1:N
+)
 
 
 
@@ -149,36 +152,38 @@ interface AccountDao {
 
 
 
-// DAO สำหรับ Service
-@Dao
-interface ServiceDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertService(service: Service)
 
-    @Query("SELECT * FROM service WHERE AccountID = :accountId")
-    suspend fun getServiceByAccount(accountId: String): Service?
-}
+
 
 // DAO สำหรับ UsageLocker
 @Dao
 interface UsageLockerDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertUsageLocker(usageLocker: UsageLocker)
+    // ดึงข้อมูลทั้งหมดจาก UsageLocker
+    @Query("SELECT * FROM usage_locker ORDER BY UsageTime DESC")
+    fun getAllUsageLockers(): LiveData<List<UsageLocker>>
 
-    @Query("SELECT * FROM usage_locker WHERE LockerID = :lockerId")
-    suspend fun getUsageLockersByLocker(lockerId: Int): List<UsageLocker>
+    // เพิ่มข้อมูลใหม่
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(usageLocker: UsageLocker)
+
+    // อัพเดตข้อมูล
+    @Update
+    suspend fun update(usageLocker: UsageLocker)
+
+    // ลบข้อมูล
+    @Delete
+    suspend fun delete(usageLocker: UsageLocker)
 }
 
 // DAO สำหรับ Backup
 
 
 // Room Database สำหรับการรวม Entity และ DAO ทั้งหมด
-@Database(entities = [Locker::class, Compartment::class, Account::class,  Service::class, UsageLocker::class], version = 1)
+@Database(entities = [Locker::class, Compartment::class, Account::class,  UsageLocker::class], version = 1)
 abstract class LockerDatabase : RoomDatabase() {
     abstract fun lockerDao(): LockerDao
     abstract fun compartmentDao(): CompartmentDao
     abstract fun accountDao(): AccountDao
-    abstract fun serviceDao(): ServiceDao
     abstract fun usageLockerDao(): UsageLockerDao
 
     companion object {
