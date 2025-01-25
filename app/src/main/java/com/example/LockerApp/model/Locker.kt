@@ -1,8 +1,10 @@
 package com.example.LockerApp.model
 
 import android.content.Context
+import androidx.lifecycle.LiveData
 import androidx.room.Dao
 import androidx.room.Database
+import androidx.room.Delete
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Insert
@@ -11,7 +13,7 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
-
+import androidx.room.Update
 
 
 // Entity สำหรับ Locker
@@ -38,88 +40,60 @@ data class Compartment(
     val Status: String,
     val LockerID: Int,
     val Name_Item: String,
-    val detail_item: String,
     val pic_item: String
 )
 
-// Entity สำหรับ Faces
-@Entity(tableName = "faces")
-data class Faces(
-    @PrimaryKey(autoGenerate = true) val FaceID: Int = 0,
-    val UserID: String, // เชื่อมโยงกับ User
-    val FaceData: String // ข้อมูลของ Face
-)
 
 // Entity สำหรับ Account
 @Entity(tableName = "account")
 data class Account(
-    @PrimaryKey val AccountID: String,
+    @PrimaryKey(autoGenerate = true) val AccountID: Int = 0,
     val Name: String,
     val Phone: String,
     val Role: String,
+    val embedding: String,
     val CreatedDate: String // ควรใช้ date หรือ datetime format
 )
 
-// Entity สำหรับ User (เชื่อมโยงกับ Account) - เปลี่ยนความสัมพันธ์เป็น 1:1
-@Entity(tableName = "user",
-    foreignKeys = [ForeignKey(entity = Account::class,
-        parentColumns = ["AccountID"],
-        childColumns = ["AccountID"],
-        onDelete = ForeignKey.CASCADE)]
-)
-data class User(
-    @PrimaryKey val UserID: String,
-    val AccountID: String,
-    val id_face: Int // เชื่อมโยงกับ Faces
-)
 
-// Entity สำหรับ Service - เปลี่ยนความสัมพันธ์เป็น 1:1
-@Entity(tableName = "service",
-    foreignKeys = [ForeignKey(entity = Account::class,
-        parentColumns = ["AccountID"],
-        childColumns = ["AccountID"],
-        onDelete = ForeignKey.CASCADE)]
-)
-data class Service(
-    @PrimaryKey(autoGenerate = true) val ServiceID: Int = 0,
-    val AccountID: String,
-    val Username: String,
-    val Password: String,
-    val id_face: Int
-)
+
+
+
 
 // Entity สำหรับ UsageLocker
 @Entity(tableName = "usage_locker",
-    foreignKeys = [ForeignKey(entity = Locker::class,
-        parentColumns = ["LockerID"],
-        childColumns = ["LockerID"],
-        onDelete = ForeignKey.CASCADE)]
+    foreignKeys = [
+        ForeignKey(
+            entity = Locker::class,
+            parentColumns = ["LockerID"],
+            childColumns = ["LockerID"],
+            onDelete = ForeignKey.CASCADE),
+//        ForeignKey(
+//            entity = Account::class,
+//            parentColumns = ["AccountID"],
+//            childColumns = ["AccountID"],
+//            onDelete = ForeignKey.CASCADE
+//        ),
+        ForeignKey(
+            entity = Compartment::class,
+            parentColumns = ["CompartmentID"],
+            childColumns = ["CompartmentID"],
+            onDelete = ForeignKey.CASCADE
+)
+    ]
 )
 data class UsageLocker(
     @PrimaryKey(autoGenerate = true) val UsageLockerID: Int = 0,
     val LockerID: Int,
-    val UserID: String, // เชื่อมโยงกับ User
-    val UsageTime: String // เวลาในการใช้งาน
+    val CompartmentID: Int ,
+//    val AccountID: Int,
+    val UsageTime: String,
+    val Usage : String,
+    val Status: String
+
 )
 
-// Entity สำหรับ Backup - เปลี่ยนความสัมพันธ์กับ User เป็น 1:N และกับ Service เป็น 1:N
-@Entity(tableName = "backup",
-    foreignKeys = [ForeignKey(entity = User::class,
-        parentColumns = ["UserID"],
-        childColumns = ["UserID"],
-        onDelete = ForeignKey.CASCADE),
-        ForeignKey(entity = Service::class,
-            parentColumns = ["ServiceID"],
-            childColumns = ["ServiceID"],
-            onDelete = ForeignKey.CASCADE)]
-)
-data class Backup(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val Time: String, // เวลาในการสำรองข้อมูล
-    val Frequency: String,
-    val UserID: String, // เปลี่ยน AccountID เป็น UserID
-    val ServiceID: Int // เพิ่ม ServiceID เพื่อเชื่อมโยงกับ Service
-)
+
 
 // DAO สำหรับ Locker
 @Dao
@@ -150,15 +124,7 @@ interface CompartmentDao {
     suspend fun getLockerIdByCompartmentId(compartmentId: Int): Int?
 }
 
-// DAO สำหรับ Faces
-@Dao
-interface FacesDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertFaces(faces: Faces)
 
-    @Query("SELECT * FROM faces WHERE UserID = :userId")
-    suspend fun getFacesByUser(userId: String): Faces?
-}
 
 // DAO สำหรับ Account
 @Dao
@@ -167,63 +133,58 @@ interface AccountDao {
     suspend fun insertAccount(account: Account)
 
     @Query("SELECT * FROM account")
-    suspend fun getAllAccounts(): List<Account>
+    fun getAllAccounts(): LiveData<List<Account>>
+
+    @Query("SELECT * FROM account")
+    suspend fun getAllAccountsSync(): List<Account>
+
+    @Delete
+    suspend fun deleteAccount(account: Account)
+
+    @Query("SELECT * FROM account WHERE Name = :name LIMIT 1")
+    suspend fun getUserByName(name: String): Account?
+
+    @Update
+    suspend fun updateAccount(account: Account)
+
+
 }
 
-// DAO สำหรับ User
-@Dao
-interface UserDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertUser(user: User)
 
-    @Query("SELECT * FROM user WHERE AccountID = :accountId")
-    suspend fun getUserByAccount(accountId: String): User?
-}
 
-// DAO สำหรับ Service
-@Dao
-interface ServiceDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertService(service: Service)
 
-    @Query("SELECT * FROM service WHERE AccountID = :accountId")
-    suspend fun getServiceByAccount(accountId: String): Service?
-}
+
 
 // DAO สำหรับ UsageLocker
 @Dao
 interface UsageLockerDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertUsageLocker(usageLocker: UsageLocker)
+    // ดึงข้อมูลทั้งหมดจาก UsageLocker
+    @Query("SELECT * FROM usage_locker ORDER BY UsageTime DESC")
+    fun getAllUsageLockers(): LiveData<List<UsageLocker>>
 
-    @Query("SELECT * FROM usage_locker WHERE LockerID = :lockerId")
-    suspend fun getUsageLockersByLocker(lockerId: Int): List<UsageLocker>
+    // เพิ่มข้อมูลใหม่
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(usageLocker: UsageLocker)
+
+    // อัพเดตข้อมูล
+    @Update
+    suspend fun update(usageLocker: UsageLocker)
+
+    // ลบข้อมูล
+    @Delete
+    suspend fun delete(usageLocker: UsageLocker)
 }
 
 // DAO สำหรับ Backup
-@Dao
-interface BackupDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertBackup(backup: Backup)
 
-    @Query("SELECT * FROM backup WHERE UserID = :userId")
-    suspend fun getBackupByUser(userId: String): List<Backup>
-
-    @Query("SELECT * FROM backup WHERE ServiceID = :serviceId")
-    suspend fun getBackupByService(serviceId: Int): List<Backup>
-}
 
 // Room Database สำหรับการรวม Entity และ DAO ทั้งหมด
-@Database(entities = [Locker::class, Compartment::class, Faces::class, Account::class, User::class, Service::class, UsageLocker::class, Backup::class], version = 1)
+@Database(entities = [Locker::class, Compartment::class, Account::class,  UsageLocker::class], version = 1)
 abstract class LockerDatabase : RoomDatabase() {
     abstract fun lockerDao(): LockerDao
     abstract fun compartmentDao(): CompartmentDao
-    abstract fun facesDao(): FacesDao
     abstract fun accountDao(): AccountDao
-    abstract fun userDao(): UserDao
-    abstract fun serviceDao(): ServiceDao
     abstract fun usageLockerDao(): UsageLockerDao
-    abstract fun backupDao(): BackupDao
 
     companion object {
         @Volatile

@@ -1,5 +1,6 @@
 package com.example.LockerApp.view
 
+import android.net.http.UrlRequest.Status
 import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -37,13 +38,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import com.example.LockerApp.viewmodel.LockerViewModel
 import com.example.LockerApp.viewmodel.MqttViewModel
+import com.example.LockerApp.viewmodel.UsageLockerViewModel
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlin.math.ceil
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun BorrowUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel) {
+fun BorrowUI(viewModel: LockerViewModel, usageLockerViewModel: UsageLockerViewModel, mqttViewModel: MqttViewModel) {
     var selectedLocker by remember { mutableStateOf(0) } // เริ่มต้นที่ All Lockers
     val lockers = listOf(1, 2, 3) // รายชื่อ locker ที่มี
     val compartments by viewModel.getCompartmentsByLocker(selectedLocker).collectAsState(initial = emptyList())
@@ -118,6 +120,11 @@ fun BorrowUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel) {
                                 viewModel.getMqttTopicForCompartment(compartment.CompartmentID).onEach { topicMqtt ->
                                     mqttViewModel.sendMessage("$topicMqtt/${compartment.CompartmentID}/open", " ")
                                     mqttViewModel.subscribeToTopic("$topicMqtt/${compartment.CompartmentID}/status")
+                                    val usageTime = System.currentTimeMillis().toString() // หรือกำหนดเวลาอื่นๆ
+                                    val usage = "Borrow" // ใช้คำว่า "Borrow" หรือสถานะที่เหมาะสม
+                                    val AccountID:Int = 10
+                                    val Status = "Success"
+                                    usageLockerViewModel.insertUsageLocker(compartment.LockerID, compartment.CompartmentID, usageTime, usage,AccountID,Status)
                                 }.launchIn(viewModel.viewModelScope)
                             },
                         elevation = 4.dp

@@ -2,6 +2,8 @@ package com.example.LockerApp.viewmodel
 
 
 import android.util.Log
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.LockerApp.model.Compartment
@@ -47,6 +49,9 @@ class LockerViewModel(private val lockerDao: LockerDao,private val compartmentDa
     init {
         loadLockers()
     }
+
+    private val _uploadResult = MutableLiveData<Result<String>>()
+    val uploadResult: LiveData<Result<String>> = _uploadResult
 
     private fun loadLockers() {
         viewModelScope.launch {
