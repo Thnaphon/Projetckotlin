@@ -93,7 +93,28 @@ data class UsageLocker(
 
 )
 
+// Entity สำหรับ Backup
+@Entity(tableName = "backup_settings")
+data class BackupSettings(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val frequency: String, // เช่น "Daily", "Weekly"
+    val backupTime: String, // เวลา backup เช่น "02:00 AM"
+    val lastBackupDate: String? = null // เก็บวันที่ backup ล่าสุด
+)
 
+
+// DAO สำหรับ Backup
+@Dao
+interface BackupDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertOrUpdateBackupSettings(settings: BackupSettings)
+
+    @Query("SELECT * FROM backup_settings LIMIT 1")
+    suspend fun getBackupSettings(): BackupSettings?
+
+    @Query("UPDATE backup_settings SET lastBackupDate = :date WHERE id = :id")
+    suspend fun updateLastBackupDate(id: Int, date: String)
+}
 
 // DAO สำหรับ Locker
 @Dao
@@ -179,12 +200,13 @@ interface UsageLockerDao {
 
 
 // Room Database สำหรับการรวม Entity และ DAO ทั้งหมด
-@Database(entities = [Locker::class, Compartment::class, Account::class,  UsageLocker::class], version = 1)
+@Database(entities = [Locker::class, Compartment::class, Account::class,  UsageLocker::class,BackupSettings::class ], version = 1)
 abstract class LockerDatabase : RoomDatabase() {
     abstract fun lockerDao(): LockerDao
     abstract fun compartmentDao(): CompartmentDao
     abstract fun accountDao(): AccountDao
     abstract fun usageLockerDao(): UsageLockerDao
+    abstract fun backupDao(): BackupDao
 
     companion object {
         @Volatile

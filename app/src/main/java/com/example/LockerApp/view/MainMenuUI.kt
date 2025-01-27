@@ -38,6 +38,7 @@ import androidx.navigation.NavHostController
 import com.example.LockerApp.model.CompartmentDao
 import com.example.LockerApp.model.LockerDao
 import com.example.LockerApp.viewmodel.AccountViewModel
+import com.example.LockerApp.viewmodel.BackupViewModel
 import com.example.LockerApp.viewmodel.LockerViewModel
 import com.example.LockerApp.viewmodel.MqttViewModel
 import com.example.LockerApp.viewmodel.UsageLockerViewModel
@@ -51,7 +52,8 @@ fun MainMenuUI(
     lockerDao: LockerDao,
     compartmentDao: CompartmentDao,
     accountViewModel: AccountViewModel,
-    usageLockerViewModel: UsageLockerViewModel
+    usageLockerViewModel: UsageLockerViewModel,
+    backupViewModel: BackupViewModel
 ) {
     var showBorrowUI by remember { mutableStateOf(false) }
     var showLockerUI by remember { mutableStateOf(false) }
@@ -61,6 +63,8 @@ fun MainMenuUI(
     var lockerId by remember { mutableStateOf("") }
     var showParticipantUI by remember { mutableStateOf(false) }
     var showUsageHistoryScreen by remember { mutableStateOf(false) }
+    var showBackupScreen by remember { mutableStateOf(false) }
+    var showGoogleSignInScreen by remember { mutableStateOf(false) }
     Row(modifier = Modifier.fillMaxSize()) {
         // Sidebar
         Column(
@@ -84,6 +88,9 @@ fun MainMenuUI(
                 showCompartmentUI = false
                 showReturnUI = false // ปิด ReturnUI
                 showParticipantUI = false
+                showBackupScreen = false
+                showUsageHistoryScreen = false
+                showGoogleSignInScreen = false
             }
             MenuItem(icon = Icons.Default.KeyboardArrowDown, label = "Return") {
                 showBorrowUI = false
@@ -92,6 +99,9 @@ fun MainMenuUI(
                 showCompartmentUI = false
                 showReturnUI = true // แสดง ReturnUI
                 showParticipantUI = false
+                showBackupScreen = false
+                showUsageHistoryScreen = false
+                showGoogleSignInScreen = false
             }
 
             // ปุ่มสำหรับโชว์ล็อคเกอร์
@@ -102,6 +112,9 @@ fun MainMenuUI(
                 showCompartmentUI = false
                 showReturnUI = false // ปิด ReturnUI
                 showParticipantUI = false
+                showBackupScreen = false
+                showUsageHistoryScreen = false
+                showGoogleSignInScreen = false
             }
             MenuItem(icon = Icons.Default.AccountCircle, label = "Participant") {
                 showBorrowUI = false
@@ -110,8 +123,11 @@ fun MainMenuUI(
                 showCompartmentUI = false
                 showReturnUI = false
                 showParticipantUI = true // เพิ่มสถานะการแสดงหน้า Participant
+                showBackupScreen = false
+                showUsageHistoryScreen = false
+                showGoogleSignInScreen = false
             }
-            MenuItem(icon = Icons.Default.Share, label = "Participant") {
+            MenuItem(icon = Icons.Default.Share, label = "History") {
                 showBorrowUI = false
                 showLockerUI = false
                 showAddLockerUI = false
@@ -119,6 +135,30 @@ fun MainMenuUI(
                 showReturnUI = false
                 showParticipantUI = false
                 showUsageHistoryScreen = true// เพิ่มสถานะการแสดงหน้า Participant
+                showBackupScreen = false
+                showGoogleSignInScreen = false
+            }
+            MenuItem(icon = Icons.Default.Share, label = "Backup") {
+                showBorrowUI = false
+                showLockerUI = false
+                showAddLockerUI = false
+                showCompartmentUI = false
+                showReturnUI = false
+                showParticipantUI = false
+                showUsageHistoryScreen = false// เพิ่มสถานะการแสดงหน้า Participant
+                showBackupScreen = true
+                showGoogleSignInScreen = false
+            }
+            MenuItem(icon = Icons.Default.Share, label = "GoogleDrive") {
+                showBorrowUI = false
+                showLockerUI = false
+                showAddLockerUI = false
+                showCompartmentUI = false
+                showReturnUI = false
+                showParticipantUI = false
+                showUsageHistoryScreen = false// เพิ่มสถานะการแสดงหน้า Participant
+                showBackupScreen = false
+                showGoogleSignInScreen = true
             }
         }
 
@@ -150,6 +190,18 @@ fun MainMenuUI(
                 showUsageHistoryScreen -> {
                     UsageHistoryScreen(usageLockerViewModel=  usageLockerViewModel, navController = navController) // แสดงหน้า Participant ที่นี่
                 }
+                showBackupScreen -> {
+                    BackupScreen(viewModel = backupViewModel) // แสดงหน้า Participant ที่นี่
+                }
+                showGoogleSignInScreen -> {
+                    GoogleSignInScreen(    onSignInSuccess = { account ->
+                        // การดำเนินการเมื่อเข้าสู่ระบบสำเร็จ
+                    },
+                        onSignInFailure = { exception ->
+                            // การดำเนินการเมื่อเข้าสู่ระบบล้มเหลว
+                        }) // แสดงหน้า Participant ที่นี่
+                }
+
                 else -> {
                     Text("Content Area", style = MaterialTheme.typography.h4)
                 }

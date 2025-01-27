@@ -11,6 +11,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.LockerApp.model.LockerDatabase
 import com.example.LockerApp.viewmodel.AccountViewModel
+import com.example.LockerApp.viewmodel.BackupViewModel
 import com.example.LockerApp.viewmodel.FaceLoginViewModel
 import com.example.LockerApp.viewmodel.LockerViewModel
 import com.example.LockerApp.viewmodel.LockerViewModelFactory
@@ -36,17 +37,24 @@ fun LockerApp() {
 
     val accountViewModel: AccountViewModel = viewModel()
     val usageLockerViewModel: UsageLockerViewModel = viewModel()
+    val viewModel : BackupViewModel = viewModel()
 
     NavHost(
         navController = navController,
 //        startDestination = "mqtt_screen"
-        startDestination = "WelcomePage"
+        startDestination = "main_menu"
     ) {
         composable("WelcomePage") {
             WelcomePage(
                 navController = navController
             )
         }
+        composable("BackupScreen") {
+            BackupScreen(
+                viewModel = viewModel
+            )
+        }
+
         composable("UsageHistoryScreen") {
             UsageHistoryScreen(
                 usageLockerViewModel = usageLockerViewModel,
@@ -82,7 +90,9 @@ fun LockerApp() {
                 lockerDao = lockerDao,
                 compartmentDao = compartmentDao,
                 accountViewModel = accountViewModel,
-                usageLockerViewModel = usageLockerViewModel// ส่ง compartmentDao
+                usageLockerViewModel = usageLockerViewModel,
+                backupViewModel = viewModel
+
             )
         }
 
