@@ -253,3 +253,58 @@ private fun analyzeImage(
         imageProxy.close()
     }
 }
+
+fun mediaImageToBitmap(mediaImage: Image, rotationDegrees: Int): Bitmap {
+    val width = mediaImage.width
+    val height = mediaImage.height
+    // Get the YUV planes
+    val yPlane = mediaImage.planes[0]
+    val uPlane = mediaImage.planes[1]
+    val vPlane = mediaImage.planes[2]
+    // Get plane buffers
+    val yBuffer = yPlane.buffer
+    val uBuffer = uPlane.buffer
+    val vBuffer = vPlane.buffer
+    // Get plane pixels strides
+    val yPixelStride = yPlane.pixelStride
+    val yRowStride = yPlane.rowStride
+    val uPixelStride = uPlane.pixelStride
+    val uRowStride = uPlane.rowStride
+    val vPixelStride = vPlane.pixelStride
+    val vRowStride = vPlane.rowStride
+    // Create output buffer
+    val outputArray = IntArray(width * height)
+    var outputIndex = 0
+    for (y in 0 until height) {
+        val yRowIndex = y * yRowStride
+        val uvRowIndex = (y shr 1) * uRowStride
+        for (x in 0 until width) {
+            val uvx = x shr 1
+            // Extract YUV values
+            val yValue = yBuffer.get(yRowIndex + x * yPixelStride).toInt() and 0xFF
+            val uValue = uBuffer.get(uvRowIndex + uvx * uPixelStride).toInt() and 0xFF
+            val vValue = vBuffer.get(uvRowIndex + uvx * vPixelStride).toInt() and 0xFF
+            // YUV to RGB conversion
+            var r = yValue + (1.370705f * (vValue - 128)).toInt()
+            var g = yValue - (0.698001f * (vValue - 128)).toInt() - (0.337633f * (uValue - 128)).toInt()
+            var b = yValue + (1.732446f * (uValue - 128)).toInt()
+            // Clamp RGB values
+            r = r.coerceIn(0, 255)
+            g = g.coerceIn(0, 255)
+            b = b.coerceIn(0, 255)
+            // Pack RGB into output pixel
+            outputArray[outputIndex++] = 0xff000000.toInt() or (r shl 16) or (g shl 8) or b
+        }
+    }
+    // Create bitmap from the RGB array
+    var bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    bitmap.setPixels(outputArray, 0, width, 0, 0, width, height)
+    // Apply rotation if needed
+    if (rotationDegrees != 0) {
+        val matrix = Matrix().apply {
+            postRotate(rotationDegrees.toFloat())
+        }
+        bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    }
+    return bitmap
+}
