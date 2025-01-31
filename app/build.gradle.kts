@@ -53,6 +53,11 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/DEPENDENCIES"
+            excludes += "META-INF/INDEX.LIST"
+            excludes += "META-INF/DEPENDENCIES"
+            excludes += "META-INF/LICENSE"
+            excludes += "META-INF/LICENSE.txt"
+            excludes += "META-INF/NOTICE"
         }
     }
 }
@@ -112,6 +117,8 @@ dependencies {
     implementation("com.google.android.gms:play-services-auth:20.5.0")
     implementation("com.google.http-client:google-http-client-gson:1.41.1")
     implementation("com.google.code.gson:gson:2.8.9")
+    implementation("com.google.auth:google-auth-library-oauth2-http:1.31.0")
+    implementation("com.google.android.gms:play-services-auth:21.3.0")
 
 
 

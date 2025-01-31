@@ -1,9 +1,6 @@
 package com.example.LockerApp.view
 
-import DisplayImage
-import GoogleDriveSignInStatus
-import GoogleDriveViewModel
-import GoogleSignInButton
+
 import ParticipantScreen
 import android.os.Bundle
 import androidx.activity.ComponentActivity
