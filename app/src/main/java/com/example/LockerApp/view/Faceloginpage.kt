@@ -70,7 +70,7 @@ fun FaceLoginPage(
                 val state = loginState as FaceLoginViewModel.LoginState.Success
                 if (!isLoginSuccessful) {
                     isLoginSuccessful = true
-                    delay(3000)
+                    delay(1500)
                     onLoginSuccess(state.name, state.role, state.phone)
                 }
             }
