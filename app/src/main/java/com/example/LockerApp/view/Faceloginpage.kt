@@ -52,7 +52,7 @@ import kotlinx.coroutines.delay
 fun FaceLoginPage(
     navController: NavController,
     viewModel: FaceLoginViewModel,
-    onLoginSuccess: (Int,String, String, String) -> Unit
+    onLoginSuccess: (String, String, String) -> Unit
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -71,7 +71,7 @@ fun FaceLoginPage(
                 if (!isLoginSuccessful) {
                     isLoginSuccessful = true
                     delay(3000)
-                    onLoginSuccess(state.accountid,state.name, state.role, state.phone)
+                    onLoginSuccess(state.name, state.role, state.phone)
                 }
             }
             else -> {} // Handle other states if needed

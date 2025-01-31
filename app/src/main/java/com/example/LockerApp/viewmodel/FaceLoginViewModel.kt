@@ -7,13 +7,32 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.example.LockerApp.repository.FaceAuthRepository
+import com.example.LockerApp.utils.LivenessDetector
+import com.google.mlkit.vision.face.Face
 import kotlinx.coroutines.launch
 
 class FaceLoginViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = FaceAuthRepository(application)
+    private val livenessDetector = LivenessDetector()
 
     private val _loginState = MutableLiveData<LoginState>()
     val loginState: LiveData<LoginState> = _loginState
+    private val _livenessState = MutableLiveData<LivenessDetector.LivenessState>()
+    val livenessState: LiveData<LivenessDetector.LivenessState> = _livenessState
+
+    fun processFrame(face: Face, faceBitmap: Bitmap) {
+        val livenessResult = livenessDetector.processFrame(face)
+        _livenessState.value = livenessResult
+
+        if (livenessResult.isComplete) {
+            recognizeFace(faceBitmap)
+        }
+    }
+
+    fun resetLivenessCheck() {
+        livenessDetector.reset()
+        _livenessState.value = LivenessDetector.LivenessState()
+    }
 
     fun recognizeFace(faceBitmap: Bitmap) {
         viewModelScope.launch {

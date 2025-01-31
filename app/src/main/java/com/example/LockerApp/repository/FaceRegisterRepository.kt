@@ -14,6 +14,27 @@ class FaceRegisterRepository(private val context: Context) {
         context
     )
 
+    data class SimilarityResult(
+        val isSimilar: Boolean,
+        val existingName: String = "",
+        val distance: Float = Float.MAX_VALUE
+    )
+
+    suspend fun checkFaceSimilarity(recognition: FaceClassifier.Recognition): SimilarityResult {
+        val threshold = 0.7f // Same threshold as used in face login
+
+        return when (val result = faceClassifier.recognizeImage(recognition.crop, true)) {
+            null -> SimilarityResult(false)
+            else -> {
+                if (result.distance != null && result.distance < threshold && result.title != "Unknown") {
+                    SimilarityResult(true, result.title.toString(), result.distance)
+                } else {
+                    SimilarityResult(false)
+                }
+            }
+        }
+    }
+
     suspend fun registerFace(
         name: String,
         role: String,
