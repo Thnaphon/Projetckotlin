@@ -16,6 +16,7 @@ import com.example.LockerApp.viewmodel.LockerViewModel
 import com.example.LockerApp.viewmodel.LockerViewModelFactory
 import com.example.LockerApp.viewmodel.MqttViewModel
 import com.example.LockerApp.viewmodel.UsageLockerViewModel
+import com.example.LockerApp.viewmodel.FaceRegisterViewModel
 
 
 @Composable
@@ -41,6 +42,7 @@ fun LockerApp() {
         navController = navController,
 //        startDestination = "mqtt_screen"
         startDestination = "WelcomePage"
+//        startDestination = "main_menu"
     ) {
         composable("WelcomePage") {
             WelcomePage(
@@ -93,31 +95,32 @@ fun LockerApp() {
             }
         }
 
-        composable("add_locker") {
-            AddLockerScreen(
-                navController = navController,
-                viewModel = lockerViewModel, // ตรวจสอบให้แน่ใจว่าส่ง LockerViewModel
-                lockerDao = lockerDao,
-                mqttViewModel = mqttViewModel
-            )
-        }
-        composable(route = "face_detection?name={name}&role={role}&phone={phone}",
+        composable(
+            route = "face_detection?name={name}&role={role}&phone={phone}",
             arguments = listOf(
                 navArgument("name") { defaultValue = "" },
                 navArgument("role") { defaultValue = "" },
                 navArgument("phone") { defaultValue = "" },
             )
-        )  { // เพิ่มการนำทางไปยังหน้า FaceDetectionPage
+        ) {
             val name = it.arguments?.getString("name") ?: ""
             val role = it.arguments?.getString("role") ?: ""
             val phone = it.arguments?.getString("phone") ?: ""
-            FaceDetectionPage(
+
+            // Initialize FaceDetectionViewModel
+            val viewModel: FaceRegisterViewModel = viewModel(
+                factory = ViewModelProvider.AndroidViewModelFactory.getInstance(
+                    context.applicationContext as Application
+                )
+            )
+
+            FaceRegisterPage(
                 navController = navController,
+                viewModel = viewModel,
                 participantName = name,
                 participantRole = role,
                 participantPhone = phone
             )
-
         }
     }
 }
