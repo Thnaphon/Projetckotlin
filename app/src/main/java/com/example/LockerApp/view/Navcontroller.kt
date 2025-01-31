@@ -42,7 +42,7 @@ fun LockerApp() {
     NavHost(
         navController = navController,
 //        startDestination = "mqtt_screen"
-        startDestination = "main_menu"
+        startDestination = "WelcomePage"
     ) {
         composable("WelcomePage") {
             WelcomePage(

@@ -194,12 +194,7 @@ fun MainMenuUI(
                     BackupScreen(viewModel = backupViewModel) // แสดงหน้า Participant ที่นี่
                 }
                 showGoogleSignInScreen -> {
-                    GoogleSignInScreen(    onSignInSuccess = { account ->
-                        // การดำเนินการเมื่อเข้าสู่ระบบสำเร็จ
-                    },
-                        onSignInFailure = { exception ->
-                            // การดำเนินการเมื่อเข้าสู่ระบบล้มเหลว
-                        }) // แสดงหน้า Participant ที่นี่
+                    GoogleSignInScreen()// แสดงหน้า Participant ที่นี่
                 }
 
                 else -> {
