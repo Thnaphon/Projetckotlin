@@ -1,6 +1,7 @@
 package com.example.LockerApp.view
 
 import android.app.Application
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModelProvider
@@ -18,6 +19,7 @@ import com.example.LockerApp.viewmodel.LockerViewModelFactory
 import com.example.LockerApp.viewmodel.MqttViewModel
 import com.example.LockerApp.viewmodel.UsageLockerViewModel
 import com.example.LockerApp.viewmodel.FaceRegisterViewModel
+
 
 
 @Composable
@@ -40,9 +42,10 @@ fun LockerApp() {
     val usageLockerViewModel: UsageLockerViewModel = viewModel()
     val viewModel : BackupViewModel = viewModel()
 
+
     NavHost(
         navController = navController,
-//        startDestination = "mqtt_screen"
+
         startDestination = "WelcomePage"
 //        startDestination = "main_menu"
     ) {
@@ -76,9 +79,11 @@ fun LockerApp() {
             FaceLoginPage(
                 navController = navController,
                 viewModel = viewModel,
-                onLoginSuccess = { name, role, phone ->
+                onLoginSuccess = { accountid,name, role, phone,  ->
+                    val route = "main_menu/$accountid"
                     navController.navigate("main_menu") {
                         popUpTo("face_login") { inclusive = true }
+                        Log.d("FaceAcountid", "$accountid")
                     }
                 }
             )
@@ -93,7 +98,8 @@ fun LockerApp() {
                 compartmentDao = compartmentDao,
                 accountViewModel = accountViewModel,
                 usageLockerViewModel = usageLockerViewModel,
-                backupViewModel = viewModel
+                backupViewModel = viewModel,
+
 
             )
         }

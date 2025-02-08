@@ -1,7 +1,9 @@
 package com.example.LockerApp.view
 
+
 import android.graphics.Bitmap
 import android.graphics.Color
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -17,8 +19,10 @@ import com.example.LockerApp.viewmodel.LockerViewModel
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import androidx.compose.foundation.Image
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
@@ -187,3 +191,4 @@ fun CompartmentCard(compartment: Compartment) {
         }
     }
 }
+

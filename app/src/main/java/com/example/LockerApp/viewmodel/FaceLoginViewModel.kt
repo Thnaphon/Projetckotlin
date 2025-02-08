@@ -21,6 +21,7 @@ class FaceLoginViewModel(application: Application) : AndroidViewModel(applicatio
                 when (val result = repository.recognizeFace(faceBitmap)) {
                     is FaceAuthRepository.RecognitionResult.Success -> {
                         _loginState.value = LoginState.Success(
+                            result.userDetails.accountid,
                             result.userDetails.name,
                             result.userDetails.role,
                             result.userDetails.phone
@@ -38,7 +39,7 @@ class FaceLoginViewModel(application: Application) : AndroidViewModel(applicatio
 
     sealed class LoginState {
         object Scanning : LoginState()
-        data class Success(val name: String, val role: String, val phone: String) : LoginState()
+        data class Success(val accountid:Int,val name: String, val role: String, val phone: String) : LoginState()
         data class Error(val message: String) : LoginState()
     }
 }

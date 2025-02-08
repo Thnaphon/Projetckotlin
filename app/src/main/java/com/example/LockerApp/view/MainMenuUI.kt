@@ -1,6 +1,8 @@
 package com.example.LockerApp.view
 
 import ParticipantScreen
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -32,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
@@ -39,6 +42,7 @@ import com.example.LockerApp.model.CompartmentDao
 import com.example.LockerApp.model.LockerDao
 import com.example.LockerApp.viewmodel.AccountViewModel
 import com.example.LockerApp.viewmodel.BackupViewModel
+
 import com.example.LockerApp.viewmodel.LockerViewModel
 import com.example.LockerApp.viewmodel.MqttViewModel
 import com.example.LockerApp.viewmodel.UsageLockerViewModel
@@ -53,7 +57,8 @@ fun MainMenuUI(
     compartmentDao: CompartmentDao,
     accountViewModel: AccountViewModel,
     usageLockerViewModel: UsageLockerViewModel,
-    backupViewModel: BackupViewModel
+    backupViewModel: BackupViewModel,
+
 ) {
     var showBorrowUI by remember { mutableStateOf(false) }
     var showLockerUI by remember { mutableStateOf(false) }
@@ -65,6 +70,9 @@ fun MainMenuUI(
     var showUsageHistoryScreen by remember { mutableStateOf(false) }
     var showBackupScreen by remember { mutableStateOf(false) }
     var showGoogleSignInScreen by remember { mutableStateOf(false) }
+
+
+
     Row(modifier = Modifier.fillMaxSize()) {
         // Sidebar
         Column(
@@ -194,7 +202,7 @@ fun MainMenuUI(
                     BackupScreen(viewModel = backupViewModel) // แสดงหน้า Participant ที่นี่
                 }
                 showGoogleSignInScreen -> {
-                    GoogleSignInScreen()// แสดงหน้า Participant ที่นี่
+
                 }
 
                 else -> {
