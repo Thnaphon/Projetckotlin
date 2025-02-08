@@ -32,6 +32,8 @@ class FaceAuthRepository(context: Context) {
         }
     }
 
+
+
     suspend fun recognizeFace(bitmap: Bitmap): RecognitionResult = withContext(Dispatchers.IO) {
         val recognition = faceClassifier.recognizeImage(bitmap, false)
         Log.d("tryResiN","Now coming into this first function");
@@ -41,6 +43,7 @@ class FaceAuthRepository(context: Context) {
             if (user != null) {
                 RecognitionResult.Success(
                     UserDetails(
+                        accountid = user.AccountID,
                         name = user.Name,
                         role = user.Role,
                         phone = user.Phone
@@ -55,6 +58,7 @@ class FaceAuthRepository(context: Context) {
     }
 
     data class UserDetails(
+        val accountid:Int,
         val name: String,
         val role: String,
         val phone: String

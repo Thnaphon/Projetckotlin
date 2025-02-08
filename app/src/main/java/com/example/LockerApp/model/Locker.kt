@@ -168,6 +168,8 @@ interface AccountDao {
     @Update
     suspend fun updateAccount(account: Account)
 
+    @Query("SELECT * FROM account WHERE AccountID = :accountID LIMIT 1")
+    suspend fun getUserAccountID(accountID: Int): Account?
 
 }
 
