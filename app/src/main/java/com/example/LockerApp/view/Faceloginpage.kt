@@ -21,6 +21,9 @@ import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -43,9 +46,40 @@ import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import com.example.LockerApp.utils.LivenessDetector
 import kotlinx.coroutines.delay
+
+@Composable
+fun LivenessProgressIndicator(progress: Float, modifier: Modifier = Modifier) {
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(durationMillis = 1000)
+    )
+
+    Canvas(
+        modifier = modifier.size(60.dp)
+    ) {
+        drawArc(
+            color = Color.Gray.copy(alpha = 0.3f),
+            startAngle = 0f,
+            sweepAngle = 360f,
+            useCenter = false,
+            style = Stroke(width = 8f, cap = StrokeCap.Round)
+        )
+        drawArc(
+            color = Color(0xFF4CAF50),
+            startAngle = -90f,
+            sweepAngle = 360f * animatedProgress,
+            useCenter = false,
+            style = Stroke(width = 8f, cap = StrokeCap.Round)
+        )
+    }
+}
+
 
 @SuppressLint("UnsafeOptInUsageError")
 @Composable
@@ -62,19 +96,22 @@ fun FaceLoginPage(
 
     var isLoginSuccessful by remember { mutableStateOf(false) }
     val loginState by viewModel.loginState.observeAsState(FaceLoginViewModel.LoginState.Scanning)
+    //val livenessState by viewModel.livenessState.observeAsState(LivenessDetector.LivenessState())
 
     // Handle login state changes
     LaunchedEffect(loginState) {
         when (loginState) {
             is FaceLoginViewModel.LoginState.Success -> {
-                val state = loginState as FaceLoginViewModel.LoginState.Success
                 if (!isLoginSuccessful) {
                     isLoginSuccessful = true
                     delay(1500)
+                    val state = loginState as FaceLoginViewModel.LoginState.Success
                     onLoginSuccess(state.name, state.role, state.phone)
                 }
             }
-            else -> {} // Handle other states if needed
+            else -> {
+                isLoginSuccessful = false
+            }
         }
     }
 

@@ -3,6 +3,7 @@ package com.example.LockerApp.view
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.util.Log
 import android.view.ViewGroup
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
@@ -23,7 +24,6 @@ import com.example.LockerApp.utils.CameraManager
 import com.example.LockerApp.viewmodel.FaceRegisterViewModel
 import java.util.concurrent.Executors
 import kotlinx.coroutines.launch
-import android.widget.Toast
 import androidx.camera.view.PreviewView
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -97,7 +97,7 @@ fun FaceRegisterPage(
                         val scaledBitmap = Bitmap.createScaledBitmap(faceBitmap, 250, 250, false)
                         viewModel.setCapturedFace(scaledBitmap)
                         scope.launch {
-                            Toast.makeText(context, "Face captured!", Toast.LENGTH_SHORT).show()
+                            Log.d("Register","Captured Face $scaledBitmap")
                         }
                     }
                 }

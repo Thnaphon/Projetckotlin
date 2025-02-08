@@ -17,22 +17,6 @@ class FaceLoginViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val _loginState = MutableLiveData<LoginState>()
     val loginState: LiveData<LoginState> = _loginState
-    private val _livenessState = MutableLiveData<LivenessDetector.LivenessState>()
-    val livenessState: LiveData<LivenessDetector.LivenessState> = _livenessState
-
-    fun processFrame(face: Face, faceBitmap: Bitmap) {
-        val livenessResult = livenessDetector.processFrame(face)
-        _livenessState.value = livenessResult
-
-        if (livenessResult.isComplete) {
-            recognizeFace(faceBitmap)
-        }
-    }
-
-    fun resetLivenessCheck() {
-        livenessDetector.reset()
-        _livenessState.value = LivenessDetector.LivenessState()
-    }
 
     fun recognizeFace(faceBitmap: Bitmap) {
         viewModelScope.launch {
