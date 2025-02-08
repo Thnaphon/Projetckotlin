@@ -26,7 +26,7 @@ class FaceRegisterViewModel(application: Application) : AndroidViewModel(applica
     private val _capturedFace = MutableLiveData<Bitmap?>()
     val capturedFace: LiveData<Bitmap?> = _capturedFace
 
-    //liveness
+    //liveness Progress
     private val _livenessState = MutableLiveData<LivenessDetector.LivenessState>()
     val livenessState: LiveData<LivenessDetector.LivenessState> = _livenessState
 

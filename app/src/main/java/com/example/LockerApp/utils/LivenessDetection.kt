@@ -10,6 +10,7 @@ class LivenessDetector {
         BLINK,
         TURN_LEFT,
         TURN_RIGHT,
+        SMILE,
         NONE
     }
 
@@ -17,19 +18,25 @@ class LivenessDetector {
         val currentAction: Action = Action.NONE,
         val isComplete: Boolean = false,
         val message: String = "",
-        val progress: List<Action> = listOf()
+        val progress: List<Action> = listOf(),
+        val isActionDetected: Boolean = false
     )
 
-    private val requiredActions = listOf(Action.BLINK, Action.TURN_LEFT, Action.TURN_RIGHT)
+    private val requiredActions = listOf(Action.BLINK, Action.TURN_LEFT, Action.TURN_RIGHT, Action.SMILE)
     private var completedActions = mutableListOf<Action>()
     private var currentActionIndex = 0
+    private var lastActionTime = 0L
+    private val actionTimeout = 3000L // 3 seconds timeout between actions
 
-    private val blinkThreshold = 0.1f
-    private val turnThreshold = 30f
+    // Thresholds
+    private val blinkThreshold = 0.2f
+    private val turnThreshold = 25f
+    private val smileThreshold = 0.8f
 
     fun reset() {
         completedActions.clear()
         currentActionIndex = 0
+        lastActionTime = 0L
     }
 
     fun processFrame(face: Face): LivenessState {
@@ -38,64 +45,80 @@ class LivenessDetector {
                 Action.NONE,
                 true,
                 "Liveness check complete!",
-                completedActions
+                completedActions,
+                false
             )
         }
 
         val currentAction = requiredActions[currentActionIndex]
-        val actionDetected = when (currentAction) {
-            Action.BLINK -> detectBlink(face)
-            Action.TURN_LEFT -> detectTurnLeft(face)
-            Action.TURN_RIGHT -> detectTurnRight(face)
-            Action.NONE -> false
+        var actionDetected = false
+        var actionMessage = ""
+
+        when (currentAction) {
+            Action.BLINK -> {
+                actionDetected = detectBlink(face)
+                actionMessage = "Please blink your eyes"
+            }
+            Action.TURN_LEFT -> {
+                actionDetected = detectTurnLeft(face)
+                actionMessage = "Please turn your head left"
+            }
+            Action.TURN_RIGHT -> {
+                actionDetected = detectTurnRight(face)
+                actionMessage = "Please turn your head right"
+            }
+            Action.SMILE -> {
+                actionDetected = detectSmile(face)
+                actionMessage = "Please smile"
+            }
+            Action.NONE -> {
+                actionMessage = "Processing..."
+            }
         }
 
-        if (actionDetected && !completedActions.contains(currentAction)) {
-            completedActions.add(currentAction)
-            currentActionIndex++
-        }
-
-        val message = when (currentAction) {
-            Action.BLINK -> "Please blink"
-            Action.TURN_LEFT -> "Please turn your head left"
-            Action.TURN_RIGHT -> "Please turn your head right"
-            Action.NONE -> "Processing..."
+        val currentTime = System.currentTimeMillis()
+        if (actionDetected && (currentTime - lastActionTime > actionTimeout)) {
+            if (!completedActions.contains(currentAction)) {
+                completedActions.add(currentAction)
+                currentActionIndex++
+                lastActionTime = currentTime
+                Log.d("LivenessDetector", "Action completed: $currentAction")
+            }
         }
 
         return LivenessState(
             currentAction,
             currentActionIndex >= requiredActions.size,
-            message,
-            completedActions
+            actionMessage,
+            completedActions,
+            actionDetected
         )
     }
 
     private fun detectBlink(face: Face): Boolean {
-        // Get eye landmarks
         val leftEye = face.leftEyeOpenProbability
         val rightEye = face.rightEyeOpenProbability
 
-        // Check if both eyes are closed (low probability of being open)
         return if (leftEye != null && rightEye != null) {
             leftEye < blinkThreshold && rightEye < blinkThreshold
         } else false
     }
 
     private fun detectTurnLeft(face: Face): Boolean {
-        val eulerX = face.headEulerAngleX // Pitch
         val eulerY = face.headEulerAngleY // Yaw
-        val eulerZ = face.headEulerAngleZ // Roll
-
-        // Check if head is turned left (positive yaw angle)
         return eulerY > turnThreshold
     }
 
     private fun detectTurnRight(face: Face): Boolean {
-        val eulerX = face.headEulerAngleX // Pitch
         val eulerY = face.headEulerAngleY // Yaw
-        val eulerZ = face.headEulerAngleZ // Roll
-
-        // Check if head is turned right (negative yaw angle)
         return eulerY < -turnThreshold
+    }
+
+    private fun detectSmile(face: Face): Boolean {
+        return face.smilingProbability?.let { it > smileThreshold } ?: false
+    }
+
+    fun getProgress(): Float {
+        return completedActions.size.toFloat() / requiredActions.size
     }
 }
