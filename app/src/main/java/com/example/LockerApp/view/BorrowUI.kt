@@ -45,7 +45,7 @@ import kotlin.math.ceil
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun BorrowUI(viewModel: LockerViewModel, usageLockerViewModel: UsageLockerViewModel, mqttViewModel: MqttViewModel) {
+fun BorrowUI(viewModel: LockerViewModel, usageLockerViewModel: UsageLockerViewModel, mqttViewModel: MqttViewModel,accountid: Int) {
     var selectedLocker by remember { mutableStateOf(0) } // เริ่มต้นที่ All Lockers
     val lockers = listOf(1, 2, 3) // รายชื่อ locker ที่มี
     val compartments by viewModel.getCompartmentsByLocker(selectedLocker).collectAsState(initial = emptyList())
@@ -124,7 +124,7 @@ fun BorrowUI(viewModel: LockerViewModel, usageLockerViewModel: UsageLockerViewMo
                                     val usage = "Borrow" // ใช้คำว่า "Borrow" หรือสถานะที่เหมาะสม
                                     val AccountID:Int = 10
                                     val Status = "Success"
-                                    usageLockerViewModel.insertUsageLocker(compartment.LockerID, compartment.CompartmentID, usageTime, usage,AccountID,Status)
+                                    usageLockerViewModel.insertUsageLocker(compartment.LockerID, compartment.CompartmentID, usageTime, usage,accountid,Status)
                                 }.launchIn(viewModel.viewModelScope)
                             },
                         elevation = 4.dp
