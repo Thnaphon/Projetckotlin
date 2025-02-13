@@ -68,12 +68,12 @@ data class Account(
             parentColumns = ["LockerID"],
             childColumns = ["LockerID"],
             onDelete = ForeignKey.CASCADE),
-//        ForeignKey(
-//            entity = Account::class,
-//            parentColumns = ["AccountID"],
-//            childColumns = ["AccountID"],
-//            onDelete = ForeignKey.CASCADE
-//        ),
+        ForeignKey(
+            entity = Account::class,
+            parentColumns = ["AccountID"],
+            childColumns = ["AccountID"],
+            onDelete = ForeignKey.CASCADE
+        ),
         ForeignKey(
             entity = Compartment::class,
             parentColumns = ["CompartmentID"],
@@ -86,7 +86,7 @@ data class UsageLocker(
     @PrimaryKey(autoGenerate = true) val UsageLockerID: Int = 0,
     val LockerID: Int,
     val CompartmentID: Int ,
-//    val AccountID: Int,
+    val AccountID: Int,
     val UsageTime: String,
     val Usage : String,
     val Status: String

@@ -58,6 +58,7 @@ fun MainMenuUI(
     accountViewModel: AccountViewModel,
     usageLockerViewModel: UsageLockerViewModel,
     backupViewModel: BackupViewModel,
+    accountid: Int // รับค่า accountid
 
 ) {
     var showBorrowUI by remember { mutableStateOf(false) }
@@ -174,7 +175,8 @@ fun MainMenuUI(
         Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
             when {
                 showBorrowUI -> {
-                    BorrowUI(viewModel = viewModel, mqttViewModel = mqttViewModel,usageLockerViewModel= usageLockerViewModel)
+                    BorrowUI(viewModel = viewModel, mqttViewModel = mqttViewModel, usageLockerViewModel= usageLockerViewModel, accountid = accountid)
+
                 }
                 showReturnUI -> {
                     ReturnUI(viewModel = viewModel, mqttViewModel = mqttViewModel,usageLockerViewModel= usageLockerViewModel) // เพิ่มการเรียก ReturnUI

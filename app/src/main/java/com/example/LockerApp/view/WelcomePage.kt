@@ -107,12 +107,18 @@ fun WelcomePage(navController: NavController) {
                         try {
                             val encrypted = encryptedData.value
                             if (encrypted != null) {
+                                Log.d("WelcomePage", "Stored IV: ${encrypted.second.joinToString()}")
+                                Log.d("WelcomePage", "Stored Encrypted Data: ${encrypted.first.joinToString()}")
+
                                 val decryptedPassword = KeystoreManager.decryptData(
-                                    encrypted.second,
-                                    encrypted.first
+                                    encrypted.first, // **แก้ให้ใช้ encryptedData ก่อน iv**
+                                    encrypted.second
                                 )
+
+                                Log.d("WelcomePage", "Decrypted Password: $decryptedPassword")
+
                                 if (enteredPassword == decryptedPassword) {
-                                    navController.navigate("main_menu")
+                                    navController.navigate("main_menu/{accountid}")
                                 } else {
                                     Toast.makeText(
                                         context,
@@ -122,6 +128,7 @@ fun WelcomePage(navController: NavController) {
                                 }
                             }
                         } catch (e: Exception) {
+                            Log.e("WelcomePage", "Decryption error", e)
                             Toast.makeText(
                                 context,
                                 "Error during decryption",

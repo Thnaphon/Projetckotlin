@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -66,6 +67,18 @@ fun LockerApp() {
                 navController = navController
             )
         }
+        composable("BorrowUI/{accountid}", arguments = listOf(navArgument("accountid") { type = NavType.IntType })) { backStackEntry ->
+            val accountid = backStackEntry.arguments?.getInt("accountid") ?: 0
+
+            BorrowUI(
+                viewModel = lockerViewModel,
+                mqttViewModel = mqttViewModel,
+                usageLockerViewModel = usageLockerViewModel,
+                accountid = accountid // ส่งค่าไปใช้งานใน UI
+            )
+        }
+
+
 
 
         composable("face_login") {
@@ -79,16 +92,20 @@ fun LockerApp() {
             FaceLoginPage(
                 navController = navController,
                 viewModel = viewModel,
-                onLoginSuccess = { accountid,name, role, phone,  ->
-                    val route = "main_menu/$accountid"
-                    navController.navigate("main_menu") {
+                onLoginSuccess = { accountid, name, role, phone ->
+                    val route = "main_menu/$accountid"  // สร้าง route ที่จะส่งไป
+                    navController.navigate(route) {   // ใช้ route ที่สร้างขึ้น
                         popUpTo("face_login") { inclusive = true }
                         Log.d("FaceAcountid", "$accountid")
                     }
                 }
             )
         }
-        composable("main_menu") {
+
+        composable("main_menu/{accountid}", arguments = listOf(navArgument("accountid") { type = NavType.IntType })) { backStackEntry ->
+            // ดึง accountid จาก arguments ที่ส่งมาจาก route
+            val accountid = backStackEntry.arguments?.getInt("accountid") ?: 0
+
             MainMenuUI(
                 viewModel = lockerViewModel,
                 onNavigateToMqtt = { navController.navigate("mqtt_screen") },
@@ -99,8 +116,7 @@ fun LockerApp() {
                 accountViewModel = accountViewModel,
                 usageLockerViewModel = usageLockerViewModel,
                 backupViewModel = viewModel,
-
-
+                accountid = accountid  // ส่ง accountid ไปใช้ใน UI
             )
         }
 
