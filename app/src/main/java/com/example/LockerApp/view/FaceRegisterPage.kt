@@ -3,6 +3,8 @@ package com.example.LockerApp.view
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.util.Log
+import android.view.ViewGroup
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -22,11 +24,12 @@ import com.example.LockerApp.utils.CameraManager
 import com.example.LockerApp.viewmodel.FaceRegisterViewModel
 import java.util.concurrent.Executors
 import kotlinx.coroutines.launch
-import android.widget.Toast
+import androidx.camera.view.PreviewView
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import kotlinx.coroutines.delay
 
 @Composable
 fun FaceRegisterPage(
@@ -46,7 +49,27 @@ fun FaceRegisterPage(
     val recognizedName by viewModel.recognizedName.observeAsState("Unknown")
     val capturedFace by viewModel.capturedFace.observeAsState()
     val registrationState by viewModel.registrationState.observeAsState()
+    val similarityCheck by viewModel.similarityCheck.observeAsState()
     var shouldCaptureFace by remember { mutableStateOf(false) }
+    var isRegistrationSuccessful by remember { mutableStateOf(false) }
+
+    LaunchedEffect(registrationState) {
+        when (registrationState) {
+            is FaceRegisterViewModel.RegistrationState.Success -> {
+                if (!isRegistrationSuccessful) {
+                    isRegistrationSuccessful = true
+                    delay(500) // delay 0.5 sec
+                    navController.navigate("main_menu") {
+                        popUpTo("face_detection") { inclusive = true }
+                    }
+                }
+            }
+            else -> {
+                // Reset the flag for other states
+                isRegistrationSuccessful = false
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
@@ -74,96 +97,188 @@ fun FaceRegisterPage(
                         val scaledBitmap = Bitmap.createScaledBitmap(faceBitmap, 250, 250, false)
                         viewModel.setCapturedFace(scaledBitmap)
                         scope.launch {
-                            Toast.makeText(context, "Face captured!", Toast.LENGTH_SHORT).show()
+                            Log.d("Register","Captured Face $scaledBitmap")
                         }
                     }
                 }
             )
         }
+
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "Face Detection Page",
-            fontSize = 24.sp,
-            modifier = Modifier.padding(16.dp)
-        )
-
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Camera Preview in background
         AndroidView(
-            factory = { previewView },
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .padding(16.dp)
+            factory = {
+                previewView.apply {
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+                    implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                    scaleType = PreviewView.ScaleType.FILL_CENTER
+                }
+                previewView
+            },
+            modifier = Modifier.fillMaxSize()
         )
 
-        capturedFace?.let { face ->
-            Image(
-                bitmap = face.asImageBitmap(),
-                contentDescription = "Captured Face",
-                modifier = Modifier
-                    .size(250.dp)
-                    .padding(16.dp)
-            )
-        }
-
-        Text(
-            text = "Debug Recognized: $recognizedName",
-            fontSize = 20.sp,
-            modifier = Modifier.padding(16.dp)
-        )
-
-        Row(
+        // Content overlay
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Button(onClick = {
-                scope.launch {
-                    capturedFace?.let { bitmap ->
-                        viewModel.registerFace(
-                            participantName,
-                            participantRole,
-                            participantPhone,
-                            bitmap
-                        )
-                    } ?: run {
-                        // Show error if no face is captured
-                        Toast.makeText(context, "Please capture a face first", Toast.LENGTH_SHORT).show()
+            Text(
+                text = "Face Registration Page",
+                fontSize = 24.sp,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            // Status Card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    when (similarityCheck) {
+                        is FaceRegisterViewModel.SimilarityCheckResult.Similar -> {
+                            Text(
+                                text = "There's Exist User : ${(similarityCheck as FaceRegisterViewModel.SimilarityCheckResult.Similar).existingName}",
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                        }
+                        is FaceRegisterViewModel.SimilarityCheckResult.Unique -> {
+                            Text(
+                                text = "Face is ready for registration",
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                        }
+                        else -> {}
                     }
                 }
-            }) {
-                Text("Register Face")
             }
 
-            Button(onClick = {
-                // Mark that we want to capture the next detected face
-                shouldCaptureFace = true
-            }) {
-                Text("Capture Face")
-            }
-        }
+            Spacer(modifier = Modifier.weight(1f))
 
-        // Show registration status
-        registrationState?.let { state ->
-            when (state) {
-                is FaceRegisterViewModel.RegistrationState.Success -> {
-                    Text(
-                        text = state.message,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(16.dp)
-                    )
+            // Captured Face and Recognition Status
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 1.0f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    capturedFace?.let { face ->
+                        Image(
+                            bitmap = face.asImageBitmap(),
+                            contentDescription = "Captured Face",
+                            modifier = Modifier
+                                .size(350.dp)
+                                .padding(vertical = 8.dp)
+                        )
+
+                        Text(
+                            text = "Debug Recognized: $recognizedName",
+                            fontSize = 20.sp,
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        // Capture Again button
+                        Button(
+                            onClick = { shouldCaptureFace = true },
+                            modifier = Modifier.padding(top = 8.dp)
+                        ) {
+                            Text("Capture Again")
+                        }
+                    }
+
+                    when (registrationState) {
+                        is FaceRegisterViewModel.RegistrationState.Processing -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier.padding(8.dp)
+                            )
+                        }
+                        is FaceRegisterViewModel.RegistrationState.Success -> {
+                            Text(
+                                text = (registrationState as FaceRegisterViewModel.RegistrationState.Success).message,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(8.dp)
+                            )
+                        }
+                        is FaceRegisterViewModel.RegistrationState.Error -> {
+                            Text(
+                                text = (registrationState as FaceRegisterViewModel.RegistrationState.Error).message,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(8.dp)
+                            )
+                        }
+                        else -> {}
+                    }
                 }
-                is FaceRegisterViewModel.RegistrationState.Error -> {
-                    Text(
-                        text = state.message,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(16.dp)
-                    )
+            }
+
+            // Bottom Buttons
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                if (capturedFace == null) {
+                    Button(
+                        onClick = { shouldCaptureFace = true },
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        Text("Capture Face")
+                    }
+                } else {
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                capturedFace?.let { bitmap ->
+                                    viewModel.registerFace(
+                                        participantName,
+                                        participantRole,
+                                        participantPhone,
+                                        bitmap
+                                    )
+                                }
+                            }
+                        },
+                        enabled = similarityCheck !is FaceRegisterViewModel.SimilarityCheckResult.Similar &&
+                                registrationState !is FaceRegisterViewModel.RegistrationState.Processing
+                    ) {
+                        if (registrationState is FaceRegisterViewModel.RegistrationState.Processing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        } else {
+                            Text("Register Face")
+                        }
+                    }
                 }
             }
         }
