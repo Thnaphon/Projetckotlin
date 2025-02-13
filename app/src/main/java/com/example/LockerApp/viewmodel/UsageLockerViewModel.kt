@@ -36,7 +36,7 @@ class UsageLockerViewModel(application: Application) : AndroidViewModel(applicat
     fun insertUsageLocker(lockerId: Int, compartmentId: Int, usageTime: String, usage: String, AccountID: Int,Status: String) {
         val usageLocker = UsageLocker(
             LockerID = lockerId,
-//            AccountID = AccountID,
+            AccountID = AccountID,
             CompartmentID = compartmentId,
             UsageTime = usageTime,
             Usage = usage,

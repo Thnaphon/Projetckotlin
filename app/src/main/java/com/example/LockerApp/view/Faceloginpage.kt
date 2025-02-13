@@ -86,7 +86,7 @@ fun LivenessProgressIndicator(progress: Float, modifier: Modifier = Modifier) {
 fun FaceLoginPage(
     navController: NavController,
     viewModel: FaceLoginViewModel,
-    onLoginSuccess: (String, String, String) -> Unit
+    onLoginSuccess: (Int,String, String, String) -> Unit
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current

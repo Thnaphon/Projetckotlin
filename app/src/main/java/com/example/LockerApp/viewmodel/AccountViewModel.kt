@@ -16,6 +16,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
 
     val userDetails: LiveData<List<Account>> = accountDao.getAllAccounts()
 
+
     fun insertAccount(account: Account) {
         viewModelScope.launch {
             accountDao.insertAccount(account)
@@ -33,4 +34,6 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
             accountDao.updateAccount(account)
         }
     }
+
+
 }

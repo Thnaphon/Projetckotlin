@@ -1,28 +1,30 @@
 package com.example.LockerApp.view
 
-import DisplayImage
-import GoogleDriveSignInStatus
-import GoogleDriveViewModel
-import GoogleSignInButton
-import ParticipantScreen
+
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
-import com.example.LockerApp.viewmodel.AccountViewModel
+import androidx.activity.result.contract.ActivityResultContracts
+
 
 
 class MainActivity : ComponentActivity() {
-    private val accountViewModel: AccountViewModel by viewModels()
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // เรียกใช้ LockerApp ที่มีระบบนำทาง
+
         setContent {
-            //DisplayImage()
+
+
             LockerApp()
-            //QRCodeScreen()
-            //ParticipantScreen(accountViewModel)
-        }
+
+            }
+
+
     }
 }

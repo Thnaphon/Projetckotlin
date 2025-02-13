@@ -21,9 +21,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
+import com.example.LockerApp.model.KeystoreManager
+
 
 @Composable
 fun WelcomePage(navController: NavController) {
+
     val context = LocalContext.current
     var showPermissionDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
@@ -70,6 +73,16 @@ fun WelcomePage(navController: NavController) {
         } else {
             permissionLauncher.launch(permissions)
         }
+    val context = LocalContext.current
+    val (isPasswordVisible, setIsPasswordVisible) = remember { mutableStateOf(false) }
+    val (enteredPassword, setEnteredPassword) = remember { mutableStateOf("") }
+    val masterPassword = "Micro_2567" // ตัวอย่างรหัสผ่าน
+    val encryptedData = remember { mutableStateOf<Pair<ByteArray, ByteArray>?>(null) }
+
+    // เข้ารหัสรหัสผ่านเมื่อโหลดหน้า
+    LaunchedEffect(Unit) {
+        KeystoreManager.generateKey() // สร้างกุญแจ
+        encryptedData.value = KeystoreManager.encryptData(masterPassword)
     }
 
     Surface(
@@ -103,12 +116,69 @@ fun WelcomePage(navController: NavController) {
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(
-                onClick = { /* TODO: Implement Master Pass Action */ },
+                onClick = {
+                    setIsPasswordVisible(true)
+                },
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)
             ) {
                 Text(text = "Start with Master Pass")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (isPasswordVisible) {
+                OutlinedTextField(
+                    value = enteredPassword,
+                    onValueChange = { setEnteredPassword(it) },
+                    label = { Text("Enter Master Password") },
+                    modifier = Modifier.fillMaxWidth(),
+                    visualTransformation = VisualTransformation.None,
+                    singleLine = true
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = {
+                        try {
+                            val encrypted = encryptedData.value
+                            if (encrypted != null) {
+                                Log.d("WelcomePage", "Stored IV: ${encrypted.second.joinToString()}")
+                                Log.d("WelcomePage", "Stored Encrypted Data: ${encrypted.first.joinToString()}")
+
+                                val decryptedPassword = KeystoreManager.decryptData(
+                                    encrypted.first, // **แก้ให้ใช้ encryptedData ก่อน iv**
+                                    encrypted.second
+                                )
+
+                                Log.d("WelcomePage", "Decrypted Password: $decryptedPassword")
+
+                                if (enteredPassword == decryptedPassword) {
+                                    navController.navigate("main_menu/{accountid}")
+                                } else {
+                                    Toast.makeText(
+                                        context,
+                                        "Incorrect password",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e("WelcomePage", "Decryption error", e)
+                            Toast.makeText(
+                                context,
+                                "Error during decryption",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    },
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Green)
+                ) {
+                    Text(text = "Submit")
+                }
             }
         }
 

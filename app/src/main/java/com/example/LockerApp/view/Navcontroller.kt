@@ -1,22 +1,26 @@
 package com.example.LockerApp.view
 
 import android.app.Application
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.LockerApp.model.LockerDatabase
 import com.example.LockerApp.viewmodel.AccountViewModel
+import com.example.LockerApp.viewmodel.BackupViewModel
 import com.example.LockerApp.viewmodel.FaceLoginViewModel
 import com.example.LockerApp.viewmodel.LockerViewModel
 import com.example.LockerApp.viewmodel.LockerViewModelFactory
 import com.example.LockerApp.viewmodel.MqttViewModel
 import com.example.LockerApp.viewmodel.UsageLockerViewModel
 import com.example.LockerApp.viewmodel.FaceRegisterViewModel
+
 
 
 @Composable
@@ -37,10 +41,12 @@ fun LockerApp() {
 
     val accountViewModel: AccountViewModel = viewModel()
     val usageLockerViewModel: UsageLockerViewModel = viewModel()
+    val viewModel : BackupViewModel = viewModel()
+
 
     NavHost(
         navController = navController,
-//        startDestination = "mqtt_screen"
+
         startDestination = "WelcomePage"
 //        startDestination = "main_menu"
     ) {
@@ -49,12 +55,30 @@ fun LockerApp() {
                 navController = navController
             )
         }
+        composable("BackupScreen") {
+            BackupScreen(
+                viewModel = viewModel
+            )
+        }
+
         composable("UsageHistoryScreen") {
             UsageHistoryScreen(
                 usageLockerViewModel = usageLockerViewModel,
                 navController = navController
             )
         }
+        composable("BorrowUI/{accountid}", arguments = listOf(navArgument("accountid") { type = NavType.IntType })) { backStackEntry ->
+            val accountid = backStackEntry.arguments?.getInt("accountid") ?: 0
+
+            BorrowUI(
+                viewModel = lockerViewModel,
+                mqttViewModel = mqttViewModel,
+                usageLockerViewModel = usageLockerViewModel,
+                accountid = accountid // ส่งค่าไปใช้งานใน UI
+            )
+        }
+
+
 
 
         composable("face_login") {
@@ -68,14 +92,20 @@ fun LockerApp() {
             FaceLoginPage(
                 navController = navController,
                 viewModel = viewModel,
-                onLoginSuccess = { name, role, phone ->
-                    navController.navigate("main_menu") {
+                onLoginSuccess = { accountid, name, role, phone ->
+                    val route = "main_menu/$accountid"  // สร้าง route ที่จะส่งไป
+                    navController.navigate(route) {   // ใช้ route ที่สร้างขึ้น
                         popUpTo("face_login") { inclusive = true }
+                        Log.d("FaceAcountid", "$accountid")
                     }
                 }
             )
         }
-        composable("main_menu") {
+
+        composable("main_menu/{accountid}", arguments = listOf(navArgument("accountid") { type = NavType.IntType })) { backStackEntry ->
+            // ดึง accountid จาก arguments ที่ส่งมาจาก route
+            val accountid = backStackEntry.arguments?.getInt("accountid") ?: 0
+
             MainMenuUI(
                 viewModel = lockerViewModel,
                 onNavigateToMqtt = { navController.navigate("mqtt_screen") },
@@ -84,7 +114,9 @@ fun LockerApp() {
                 lockerDao = lockerDao,
                 compartmentDao = compartmentDao,
                 accountViewModel = accountViewModel,
-                usageLockerViewModel = usageLockerViewModel// ส่ง compartmentDao
+                usageLockerViewModel = usageLockerViewModel,
+                backupViewModel = viewModel,
+                accountid = accountid  // ส่ง accountid ไปใช้ใน UI
             )
         }
 
