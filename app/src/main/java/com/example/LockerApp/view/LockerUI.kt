@@ -183,44 +183,44 @@ fun AddLockerScreen(
 
         Button(onClick = {
             isSaving = true
+//
+//            receivedTopic = "mock/topic"
+//            availableCompartment = "10"
+//            viewModel.addLocker(
+//                Lockername,
+//                lockerDetail,
+//                receivedTopic,  // mock data
+//                availableCompartment // mock data
+//            )
+//            isSaving = false
+//             ส่งข้อความและรอรับการตอบกลับ
+            mqttViewModel.waitForMessages("request/locker") { message ->
+                if (message.isNotEmpty()) {
+                    try {
+                        // แปลง JSON ที่ได้รับเป็น JSONObject
+                        val jsonObject = JSONObject(message)
 
-            receivedTopic = "mock/topic"
-            availableCompartment = "10"
-            viewModel.addLocker(
-                Lockername,
-                lockerDetail,
-                receivedTopic,  // mock data
-                availableCompartment // mock data
-            )
-            isSaving = false
-            // ส่งข้อความและรอรับการตอบกลับ
-//            mqttViewModel.waitForMessages("request/locker") { message ->
-//                if (message.isNotEmpty()) {
-//                    try {
-//                        // แปลง JSON ที่ได้รับเป็น JSONObject
-//                        val jsonObject = JSONObject(message)
-//
-//                        // แยกข้อมูล receivedTopic และ Available_compartment
-//                        receivedTopic = jsonObject.getString("Topic")
-//                        availableCompartment = jsonObject.getString("Compartment")
-//
-//                        // บันทึกข้อมูลลงในฐานข้อมูล
-//                        viewModel.addLocker(
-//                            Lockername,
-//                            lockerDetail,
-//                            receivedTopic,  // บันทึก receivedTopic
-//                            availableCompartment,
-//                            // บันทึก Available_compartment
-//                        )
-//
-//                        isSaving = false // เปลี่ยนสถานะการบันทึก
-//                    } catch (e: Exception) {
-//                        Log.e("LockerUI", "Error parsing JSON: ${e.message}")
-//                        // Handle error if JSON is invalid
-//                        isSaving = false
-//                    }
-//                }
-//            }
+                        // แยกข้อมูล receivedTopic และ Available_compartment
+                        receivedTopic = jsonObject.getString("Topic")
+                        availableCompartment = jsonObject.getString("Compartment")
+
+                        // บันทึกข้อมูลลงในฐานข้อมูล
+                        viewModel.addLocker(
+                            Lockername,
+                            lockerDetail,
+                            receivedTopic,  // บันทึก receivedTopic
+                            availableCompartment,
+                            // บันทึก Available_compartment
+                        )
+
+                        isSaving = false // เปลี่ยนสถานะการบันทึก
+                    } catch (e: Exception) {
+                        Log.e("LockerUI", "Error parsing JSON: ${e.message}")
+                        // Handle error if JSON is invalid
+                        isSaving = false
+                    }
+                }
+            }
 
         }) {
             Text("Add Locker")

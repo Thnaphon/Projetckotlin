@@ -14,9 +14,11 @@ import androidx.lifecycle.viewModelScope
 import com.example.LockerApp.model.BackupSettings
 
 import com.example.LockerApp.model.LockerDatabase
+import com.example.LockerApp.service.MqttService
 
 import kotlinx.coroutines.launch
 import java.io.File
+import java.io.FileInputStream
 
 
 import java.io.IOException
@@ -24,7 +26,8 @@ import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
+import android.util.Base64
+import org.eclipse.paho.client.mqttv3.MqttMessage
 
 class BackupViewModel : ViewModel() {
     // ใช้ mutableStateOf สำหรับเก็บชื่อไฟล์สำรองและที่อยู่ไฟล์
@@ -159,6 +162,49 @@ class BackupViewModel : ViewModel() {
                 } catch (e: IOException) {
                     Log.e("Restore", "Restore failed", e)
                 }
+            }
+        }
+    }
+    fun sendBackupFileToPi(mqttService: MqttService, context: Context) {
+        viewModelScope.launch {
+            val backupFolder = context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
+            val backupDatabaseFile = File(backupFolder, "backup_locker_database")
+
+            if (!backupDatabaseFile.exists()) {
+                Log.e("Backup", "Backup file does not exist.")
+                return@launch
+            }
+
+            try {
+                val inputStream = FileInputStream(backupDatabaseFile)
+                val fileBytes = inputStream.readBytes()
+                inputStream.close()
+
+                // เข้ารหัสไฟล์เป็น Base64
+                val encodedFile = Base64.encodeToString(fileBytes, Base64.DEFAULT)
+
+                // ส่งผ่าน MQTT (แบ่งเป็นชิ้นละ 4000 bytes ถ้าจำเป็น)
+                val chunkSize = 4000
+                val totalChunks = (encodedFile.length + chunkSize - 1) / chunkSize
+
+                for (i in 0 until totalChunks) {
+                    val start = i * chunkSize
+                    val end = minOf(start + chunkSize, encodedFile.length)
+                    val chunk = encodedFile.substring(start, end)
+
+                    val message = MqttMessage(chunk.toByteArray())
+                    message.qos = 1
+
+                    val topic = "locker/backup"
+                    mqttService.sendMessage(topic, chunk)
+
+                    Log.d("MQTT", "Sent chunk $i/${totalChunks - 1}")
+                }
+
+                Log.d("MQTT", "Backup file sent successfully")
+
+            } catch (e: Exception) {
+                Log.e("MQTT", "Failed to send backup file", e)
             }
         }
     }

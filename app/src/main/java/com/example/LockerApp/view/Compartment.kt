@@ -59,24 +59,23 @@ fun CompartmentUI(lockerId: Int, viewModel: LockerViewModel = viewModel()) {
                     item {
                         AddCompartmentCard(
                             onAdd = {
-                                if (status.isNotBlank() && nameItem.isNotBlank() && detailItem.isNotBlank() && picItem.isNotBlank()) {
+                                if (nameItem.isNotBlank() && detailItem.isNotBlank() && picItem.isNotBlank()) {
                                     viewModel.addCompartment(
                                         Compartment(
-                                            Status = status,
+                                            Status = "return",
                                             LockerID = lockerId,
                                             Name_Item = nameItem,
                                             pic_item = picItem
                                         )
                                     )
                                     // Reset input fields
-                                    status = ""
+
                                     nameItem = ""
                                     detailItem = ""
                                     picItem = ""
                                 }
                             },
-                            status = status,
-                            onStatusChange = { status = it },
+
                             nameItem = nameItem,
                             onNameItemChange = { nameItem = it },
                             detailItem = detailItem,
@@ -96,8 +95,7 @@ fun CompartmentUI(lockerId: Int, viewModel: LockerViewModel = viewModel()) {
 @Composable
 fun AddCompartmentCard(
     onAdd: () -> Unit,
-    status: String,
-    onStatusChange: (String) -> Unit,
+
     nameItem: String,
     onNameItemChange: (String) -> Unit,
     detailItem: String,
@@ -118,8 +116,8 @@ fun AddCompartmentCard(
             modifier = Modifier.padding(16.dp),
             horizontalAlignment = Alignment.Start
         ) {
-            TextField(value = status, onValueChange = onStatusChange, label = { Text("Status") })
-            Spacer(modifier = Modifier.height(8.dp))
+
+
             TextField(value = nameItem, onValueChange = onNameItemChange, label = { Text("Item Name") })
             Spacer(modifier = Modifier.height(8.dp))
             TextField(value = detailItem, onValueChange = onDetailItemChange, label = { Text("Item Detail") })

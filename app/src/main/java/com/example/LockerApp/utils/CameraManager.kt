@@ -22,6 +22,9 @@ import androidx.camera.core.Preview
 
 
 class CameraManager(private val context: Context) {
+    private var lastProcessingTimeStamp = 0L
+    private val MINIMUM_TIME_BETWEEN_FRAMES = 200L // 200ms between frames
+
     private val faceDetector = FaceDetection.getClient(
         FaceDetectorOptions.Builder()
             .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
@@ -72,6 +75,13 @@ class CameraManager(private val context: Context) {
         imageProxy: ImageProxy,
         onFaceDetected: (Bitmap, Rect) -> Unit
     ) {
+        val currentTimeStamp = System.currentTimeMillis()
+        if (currentTimeStamp - lastProcessingTimeStamp < MINIMUM_TIME_BETWEEN_FRAMES) {
+            imageProxy.close()
+            return
+        }
+        lastProcessingTimeStamp = currentTimeStamp
+
         val mediaImage = imageProxy.image
         if (mediaImage != null) {
             val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
@@ -91,6 +101,7 @@ class CameraManager(private val context: Context) {
         } else {
             imageProxy.close()
         }
+
     }
 
     fun mediaImageToBitmap(mediaImage: Image, rotationDegrees: Int): Bitmap {

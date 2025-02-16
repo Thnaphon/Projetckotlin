@@ -32,7 +32,9 @@ class MqttViewModel(application: Application) : AndroidViewModel(application) {
         // เชื่อมต่อกับ MQTT broker เมื่อเริ่มต้น
         viewModelScope.launch {
             mqttService.connect()
+            subscribeToTopic("request/locker")
         }
+
     }
 
     // ฟังก์ชันเชื่อมต่อ
@@ -50,6 +52,7 @@ class MqttViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             mqttService.disconnect()
         }
+
     }
 
     // ฟังก์ชันส่งข้อความ

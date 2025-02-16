@@ -30,7 +30,7 @@ class MqttService {
             }
 
             // กำหนดค่า mqttClient ใหม่
-            mqttClient = MqttClient("tcp://test.mosquitto.org:1883", MqttClient.generateClientId(), null)
+            mqttClient = MqttClient("tcp://172.20.10.2:1883", MqttClient.generateClientId(), null)
 
             val options = MqttConnectOptions()
             //options.userName = "your-username"  // ถ้ามี
@@ -78,14 +78,20 @@ class MqttService {
 
     // ฟังก์ชันส่งข้อความ
     fun sendMessage(topic: String, message: String) {
+        if (mqttClient == null || !mqttClient!!.isConnected) {
+            Log.e("Mqtt", "MQTT Client is not connected. Cannot send message.")
+            return
+        }
         try {
-            val mqttMessage = MqttMessage()
-            mqttMessage.payload = message.toByteArray()
-            mqttClient?.publish(topic, mqttMessage)
-        } catch (e: MqttException) {
-            Log.e("Mqtt", "Failed to send message: ${e.message}")
+            val mqttMessage = MqttMessage(message.toByteArray())
+            mqttMessage.qos = 1 // QoS 1: ส่งใหม่ถ้ายังไม่ได้รับ
+            mqttClient!!.publish(topic, mqttMessage)
+            Log.d("MQTT", "Message sent to topic: $topic")
+        } catch (e: Exception) {
+            Log.e("Mqtt", "Failed to send MQTT message", e)
         }
     }
+
 
     // ฟังก์ชันสำหรับการ subscribe โดยรับพารามิเตอร์หัวข้อเอง
     fun subscribeToTopic(topic: String) {

@@ -130,6 +130,7 @@ fun LockerApp() {
         composable(
             route = "face_detection?name={name}&role={role}&phone={phone}",
             arguments = listOf(
+                navArgument("accountid") { defaultValue = "" },
                 navArgument("name") { defaultValue = "" },
                 navArgument("role") { defaultValue = "" },
                 navArgument("phone") { defaultValue = "" },
