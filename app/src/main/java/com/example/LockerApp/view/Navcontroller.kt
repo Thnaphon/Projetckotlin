@@ -1,5 +1,6 @@
 package com.example.LockerApp.view
 
+import android.annotation.SuppressLint
 import android.app.Application
 import android.util.Log
 import androidx.compose.foundation.layout.Box
@@ -26,9 +27,7 @@ import com.example.LockerApp.viewmodel.LockerViewModelFactory
 import com.example.LockerApp.viewmodel.MqttViewModel
 import com.example.LockerApp.viewmodel.UsageLockerViewModel
 import com.example.LockerApp.viewmodel.FaceRegisterViewModel
-import io.ktor.websocket.Frame
 import kotlinx.coroutines.delay
-
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.Text
@@ -36,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 
+@SuppressLint("SuspiciousIndentation")
 @Composable
 fun LockerApp() {
     val context = LocalContext.current
@@ -239,14 +239,15 @@ fun LockerApp() {
             }
 
             composable(
-                route = "face_detection?name={name}&role={role}&phone={phone}",
+                route = "face_register?name={name}&role={role}&phone={phone}/{accountid}",
                 arguments = listOf(
-                    navArgument("accountid") { defaultValue = "" },
+                    navArgument("accountid") { type = NavType.IntType },
                     navArgument("name") { defaultValue = "" },
                     navArgument("role") { defaultValue = "" },
                     navArgument("phone") { defaultValue = "" },
                 )
             ) {
+                val accountid = it.arguments?.getInt("accountid")
                 val name = it.arguments?.getString("name") ?: ""
                 val role = it.arguments?.getString("role") ?: ""
                 val phone = it.arguments?.getString("phone") ?: ""
@@ -258,13 +259,16 @@ fun LockerApp() {
                     )
                 )
 
-                FaceRegisterPage(
-                    navController = navController,
-                    viewModel = viewModel,
-                    participantName = name,
-                    participantRole = role,
-                    participantPhone = phone
-                )
+                if (accountid != null) {
+                    FaceRegisterPage(
+                        navController = navController,
+                        viewModel = viewModel,
+                        accountid = accountid,
+                        participantName = name,
+                        participantRole = role,
+                        participantPhone = phone
+                    )
+                }
             }
         }
     }

@@ -35,6 +35,7 @@ import kotlinx.coroutines.delay
 fun FaceRegisterPage(
     navController: NavHostController,
     viewModel: FaceRegisterViewModel,
+    accountid: Int,
     participantName: String,
     participantPhone: String,
     participantRole: String
@@ -59,8 +60,8 @@ fun FaceRegisterPage(
                 if (!isRegistrationSuccessful) {
                     isRegistrationSuccessful = true
                     delay(500) // delay 0.5 sec
-                    navController.navigate("main_menu") {
-                        popUpTo("face_detection") { inclusive = true }
+                    navController.navigate("main_menu/$accountid") {
+                        popUpTo("face_register") { inclusive = true }
                     }
                 }
             }

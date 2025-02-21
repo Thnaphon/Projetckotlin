@@ -193,7 +193,7 @@ fun MainMenuUI(
                     CompartmentUI(lockerId = lockerId.toInt())
                 }
                 showParticipantUI -> {
-                    ParticipantScreen(accountViewModel= accountViewModel,navController = navController) // แสดงหน้า Participant ที่นี่
+                    ParticipantScreen(accountViewModel= accountViewModel,navController = navController , accountid = accountid) // แสดงหน้า Participant ที่นี่
                 }
                 showUsageHistoryScreen -> {
                     UsageHistoryScreen(accountViewModel= accountViewModel,usageLockerViewModel=  usageLockerViewModel, navController = navController) // แสดงหน้า Participant ที่นี่

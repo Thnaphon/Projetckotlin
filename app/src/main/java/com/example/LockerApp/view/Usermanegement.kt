@@ -41,7 +41,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun ParticipantScreen(accountViewModel: AccountViewModel,navController: NavController) {
+fun ParticipantScreen(accountViewModel: AccountViewModel,navController: NavController,accountid: Int) {
     var isEditDialogVisible by remember { mutableStateOf(false) }
     var isEditMode by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
@@ -296,7 +296,7 @@ fun ParticipantScreen(accountViewModel: AccountViewModel,navController: NavContr
                             TextButton(
                                 onClick = {
                                     navController.navigate(
-                                        "face_detection?name=${name}&phone=${phone}&role=${role}"
+                                        "face_register?name=${name}&role=${role}&phone=${phone}/$accountid"
                                     )
                                 },
                                 modifier = Modifier
