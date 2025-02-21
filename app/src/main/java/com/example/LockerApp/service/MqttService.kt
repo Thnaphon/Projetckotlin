@@ -36,7 +36,7 @@ class MqttService {
             }
 
             // กำหนดค่า mqttClient ใหม่
-            mqttClient = MqttClient("tcp://172.20.10.7:1883", MqttClient.generateClientId(), null)
+            mqttClient = MqttClient("tcp://test.mosquitto.org:1883", MqttClient.generateClientId(), null)
 
             val options = MqttConnectOptions()
             //options.userName = "your-username"  // ถ้ามี
