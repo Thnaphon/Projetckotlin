@@ -160,5 +160,10 @@ dependencies {
     implementation("io.ktor:ktor-client-android:2.2.3")  // อัปเดตเป็นเวอร์ชันที่รองรับ
     implementation("io.ktor:ktor-client-content-negotiation:2.2.3")
     implementation("io.ktor:ktor-serialization-kotlinx-json:2.2.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")  // อัปเดตเวอร์ชันที่รองรับ
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+    // อัปเดตเวอร์ชันที่รองรับ
+    implementation("androidx.security:security-crypto:1.0.0")
+
+
+
 }

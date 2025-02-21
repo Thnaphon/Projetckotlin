@@ -1,6 +1,7 @@
 package com.example.LockerApp.model
 
 import android.content.Context
+import androidx.camera.core.processing.SurfaceProcessorNode.In
 import androidx.lifecycle.LiveData
 import androidx.room.Dao
 import androidx.room.Database
@@ -23,8 +24,9 @@ data class Locker(
     val Lockername:String,
     val detail: String,
     val status: String,
-    val topic_mqtt: String,
-    val availableCompartment:String
+    val TokenTopic: String,
+    val availableCompartment:String,
+    val usedCompartment: String = "[]"
 
 )
 
@@ -93,6 +95,8 @@ data class UsageLocker(
 
 )
 
+
+
 // Entity สำหรับ Backup
 @Entity(tableName = "backup_settings")
 data class BackupSettings(
@@ -128,8 +132,17 @@ interface LockerDao {
     @Query("SELECT COUNT(*) FROM locker")
     suspend fun getLockerCount(): Int
 
-    @Query("SELECT topic_mqtt FROM locker WHERE LockerID = :lockerId")
+    @Query("SELECT TokenTopic FROM locker WHERE LockerID = :lockerId")
     suspend fun getMqttTopicByLockerId(lockerId: Int): String?
+
+    @Query("SELECT availableCompartment FROM locker WHERE LockerID = :lockerId")
+    suspend fun getavailableCompartmentByLockerId(lockerId: Int): String?
+
+    @Query("SELECT * FROM locker WHERE TokenTopic = :topic")
+    suspend fun getLockerByTopic(topic: String): Locker?
+
+    @Query("UPDATE locker SET status = :newStatus WHERE LockerID = :lockerID")
+    suspend fun updateLockerStatus(lockerID: Int, newStatus: String)
 }
 
 // DAO สำหรับ Compartment
@@ -143,6 +156,15 @@ interface CompartmentDao {
 
     @Query("SELECT LockerID FROM compartment WHERE CompartmentID = :compartmentId LIMIT 1")
     suspend fun getLockerIdByCompartmentId(compartmentId: Int): Int?
+
+
+    @Query("UPDATE compartment SET Status = :newStatus WHERE CompartmentID = :compartmentID AND LockerID = :lockerID")
+    suspend fun updateCompartmentStatus(compartmentID: Int, newStatus: String, lockerID: Int)
+
+    @Query("SELECT COUNT(*) FROM locker WHERE LockerID = :lockerID")
+    suspend fun checkLockerExists(lockerID: Int): Boolean
+
+
 }
 
 
@@ -171,6 +193,8 @@ interface AccountDao {
     @Query("SELECT * FROM account WHERE AccountID = :accountID LIMIT 1")
     suspend fun getUserAccountID(accountID: Int): Account?
 
+    @Query("SELECT Name FROM Account WHERE AccountID = :accountId LIMIT 1")
+    fun getAccountNameById(accountId: Int): LiveData<String>
 }
 
 

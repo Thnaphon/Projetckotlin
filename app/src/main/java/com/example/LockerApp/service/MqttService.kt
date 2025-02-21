@@ -19,6 +19,12 @@ class MqttService {
     // ทำให้ mqttClient เป็น non-nullable
     private var mqttClient: MqttClient? = null
 
+    private var messageCallback: ((String) -> Unit)? = null
+
+    // ฟังก์ชันสำหรับตั้งค่า messageCallback
+    fun onMessageReceived(callback: (String) -> Unit) {
+        this.messageCallback = callback
+    }
     // ฟังก์ชันการเชื่อมต่อ
     fun connect() {
         try {
@@ -30,7 +36,7 @@ class MqttService {
             }
 
             // กำหนดค่า mqttClient ใหม่
-            mqttClient = MqttClient("tcp://172.20.10.2:1883", MqttClient.generateClientId(), null)
+            mqttClient = MqttClient("tcp://172.20.10.7:1883", MqttClient.generateClientId(), null)
 
             val options = MqttConnectOptions()
             //options.userName = "your-username"  // ถ้ามี

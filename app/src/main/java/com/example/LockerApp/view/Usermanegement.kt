@@ -204,7 +204,7 @@ fun ParticipantScreen(accountViewModel: AccountViewModel,navController: NavContr
                                 Text(user.Role, Modifier.weight(1f))
                                 Text(user.Phone, Modifier.weight(1f))
                                 Text(user.CreatedDate, Modifier.weight(1f))
-                                //Text(user.embedding, Modifier.weight(1f))
+
                                 IconButton(onClick = {
                                     name = user.Name
                                     role = user.Role
@@ -251,19 +251,7 @@ fun ParticipantScreen(accountViewModel: AccountViewModel,navController: NavContr
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        IconButton(
-                            onClick = {navController.navigate(
-                                "face_detection?name=${name}&phone=${phone}&role=${role}"
-                            )},
-                            modifier = Modifier.align(Alignment.CenterVertically) // ทำให้ปุ่มอยู่ในแนวตั้งกลาง
 
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Star, // ใช้ไอคอนกล้อง
-                                contentDescription = "Capture Photo",
-                                tint = Color.White
-                            )
-                        }
 
                         // ช่องกรอกชื่อ
                         TextField(
@@ -307,36 +295,15 @@ fun ParticipantScreen(accountViewModel: AccountViewModel,navController: NavContr
 
                             TextButton(
                                 onClick = {
-                                    if (isEditMode && accountIdToEdit != null) {
-                                        val embeddingString = ","
-                                        val updatedUser = Account(
-                                            AccountID = accountIdToEdit!!,
-                                            Name = name,
-                                            Phone = phone,
-                                            Role = role,
-                                            embedding = embeddingString,
-                                            CreatedDate = userDetails.firstOrNull { it.AccountID == accountIdToEdit }?.CreatedDate
-                                                ?: currentDate
-                                        )
-                                        accountViewModel.updateAccount(updatedUser)
-                                    } else {
-                                        val embeddingString = ","
-                                        val newUser = Account(
-                                            Name = name,
-                                            Phone = phone,
-                                            Role = role,
-                                            embedding = embeddingString,
-                                            CreatedDate = currentDate
-                                        )
-                                        accountViewModel.insertAccount(newUser)
-                                    }
-                                    isEditDialogVisible = false
+                                    navController.navigate(
+                                        "face_detection?name=${name}&phone=${phone}&role=${role}"
+                                    )
                                 },
                                 modifier = Modifier
                                     .padding(start = 8.dp, top = 16.dp)
                                     .background(Color.White, shape = RoundedCornerShape(8.dp))
                             ) {
-                                Text("Apply", color = Color(0xFF2A3D4F))
+                                Text("Start Face Recognotion", color = Color(0xFF2A3D4F))
                             }
 
                         }

@@ -1,5 +1,6 @@
 package com.example.LockerApp.view
 
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -37,106 +38,148 @@ import androidx.lifecycle.viewModelScope
 import com.example.LockerApp.viewmodel.LockerViewModel
 import com.example.LockerApp.viewmodel.MqttViewModel
 import com.example.LockerApp.viewmodel.UsageLockerViewModel
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import kotlin.math.ceil
+import kotlinx.coroutines.launch
+
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLockerViewModel: UsageLockerViewModel) {
-    var selectedLocker by remember { mutableStateOf(0) } // เริ่มต้นที่ All Lockers
-    val lockers = listOf(1, 2, 3) // รายชื่อ locker ที่มี
-    val compartments by viewModel.getCompartmentsByLocker(selectedLocker).collectAsState(initial = emptyList())
+fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLockerViewModel: UsageLockerViewModel,accountid: Int) {
 
-    var expanded by remember { mutableStateOf(false) }
+        var selectedLocker by remember { mutableStateOf(0) }
+        val lockers by viewModel.lockers.collectAsState()
+        val compartments by viewModel.getCompartmentsByLocker(selectedLocker)
+            .collectAsState(initial = emptyList())
+        var expanded by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("Return", style = MaterialTheme.typography.h4)
+        val receivedMessage by mqttViewModel.receivedMessage.collectAsState() // ดึงค่าจาก mqttViewModel
 
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("${compartments.size} Compartments", style = MaterialTheme.typography.body1)
+            Text("Borrow", style = MaterialTheme.typography.h4)
+            Spacer(modifier = Modifier.height(20.dp))
 
-            ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
-                TextField(
-                    readOnly = true,
-                    value = if (selectedLocker == 0) "All Lockers" else "Locker $selectedLocker",
-                    onValueChange = {},
-                    label = { Text("Select Locker") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                    colors = TextFieldDefaults.textFieldColors(
-                        backgroundColor = MaterialTheme.colors.surface,
-                        focusedIndicatorColor = MaterialTheme.colors.primary,
-                        unfocusedIndicatorColor = MaterialTheme.colors.onSurface.copy(alpha = 0.5f)
-                    ),
-                    modifier = Modifier
-                        .width(150.dp)
-                        .clickable { expanded = true }
-                )
-                ExposedDropdownMenu(
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("${compartments.size} Compartments", style = MaterialTheme.typography.body1)
+
+                ExposedDropdownMenuBox(
                     expanded = expanded,
-                    onDismissRequest = { expanded = false }
-                ) {
-                    lockers.forEach { locker ->
+                    onExpandedChange = { expanded = !expanded }) {
+                    TextField(
+                        readOnly = true,
+                        value = if (selectedLocker == 0) "All Lockers" else "Locker $selectedLocker",
+                        onValueChange = {},
+                        label = { Text("Select Locker") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        colors = TextFieldDefaults.textFieldColors(
+                            backgroundColor = MaterialTheme.colors.surface,
+                            focusedIndicatorColor = MaterialTheme.colors.primary,
+                            unfocusedIndicatorColor = MaterialTheme.colors.onSurface.copy(alpha = 0.5f)
+                        ),
+                        modifier = Modifier
+                            .width(150.dp)
+                            .clickable { expanded = true }
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        lockers.forEach { locker ->
+                            DropdownMenuItem(onClick = {
+                                selectedLocker = locker.LockerID
+                                expanded = false
+                            }) {
+                                Text("Locker ${locker.LockerID}")
+                            }
+                        }
                         DropdownMenuItem(onClick = {
-                            selectedLocker = locker
+                            selectedLocker = 0
                             expanded = false
                         }) {
-                            Text("Locker $locker")
+                            Text("All Lockers")
                         }
-                    }
-                    DropdownMenuItem(onClick = {
-                        selectedLocker = 0 // เลือก All Lockers
-                        expanded = false
-                    }) {
-                        Text("All Lockers")
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                content = {
+                    items(compartments.filter { it.Status == "return" }) { compartment ->
+                        Card(
+                            modifier = Modifier
+                                .padding(4.dp)
+                                .clickable {
+                                    mqttViewModel.cancelWaitingForMessages()
+                                    mqttViewModel.clearReceivedMessage()
+
+                                    viewModel.viewModelScope.launch {
+                                        viewModel.getMqttTopicForCompartment(compartment.CompartmentID)
+                                            .collectLatest { topicMqtt ->
+                                                val topic =
+                                                    "$topicMqtt/${compartment.CompartmentID}"
+                                                mqttViewModel.sendMessage("$topic/open", " ")
+                                                kotlinx.coroutines.delay(300) // ป้องกัน race condition
+                                                mqttViewModel.subscribeToTopic("$topic/status")
+                                            }
+                                    }
+                                },
+                            elevation = 4.dp
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    "Compartment ${compartment.CompartmentID}",
+                                    style = MaterialTheme.typography.body2
+                                )
+                                Text(
+                                    "From Locker ${compartment.LockerID}",
+                                    style = MaterialTheme.typography.body2
+                                )
+                            }
+                        }
+                    }
+                }
+            )
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        // ฟังค่าจาก MQTT และทำการอัปเดตฐานข้อมูลเมื่อสถานะเปลี่ยนเป็น CLOSE
+        LaunchedEffect(receivedMessage) {
+            if (receivedMessage == "CLOSE") {
+                val usageTime = System.currentTimeMillis().toString()
+                val usage = "Borrow"
+                val status = "Success"
 
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(3), // กำหนดจำนวนคอลัมน์เป็น 3
-            content = {
-                items(compartments.filter { it.Status == "borrowed" }) { compartment ->
-                    Card(
-                        modifier = Modifier
-                            .padding(4.dp)
-                            .clickable {
-                                // ดึง topic MQTT สำหรับ compartment
-                                viewModel.getMqttTopicForCompartment(compartment.CompartmentID).onEach { topicMqtt ->
-                                    mqttViewModel.sendMessage("$topicMqtt/${compartment.CompartmentID}/open", " ")
-                                    mqttViewModel.subscribeToTopic("$topicMqtt/${compartment.CompartmentID}/status")
-                                    val usageTime = System.currentTimeMillis().toString()
-                                    val usage = "Return" // ใช้คำว่า "Borrow" หรือสถานะที่เหมาะสม
-                                    val AccountID:Int = 10
-                                    val Status = "Success"
-                                    usageLockerViewModel.insertUsageLocker(compartment.LockerID, compartment.CompartmentID, usageTime, usage,AccountID,Status)
-                                }.launchIn(viewModel.viewModelScope)
-                            },
-                        elevation = 4.dp
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text("Compartment ${compartment.CompartmentID}", style = MaterialTheme.typography.body2)
-                            Text("From Locker ${compartment.LockerID}", style = MaterialTheme.typography.body2)
-                        }
-                    }
-                }
+                val targetCompartment = compartments.find { it.Status == "return" }
+                if (targetCompartment != null) {
+                    usageLockerViewModel.insertUsageLocker(
+                        targetCompartment.LockerID,
+                        targetCompartment.CompartmentID,
+                        usageTime,
+                        usage,
+                        accountid,
+                        status
+                    )
+                    viewModel.updateCompartmentStatus(
+                        targetCompartment.CompartmentID,
+                        "borrowed",
+                        targetCompartment.LockerID
+                    )
+
             }
-        )
+        }
     }
 }

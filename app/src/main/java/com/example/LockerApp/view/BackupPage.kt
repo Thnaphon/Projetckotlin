@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.LockerApp.model.BackupSettings
 import com.example.LockerApp.model.LockerDatabase
+import com.example.LockerApp.service.MqttService
 import com.example.LockerApp.viewmodel.BackupViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -52,6 +53,8 @@ import java.util.Locale
 @Composable
 fun BackupScreen(viewModel: BackupViewModel) {
     val context = LocalContext.current
+    val mqttService = MqttService() // สร้าง mqttService ที่นี่
+
     // ตัวแปรสำหรับแสดงวันที่สำรองข้อมูลล่าสุด
     var lastBackupDate by remember { mutableStateOf("ไม่พบข้อมูลการสำรอง") }
 
@@ -78,6 +81,8 @@ fun BackupScreen(viewModel: BackupViewModel) {
             onClick = {
                 // เรียกฟังก์ชันสำรองข้อมูล
                 viewModel.performBackup(context)
+                // เรียกฟังก์ชันส่งไฟล์สำรองไปยัง Pi
+                viewModel.performBackupToPi(mqttService, context) // ส่ง mqttService ที่นี่
                 Toast.makeText(context, "กำลังทำการสำรองข้อมูล...", Toast.LENGTH_SHORT).show()
             }
         ) {

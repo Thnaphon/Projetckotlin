@@ -27,7 +27,10 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import android.util.Base64
+import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
+import org.eclipse.paho.client.mqttv3.MqttCallback
 import org.eclipse.paho.client.mqttv3.MqttMessage
+import java.io.FileOutputStream
 
 class BackupViewModel : ViewModel() {
     // ใช้ mutableStateOf สำหรับเก็บชื่อไฟล์สำรองและที่อยู่ไฟล์
@@ -165,47 +168,81 @@ class BackupViewModel : ViewModel() {
             }
         }
     }
-    fun sendBackupFileToPi(mqttService: MqttService, context: Context) {
-        viewModelScope.launch {
-            val backupFolder = context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
-            val backupDatabaseFile = File(backupFolder, "backup_locker_database")
 
-            if (!backupDatabaseFile.exists()) {
-                Log.e("Backup", "Backup file does not exist.")
-                return@launch
-            }
+    fun performBackupToPi(mqttService: MqttService, context: Context) {
+        viewModelScope.launch {
+            val sourceDatabaseFile = context.getDatabasePath("locker_database")
+            val sourceShmFile = context.getDatabasePath("locker_database-shm")
+            val sourceWalFile = context.getDatabasePath("locker_database-wal")
 
             try {
-                val inputStream = FileInputStream(backupDatabaseFile)
-                val fileBytes = inputStream.readBytes()
-                inputStream.close()
+                // อ่านไฟล์ database, SHM และ WAL
+                val databaseBytes = sourceDatabaseFile.readBytes()
+                val shmBytes = sourceShmFile.readBytes()
+                val walBytes = sourceWalFile.readBytes()
 
-                // เข้ารหัสไฟล์เป็น Base64
-                val encodedFile = Base64.encodeToString(fileBytes, Base64.DEFAULT)
+                // แปลงไฟล์เป็น Base64 หรือส่งข้อมูลผ่าน MQTT โดยตรง
+                val encodedDatabase = Base64.encodeToString(databaseBytes, Base64.DEFAULT)
+                val encodedShm = Base64.encodeToString(shmBytes, Base64.DEFAULT)
+                val encodedWal = Base64.encodeToString(walBytes, Base64.DEFAULT)
 
-                // ส่งผ่าน MQTT (แบ่งเป็นชิ้นละ 4000 bytes ถ้าจำเป็น)
-                val chunkSize = 4000
-                val totalChunks = (encodedFile.length + chunkSize - 1) / chunkSize
+                // ส่งไฟล์ผ่าน MQTT โดยแบ่งเป็นชิ้นๆ
+                sendBackupFileToPi(mqttService, encodedDatabase, "locker/backup/database")
+                sendBackupFileToPi(mqttService, encodedShm, "locker/backup/shm")
+                sendBackupFileToPi(mqttService, encodedWal, "locker/backup/wal")
 
-                for (i in 0 until totalChunks) {
-                    val start = i * chunkSize
-                    val end = minOf(start + chunkSize, encodedFile.length)
-                    val chunk = encodedFile.substring(start, end)
+                // บันทึกชื่อไฟล์และที่อยู่ของไฟล์สำรองที่ส่งไป
+                Log.d("Backup", "Backup data sent successfully to Pi")
 
-                    val message = MqttMessage(chunk.toByteArray())
-                    message.qos = 1
+                // อัพเดตวันที่สำรองล่าสุด
+                val currentDate =
+                    SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+                val backupDao = LockerDatabase.getDatabase(context).backupDao()
+                val backupSettings = backupDao.getBackupSettings()
 
-                    val topic = "locker/backup"
-                    mqttService.sendMessage(topic, chunk)
-
-                    Log.d("MQTT", "Sent chunk $i/${totalChunks - 1}")
+                if (backupSettings != null) {
+                    backupDao.updateLastBackupDate(backupSettings.id, currentDate)
+                } else {
+                    val newBackupSettings = BackupSettings(
+                        frequency = "Daily",
+                        backupTime = "02:00 AM",
+                        lastBackupDate = currentDate
+                    )
+                    backupDao.insertOrUpdateBackupSettings(newBackupSettings)
                 }
 
-                Log.d("MQTT", "Backup file sent successfully")
-
-            } catch (e: Exception) {
-                Log.e("MQTT", "Failed to send backup file", e)
+            } catch (e: IOException) {
+                Log.e("Backup", "Backup failed", e)
             }
         }
     }
+    fun sendBackupFileToPi(mqttService: MqttService, encodedFile: String, topic: String) {
+        // ตรวจสอบสถานะการเชื่อมต่อก่อนส่งข้อความ
+
+        mqttService.connect() // พยายามเชื่อมต่อใหม่ (ตรวจสอบว่า connect method มีอยู่ในคลาสหรือไม่)
+
+
+        val chunkSize = 4000 // ขนาดชิ้นส่วนที่ส่งได้
+        val totalChunks = (encodedFile.length + chunkSize - 1) / chunkSize
+
+        for (i in 0 until totalChunks) {
+            val start = i * chunkSize
+            val end = minOf(start + chunkSize, encodedFile.length)
+            val chunk = encodedFile.substring(start, end)
+
+            val message = MqttMessage(chunk.toByteArray())
+            message.qos = 1
+
+            try {
+                mqttService.sendMessage(topic, chunk) // ส่งผ่าน MQTT
+                Log.d("MQTT", "ส่งชิ้นที่ $i/$totalChunks ไปที่ topic: $topic")
+            } catch (e: Exception) {
+                Log.e("MQTT", "เกิดข้อผิดพลาดในการส่งชิ้นที่ $i: ${e.message}")
+            }
+        }
+    }
+
+
+
+
 }

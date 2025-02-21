@@ -1,6 +1,6 @@
 package com.example.LockerApp.view
 
-import android.util.Log
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -30,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 
 import androidx.compose.runtime.*
+import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
 import com.example.LockerApp.model.CompartmentDao
 
@@ -40,34 +41,53 @@ import com.example.LockerApp.viewmodel.MqttViewModel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withTimeout
+import androidx.compose.runtime.LaunchedEffect
+import android.util.Log
 
 @Composable
-fun LockerUI(navController: NavController, lockerDao: LockerDao, compartmentDao: CompartmentDao, onLockerClick: (String) -> Unit) {
+fun LockerUI(navController: NavController, lockerDao: LockerDao, accountid: Int, compartmentDao: CompartmentDao, onLockerClick: (String) -> Unit) {
     val viewModel: LockerViewModel = viewModel(factory = LockerViewModelFactory(lockerDao, compartmentDao))
     val mqttViewModel: MqttViewModel = viewModel()
     val lockers by viewModel.lockers.collectAsState()
     val lockerCount by viewModel.lockerCount.collectAsState()
 
-    var showAddLockerScreen by remember { mutableStateOf(false) }
-    val topicMqttList by viewModel.topicMqttList.collectAsState(initial = emptyList())
+    var showAddLockerCard by remember { mutableStateOf(false) } // เก็บสถานะการแสดงการ์ดเพิ่ม locker
 
     LaunchedEffect(lockers) {
         Log.d("LockerUI", "Lockers count updated: ${lockers.size}")
     }
+    LaunchedEffect(lockers) {
+        lockers.forEach { locker ->
+            val topicToSend = "${locker.TokenTopic}/check"
+            Log.d("LockerUI", "Sending message to: $topicToSend")
+            mqttViewModel.sendMessage(topicToSend, "")
 
-/*
-    LaunchedEffect(topicMqttList) {
-        coroutineScope { // สร้าง coroutine scope ใหม่
-            topicMqttList.forEach { topic ->
-                launch { // สร้าง coroutine ใหม่สำหรับแต่ละ topic
-                    val newTopic = "$topic/isconnect" // สร้าง topic ใหม่
-                    mqttViewModel.sendMessage(newTopic, "") // ส่งไปยัง
-                    mqttViewModel.subscribeToTopic(newTopic)
+            try {
+                // รอรับข้อความในเวลาที่กำหนด (20 วินาที)
+                withTimeout(20000) {
+                    mqttViewModel.waitForMessages("${locker.TokenTopic}/check/respond") { message ->
+                        Log.d("LockerUI", "Received message: $message for locker ${locker.LockerID}")
+                        viewModel.viewModelScope.launch {
+                            if (message == "ACK") {
+                                Log.d("LockerUI", "Locker ${locker.LockerID} is available")
+                                viewModel.updateLockerStatus(locker.LockerID, "Available")
+                            }
+                        }
+                    }
                 }
+            } catch (e: TimeoutCancellationException) {
+                Log.d("LockerUI", "Timeout reached for locker ${locker.LockerID}. Setting status to Unavailable")
+                viewModel.updateLockerStatus(locker.LockerID, "Unavailable")
             }
         }
     }
-*/
+
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -82,34 +102,42 @@ fun LockerUI(navController: NavController, lockerDao: LockerDao, compartmentDao:
         ) {
             Text("Total Lockers: $lockerCount", style = MaterialTheme.typography.h6)
 
-            IconButton(onClick = {
-                showAddLockerScreen = true
-            }) {
+            // ปุ่ม "+" เพื่อแสดงการ์ดเพิ่ม Locker
+            IconButton(onClick = { showAddLockerCard = !showAddLockerCard }) {
                 Icon(Icons.Filled.Add, contentDescription = "Add Locker")
             }
         }
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        if (showAddLockerScreen) {
-            AddLockerScreen(
-                mqttViewModel = mqttViewModel,
-                viewModel = viewModel,
-                navController = navController,
-                lockerDao = lockerDao
-            )
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(lockers.size, key = { index -> lockers[index].LockerID }) { index ->
-                    val locker = lockers[index]
-                    LockerCard(locker) {
-                        onLockerClick(locker.LockerID.toString()) // เรียกใช้ onLockerClick เมื่อการ์ดถูกคลิก
-                    }
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // กรองเฉพาะ locker ที่สถานะไม่เป็น "Unavailable"
+            val availableLockers = lockers.filter { it.status != "Unavailable" }
+
+            items(availableLockers.size, key = { index -> availableLockers[index].LockerID }) { index ->
+                val locker = availableLockers[index]
+                LockerCard(
+                    locker = locker,
+                    onClick = { onLockerClick(locker.LockerID.toString()) },
+                    onUpdateStatus = { lockerID, newStatus -> viewModel.updateLockerStatus(lockerID, newStatus) }
+                )
+            }
+
+            // แสดงการ์ดเพิ่ม locker หาก showAddLockerCard เป็น true
+            if (showAddLockerCard) {
+                item {
+                    AddLockerCard(
+                        mqttViewModel = mqttViewModel,
+                        viewModel = viewModel,
+                        navController = navController,
+                        lockerDao = lockerDao,
+                        accountid = accountid
+                    )
                 }
             }
         }
@@ -118,12 +146,12 @@ fun LockerUI(navController: NavController, lockerDao: LockerDao, compartmentDao:
 
 
 @Composable
-fun LockerCard(locker: Locker, onClick: () -> Unit) {
+fun LockerCard(locker: Locker, onClick: () -> Unit, onUpdateStatus: (Int, String) -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp)
-            .clickable { onClick() }, // เรียกใช้ lambda function
+            .clickable { onClick() },
         elevation = 4.dp,
         backgroundColor = MaterialTheme.colors.surface
     ) {
@@ -136,94 +164,147 @@ fun LockerCard(locker: Locker, onClick: () -> Unit) {
             Text("Status: ${locker.status}", style = MaterialTheme.typography.body1)
             Spacer(modifier = Modifier.height(8.dp))
             Text("Detail: ${locker.detail}", style = MaterialTheme.typography.body2)
+            Spacer(modifier = Modifier.height(8.dp))
+
+
         }
     }
 }
+
+
 
 
 @Composable
-fun AddLockerScreen(
+fun AddLockerCard(
     mqttViewModel: MqttViewModel,
     viewModel: LockerViewModel,
     navController: NavController,
-    lockerDao: LockerDao
+    lockerDao: LockerDao,
+    accountid: Int
 ) {
     var lockerDetail by remember { mutableStateOf("") }
-    var isSaving by remember { mutableStateOf(false) } // สถานะการบันทึก
-    var receivedTopic by remember { mutableStateOf("") }
-    var availableCompartment by remember { mutableStateOf("") }// สถานะเก็บข้อความที่ได้รับจาก send/topic
-    var Lockername by remember { mutableStateOf("") }// สถานะเก็บข้อความที่ได้รับจาก send/topic
+    var isSaving by remember { mutableStateOf(false) }
+    var TokenTopic by remember { mutableStateOf("") }
+    var availableCompartment by remember { mutableStateOf("") }
+    var Lockername by remember { mutableStateOf("") }
 
-    Column(
+    suspend fun isTopicExist(topic: String): Boolean {
+        val locker = lockerDao.getLockerByTopic(topic)
+        return locker != null
+    }
+
+    Card(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Top,
-        horizontalAlignment = Alignment.CenterHorizontally
+            .fillMaxWidth()
+            .padding(8.dp)
+            .clickable { /* Add Locker */ },
+        elevation = 4.dp,
+        backgroundColor = MaterialTheme.colors.surface
     ) {
-        Text("Add New Locker", style = MaterialTheme.typography.h6)
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.Start
+        ) {
+            Text("Add New Locker", style = MaterialTheme.typography.h6)
 
-        Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-        TextField(
-            value = Lockername,
-            onValueChange = { Lockername = it },
-            label = { Text("Enter Locker Name") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        TextField(
-            value = lockerDetail,
-            onValueChange = { lockerDetail = it },
-            label = { Text("Enter Locker Detail") },
-            modifier = Modifier.fillMaxWidth()
-        )
+            TextField(
+                value = Lockername,
+                onValueChange = { Lockername = it },
+                label = { Text("Enter Locker Name") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            TextField(
+                value = lockerDetail,
+                onValueChange = { lockerDetail = it },
+                label = { Text("Enter Locker Detail") },
+                modifier = Modifier.fillMaxWidth()
+            )
 
+            Spacer(modifier = Modifier.height(20.dp))
 
-        Spacer(modifier = Modifier.height(20.dp))
+            Button(onClick = {
+                isSaving = true
+                mqttViewModel.sendMessage("request/locker", "")
+                mqttViewModel.waitForMessages("respond/locker") { message ->
+                    if (message.isNotEmpty()) {
+                        try {
+                            val jsonObject = JSONObject(message)
+                            TokenTopic = jsonObject.getString("Token")
+                            availableCompartment = jsonObject.getString("Compartment")
 
-        Button(onClick = {
-            isSaving = true
-//
-//            receivedTopic = "mock/topic"
-//            availableCompartment = "10"
-//            viewModel.addLocker(
-//                Lockername,
-//                lockerDetail,
-//                receivedTopic,  // mock data
-//                availableCompartment // mock data
-//            )
-//            isSaving = false
-//             ส่งข้อความและรอรับการตอบกลับ
-            mqttViewModel.waitForMessages("request/locker") { message ->
-                if (message.isNotEmpty()) {
-                    try {
-                        // แปลง JSON ที่ได้รับเป็น JSONObject
-                        val jsonObject = JSONObject(message)
+                            viewModel.viewModelScope.launch {
+                                val exists = isTopicExist(TokenTopic)
+//                                if (exists) {
+//                                    isSaving = false
+//                                    Log.e("LockerUI", "Topic $TokenTopic already exists.")
+//                                } else {
+                                    val usageTime = System.currentTimeMillis().toString()
+                                    val formatusageTime = formatTimestamp(usageTime)
+                                    val splitDateTime = formatusageTime.split(" ")
+                                    val timePart = splitDateTime[0]
+                                    val datePart = splitDateTime[1]
 
-                        // แยกข้อมูล receivedTopic และ Available_compartment
-                        receivedTopic = jsonObject.getString("Topic")
-                        availableCompartment = jsonObject.getString("Compartment")
+                                    viewModel.addLocker(
+                                        Lockername,
+                                        lockerDetail,
+                                        TokenTopic,
+                                        availableCompartment
+                                    )
+                                    val message = Message(
+                                        token = TokenTopic,
+                                        name = Lockername,
+                                        availablecompartment = availableCompartment,
+                                        date = datePart,
+                                        time = timePart
+                                    )
 
-                        // บันทึกข้อมูลลงในฐานข้อมูล
-                        viewModel.addLocker(
-                            Lockername,
-                            lockerDetail,
-                            receivedTopic,  // บันทึก receivedTopic
-                            availableCompartment,
-                            // บันทึก Available_compartment
-                        )
-
-                        isSaving = false // เปลี่ยนสถานะการบันทึก
-                    } catch (e: Exception) {
-                        Log.e("LockerUI", "Error parsing JSON: ${e.message}")
-                        // Handle error if JSON is invalid
-                        isSaving = false
+                                    mqttViewModel.sendMessageJson("lockers", message)
+                                    isSaving = false
+                                }
+//                            }
+                        } catch (e: Exception) {
+                            Log.e("LockerUI", "Error parsing JSON: ${e.message}")
+                            isSaving = false
+                        }
                     }
                 }
+            }) {
+                Text("Add Locker")
             }
+        }
 
-        }) {
-            Text("Add Locker")
+
+    // ฟังก์ชันแปลง timestamp เป็นรูปแบบ hh:mm dd/MM/yyyy
+    fun formatTimestamp(timestamp: String): String {
+        return try {
+            val date = Date(timestamp.toLong())
+            val sdf = SimpleDateFormat("HH:mm dd/MM/yyyy", Locale.getDefault())
+            sdf.format(date)
+        } catch (e: Exception) {
+            "Invalid date"
         }
     }
 }
+
+
+    // ฟังก์ชันแปลง timestamp เป็นรูปแบบ hh:mm dd/MM/yyyy
+    fun formatTimestamp(timestamp: String): String {
+        return try {
+            val date = Date(timestamp.toLong())
+            val sdf = SimpleDateFormat("HH:mm dd/MM/yyyy", Locale.getDefault())
+            sdf.format(date)
+        } catch (e: Exception) {
+            "Invalid date"
+        }
+    }
+}
+data class Message(
+    val token: String,
+    val name: String,
+    val availablecompartment: String,
+    val date: String,
+    val time: String,
+
+)

@@ -41,15 +41,19 @@ import com.example.LockerApp.viewmodel.MqttViewModel
 import com.example.LockerApp.viewmodel.UsageLockerViewModel
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlin.math.ceil
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun BorrowUI(viewModel: LockerViewModel, usageLockerViewModel: UsageLockerViewModel, mqttViewModel: MqttViewModel,accountid: Int) {
+fun BorrowUI(viewModel: LockerViewModel, usageLockerViewModel: UsageLockerViewModel, mqttViewModel: MqttViewModel, accountid: Int) {
     var selectedLocker by remember { mutableStateOf(0) } // เริ่มต้นที่ All Lockers
-    val lockers = listOf(1, 2, 3) // รายชื่อ locker ที่มี
+    val lockers by viewModel.lockers.collectAsState() // ใช้ StateFlow ในการเก็บค่า locker
     val compartments by viewModel.getCompartmentsByLocker(selectedLocker).collectAsState(initial = emptyList())
-
+    val receivedMessage by viewModel.receivedMessage.collectAsState()
     var expanded by remember { mutableStateOf(false) }
 
     Column(
@@ -90,10 +94,10 @@ fun BorrowUI(viewModel: LockerViewModel, usageLockerViewModel: UsageLockerViewMo
                 ) {
                     lockers.forEach { locker ->
                         DropdownMenuItem(onClick = {
-                            selectedLocker = locker
+                            selectedLocker = locker.LockerID
                             expanded = false
                         }) {
-                            Text("Locker $locker")
+                            Text("Locker ${locker.LockerID}")
                         }
                     }
                     DropdownMenuItem(onClick = {
@@ -116,17 +120,43 @@ fun BorrowUI(viewModel: LockerViewModel, usageLockerViewModel: UsageLockerViewMo
                         modifier = Modifier
                             .padding(4.dp)
                             .clickable {
-                                // ดึง topic MQTT สำหรับ compartment
+
+                                mqttViewModel.cancelWaitingForMessages()
+
+                                // **ล้างค่าที่ได้รับ** ที่เก็บไว้ใน StateFlow
+                                mqttViewModel.clearReceivedMessage()
                                 viewModel.getMqttTopicForCompartment(compartment.CompartmentID).onEach { topicMqtt ->
                                     mqttViewModel.sendMessage("$topicMqtt/${compartment.CompartmentID}/open", " ")
+
                                     mqttViewModel.subscribeToTopic("$topicMqtt/${compartment.CompartmentID}/status")
-                                    val usageTime = System.currentTimeMillis().toString() // หรือกำหนดเวลาอื่นๆ
-                                    val usage = "Borrow" // ใช้คำว่า "Borrow" หรือสถานะที่เหมาะสม
-                                    val AccountID:Int = 10
-                                    val Status = "Success"
-                                    usageLockerViewModel.insertUsageLocker(compartment.LockerID, compartment.CompartmentID, usageTime, usage,accountid,Status)
+                                        viewModel.viewModelScope.launch {
+                                            if (receivedMessage == "CLOSE") {
+                                                val usageTime =
+                                                    System.currentTimeMillis().toString()
+                                                val usage =
+                                                    "Borrow" // ใช้คำว่า "Borrow" หรือสถานะที่เหมาะสม
+                                                val Status = "Success"
+                                                usageLockerViewModel.insertUsageLocker(
+                                                    compartment.LockerID,
+                                                    compartment.CompartmentID,
+                                                    usageTime,
+                                                    usage,
+                                                    accountid,
+                                                    Status
+                                                )
+                                                viewModel.updateCompartmentStatus(
+                                                    compartment.CompartmentID,
+                                                    "borrowed",
+                                                    compartment.LockerID
+                                                )
+                                            }
+
+                                    }
+
+
                                 }.launchIn(viewModel.viewModelScope)
                             },
+
                         elevation = 4.dp
                     ) {
                         Column(
@@ -142,3 +172,4 @@ fun BorrowUI(viewModel: LockerViewModel, usageLockerViewModel: UsageLockerViewMo
         )
     }
 }
+

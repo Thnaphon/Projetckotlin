@@ -58,14 +58,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.rememberImagePainter
+import com.example.LockerApp.viewmodel.AccountViewModel
 import com.example.LockerApp.viewmodel.UsageLockerViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
-fun UsageHistoryScreen(usageLockerViewModel: UsageLockerViewModel, navController: NavController) {
+fun UsageHistoryScreen(accountViewModel: AccountViewModel, usageLockerViewModel: UsageLockerViewModel, navController: NavController) {
     var searchQuery by remember { mutableStateOf("") }
 
     // ดึงข้อมูลจาก ViewModel
@@ -149,8 +155,7 @@ fun UsageHistoryScreen(usageLockerViewModel: UsageLockerViewModel, navController
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         item {
                             Row(
@@ -159,61 +164,119 @@ fun UsageHistoryScreen(usageLockerViewModel: UsageLockerViewModel, navController
                                     .background(Color(0xFFEEEEEE))
                                     .padding(vertical = 8.dp)
                             ) {
+
                                 Text(
-                                    "Locker ID",
-                                    Modifier.weight(1f).padding(start = 16.dp),
+                                    "Account ID",
+                                    Modifier.weight(0.8f),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp
+                                    fontSize = 16.sp,
+                                    textAlign = TextAlign.Center
                                 )
-//                                Text(
-//                                    "Account ID",
-//                                    Modifier.weight(1f),
-//                                    fontWeight = FontWeight.Bold,
-//                                    fontSize = 16.sp
-//                                )
+                                Text(
+                                    "Locker",
+                                    Modifier.weight(0.8f).padding(start = 16.dp),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    textAlign = TextAlign.Center
+                                )
+                                Text(
+                                    "Compartment",
+                                    Modifier.weight(0.8f).padding(start = 16.dp),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    textAlign = TextAlign.Center
+                                )
                                 Text(
                                     "Usage Time",
-                                    Modifier.weight(1f),
+                                    Modifier.weight(1.4f),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp
+                                    fontSize = 16.sp,
+                                    textAlign = TextAlign.Center
                                 )
                                 Text(
                                     "Usage",
                                     Modifier.weight(1f),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp
+                                    fontSize = 16.sp,
+                                    textAlign = TextAlign.Center
                                 )
                                 Text(
                                     "Status",
                                     Modifier.weight(1f),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp
+                                    fontSize = 16.sp,
+                                    textAlign = TextAlign.Center
                                 )
-
                             }
                         }
 
                         items(filteredUsageLockers) { usageLocker ->
+                            val accountName by accountViewModel.getAccountNameById(usageLocker.AccountID).observeAsState("Unknown")
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(vertical = 8.dp)
                             ) {
-                                Text(usageLocker.LockerID.toString(), Modifier.weight(1f).padding(start = 16.dp))
-//                                Text(usageLocker.AccountID.toString(), Modifier.weight(1f))
-                                Text(usageLocker.UsageTime, Modifier.weight(1f))
-                                Text(usageLocker.Usage, Modifier.weight(1f))
-                                Text(usageLocker.Status, Modifier.weight(1f))
-
-                                Spacer(modifier = Modifier.weight(1f))
-
-
+                                Text(
+                                    text = accountName,
+                                    modifier = Modifier.weight(0.8f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.Center
+                                )
+                                Text(
+                                    text = usageLocker.LockerID.toString(),
+                                    modifier = Modifier.weight(0.8f).padding(start = 16.dp),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.Center
+                                )
+                                Text(
+                                    text = usageLocker.CompartmentID.toString(),
+                                    modifier = Modifier.weight(0.8f).padding(start = 16.dp),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.Center
+                                )
+                                Text(
+                                    text = formatTimestamp(usageLocker.UsageTime),
+                                    modifier = Modifier.weight(1.4f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.Center
+                                )
+                                Text(
+                                    text = usageLocker.Usage,
+                                    modifier = Modifier.weight(1f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.Center
+                                )
+                                Text(
+                                    text = usageLocker.Status,
+                                    modifier = Modifier.weight(1f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.Center
+                                )
                             }
                         }
                     }
+
                 }
             }
         }
+    }
+}
+
+// ฟังก์ชันแปลง timestamp เป็นรูปแบบ hh:mm dd/MM/yyyy
+fun formatTimestamp(timestamp: String): String {
+    return try {
+        val date = Date(timestamp.toLong())
+        val sdf = SimpleDateFormat("HH:mm dd/MM/yyyy", Locale.getDefault())
+        sdf.format(date)
+    } catch (e: Exception) {
+        "Invalid date"
     }
 }
