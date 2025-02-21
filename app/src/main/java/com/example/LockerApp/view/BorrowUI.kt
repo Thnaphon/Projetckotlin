@@ -53,7 +53,7 @@ fun BorrowUI(viewModel: LockerViewModel, usageLockerViewModel: UsageLockerViewMo
     var selectedLocker by remember { mutableStateOf(0) } // เริ่มต้นที่ All Lockers
     val lockers by viewModel.lockers.collectAsState() // ใช้ StateFlow ในการเก็บค่า locker
     val compartments by viewModel.getCompartmentsByLocker(selectedLocker).collectAsState(initial = emptyList())
-    val receivedMessage by viewModel.receivedMessage.collectAsState()
+
     var expanded by remember { mutableStateOf(false) }
 
     Column(
@@ -120,17 +120,17 @@ fun BorrowUI(viewModel: LockerViewModel, usageLockerViewModel: UsageLockerViewMo
                         modifier = Modifier
                             .padding(4.dp)
                             .clickable {
-
+                                // ดึง topic MQTT สำหรับ compartment
                                 mqttViewModel.cancelWaitingForMessages()
 
                                 // **ล้างค่าที่ได้รับ** ที่เก็บไว้ใน StateFlow
                                 mqttViewModel.clearReceivedMessage()
                                 viewModel.getMqttTopicForCompartment(compartment.CompartmentID).onEach { topicMqtt ->
-                                    mqttViewModel.sendMessage("$topicMqtt/${compartment.CompartmentID}/open", " ")
+                                    mqttViewModel.sendMessage("$topicMqtt/borrow/${compartment.CompartmentID}/open", " ")
 
-                                    mqttViewModel.subscribeToTopic("$topicMqtt/${compartment.CompartmentID}/status")
+                                    mqttViewModel.waitForMessages("$topicMqtt/borrow/${compartment.CompartmentID}/status") { messagestatus ->
                                         viewModel.viewModelScope.launch {
-                                            if (receivedMessage == "CLOSE") {
+                                            if (messagestatus == "CLOSE") {
                                                 val usageTime =
                                                     System.currentTimeMillis().toString()
                                                 val usage =
@@ -150,7 +150,7 @@ fun BorrowUI(viewModel: LockerViewModel, usageLockerViewModel: UsageLockerViewMo
                                                     compartment.LockerID
                                                 )
                                             }
-
+                                        }
                                     }
 
 
@@ -161,10 +161,13 @@ fun BorrowUI(viewModel: LockerViewModel, usageLockerViewModel: UsageLockerViewMo
                     ) {
                         Column(
                             modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                            horizontalAlignment = Alignment.Start
                         ) {
-                            Text("Compartment ${compartment.CompartmentID}", style = MaterialTheme.typography.body2)
-                            Text("From Locker ${compartment.LockerID}", style = MaterialTheme.typography.body2)
+                            Text("Locker ${compartment.LockerID} | Compartment ${compartment.CompartmentID}", style = MaterialTheme.typography.body2)
+                            Text("${compartment.Name_Item}", style = MaterialTheme.typography.h5)
+
+
+
                         }
                     }
                 }

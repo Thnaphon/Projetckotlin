@@ -42,7 +42,8 @@ data class Compartment(
     val Status: String,
     val LockerID: Int,
     val Name_Item: String,
-    val pic_item: String
+    val pic_item: String,
+    val detail: String
 )
 
 

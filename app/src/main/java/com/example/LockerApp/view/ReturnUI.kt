@@ -1,6 +1,5 @@
 package com.example.LockerApp.view
 
-import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -38,148 +37,134 @@ import androidx.lifecycle.viewModelScope
 import com.example.LockerApp.viewmodel.LockerViewModel
 import com.example.LockerApp.viewmodel.MqttViewModel
 import com.example.LockerApp.viewmodel.UsageLockerViewModel
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import kotlin.math.ceil
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLockerViewModel: UsageLockerViewModel,accountid: Int) {
+    var selectedLocker by remember { mutableStateOf(0) } // เริ่มต้นที่ All Lockers
+    val lockers by viewModel.lockers.collectAsState() // ใช้ StateFlow ในการเก็บค่า locker
+    val compartments by viewModel.getCompartmentsByLocker(selectedLocker).collectAsState(initial = emptyList())
 
-        var selectedLocker by remember { mutableStateOf(0) }
-        val lockers by viewModel.lockers.collectAsState()
-        val compartments by viewModel.getCompartmentsByLocker(selectedLocker)
-            .collectAsState(initial = emptyList())
-        var expanded by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(false) }
 
-        val receivedMessage by mqttViewModel.receivedMessage.collectAsState() // ดึงค่าจาก mqttViewModel
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("Return", style = MaterialTheme.typography.h4)
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("Borrow", style = MaterialTheme.typography.h4)
-            Spacer(modifier = Modifier.height(20.dp))
+            Text("${compartments.size} Compartments", style = MaterialTheme.typography.body1)
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("${compartments.size} Compartments", style = MaterialTheme.typography.body1)
-
-                ExposedDropdownMenuBox(
+            ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
+                TextField(
+                    readOnly = true,
+                    value = if (selectedLocker == 0) "All Lockers" else "Locker $selectedLocker",
+                    onValueChange = {},
+                    label = { Text("Select Locker") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    colors = TextFieldDefaults.textFieldColors(
+                        backgroundColor = MaterialTheme.colors.surface,
+                        focusedIndicatorColor = MaterialTheme.colors.primary,
+                        unfocusedIndicatorColor = MaterialTheme.colors.onSurface.copy(alpha = 0.5f)
+                    ),
+                    modifier = Modifier
+                        .width(150.dp)
+                        .clickable { expanded = true }
+                )
+                ExposedDropdownMenu(
                     expanded = expanded,
-                    onExpandedChange = { expanded = !expanded }) {
-                    TextField(
-                        readOnly = true,
-                        value = if (selectedLocker == 0) "All Lockers" else "Locker $selectedLocker",
-                        onValueChange = {},
-                        label = { Text("Select Locker") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        colors = TextFieldDefaults.textFieldColors(
-                            backgroundColor = MaterialTheme.colors.surface,
-                            focusedIndicatorColor = MaterialTheme.colors.primary,
-                            unfocusedIndicatorColor = MaterialTheme.colors.onSurface.copy(alpha = 0.5f)
-                        ),
-                        modifier = Modifier
-                            .width(150.dp)
-                            .clickable { expanded = true }
-                    )
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        lockers.forEach { locker ->
-                            DropdownMenuItem(onClick = {
-                                selectedLocker = locker.LockerID
-                                expanded = false
-                            }) {
-                                Text("Locker ${locker.LockerID}")
-                            }
-                        }
+                    onDismissRequest = { expanded = false }
+                ) {
+                    lockers.forEach { locker ->
                         DropdownMenuItem(onClick = {
-                            selectedLocker = 0
+                            selectedLocker = locker.LockerID
                             expanded = false
                         }) {
-                            Text("All Lockers")
+                            Text("Locker ${locker.LockerID}")
                         }
+                    }
+                    DropdownMenuItem(onClick = {
+                        selectedLocker = 0 // เลือก All Lockers
+                        expanded = false
+                    }) {
+                        Text("All Lockers")
                     }
                 }
             }
+        }
 
-            Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                content = {
-                    items(compartments.filter { it.Status == "return" }) { compartment ->
-                        Card(
-                            modifier = Modifier
-                                .padding(4.dp)
-                                .clickable {
-                                    mqttViewModel.cancelWaitingForMessages()
-                                    mqttViewModel.clearReceivedMessage()
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3), // กำหนดจำนวนคอลัมน์เป็น 3
+            content = {
+                items(compartments.filter { it.Status == "borrowed" }) { compartment ->
+                    Card(
+                        modifier = Modifier
+                            .padding(4.dp)
+                            .clickable {
+                                // ดึง topic MQTT สำหรับ compartment
+                                viewModel.getMqttTopicForCompartment(compartment.CompartmentID).onEach { topicMqtt ->
+                                    mqttViewModel.sendMessage("$topicMqtt/return/${compartment.CompartmentID}/open", " ")
 
-                                    viewModel.viewModelScope.launch {
-                                        viewModel.getMqttTopicForCompartment(compartment.CompartmentID)
-                                            .collectLatest { topicMqtt ->
-                                                val topic =
-                                                    "$topicMqtt/${compartment.CompartmentID}"
-                                                mqttViewModel.sendMessage("$topic/open", " ")
-                                                kotlinx.coroutines.delay(300) // ป้องกัน race condition
-                                                mqttViewModel.subscribeToTopic("$topic/status")
+                                    mqttViewModel.waitForMessages("$topicMqtt/return/${compartment.CompartmentID}/status") { messagestatus ->
+                                        viewModel.viewModelScope.launch {
+                                            if (messagestatus == "CLOSE") {
+                                                val usageTime =
+                                                    System.currentTimeMillis().toString()
+                                                val usage =
+                                                    "Return" //
+                                                val Status = "Success"
+                                                usageLockerViewModel.insertUsageLocker(
+                                                    compartment.LockerID,
+                                                    compartment.CompartmentID,
+                                                    usageTime,
+                                                    usage,
+                                                    accountid,
+                                                    Status
+                                                )
+                                                viewModel.updateCompartmentStatus(
+                                                    compartment.CompartmentID,
+                                                    "return",
+                                                    compartment.LockerID
+                                                )
                                             }
+                                        }
                                     }
-                                },
-                            elevation = 4.dp
+                                    mqttViewModel.cancelWaitingForMessages()
+
+                                    // **ล้างค่าที่ได้รับ** ที่เก็บไว้ใน StateFlow
+                                    mqttViewModel.clearReceivedMessage()
+                                }.launchIn(viewModel.viewModelScope)
+                            },
+
+                        elevation = 4.dp
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    "Compartment ${compartment.CompartmentID}",
-                                    style = MaterialTheme.typography.body2
-                                )
-                                Text(
-                                    "From Locker ${compartment.LockerID}",
-                                    style = MaterialTheme.typography.body2
-                                )
-                            }
+                            Text("Locker ${compartment.LockerID} | Compartment ${compartment.CompartmentID}", style = MaterialTheme.typography.body2)
+                            Text("${compartment.Name_Item}", style = MaterialTheme.typography.h6)
                         }
                     }
                 }
-            )
-        }
-
-        // ฟังค่าจาก MQTT และทำการอัปเดตฐานข้อมูลเมื่อสถานะเปลี่ยนเป็น CLOSE
-        LaunchedEffect(receivedMessage) {
-            if (receivedMessage == "CLOSE") {
-                val usageTime = System.currentTimeMillis().toString()
-                val usage = "Borrow"
-                val status = "Success"
-
-                val targetCompartment = compartments.find { it.Status == "return" }
-                if (targetCompartment != null) {
-                    usageLockerViewModel.insertUsageLocker(
-                        targetCompartment.LockerID,
-                        targetCompartment.CompartmentID,
-                        usageTime,
-                        usage,
-                        accountid,
-                        status
-                    )
-                    viewModel.updateCompartmentStatus(
-                        targetCompartment.CompartmentID,
-                        "borrowed",
-                        targetCompartment.LockerID
-                    )
-
             }
-        }
+        )
     }
 }

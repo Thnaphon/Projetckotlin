@@ -106,7 +106,7 @@ fun FaceLoginPage(
                     isLoginSuccessful = true
                     delay(1500)
                     val state = loginState as FaceLoginViewModel.LoginState.Success
-                    onLoginSuccess(state.accountid,state.name, state.role, state.phone)
+                    onLoginSuccess(state.name, state.role, state.phone)
                 }
             }
             else -> {

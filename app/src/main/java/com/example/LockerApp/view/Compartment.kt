@@ -82,7 +82,8 @@ fun CompartmentUI(lockerId: Int, viewModel: LockerViewModel = viewModel()) {
                                             Status = "return",
                                             LockerID = lockerId,
                                             Name_Item = nameItem,
-                                            pic_item = "test"
+                                            pic_item = "test",
+                                            detail = detailItem
                                         )
                                     )
                                     // Reset input fields

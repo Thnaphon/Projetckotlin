@@ -13,10 +13,7 @@ import kotlinx.coroutines.launch
 
 class FaceRegisterViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = FaceRegisterRepository(application)
-    private var lastProcessedBitmap: Bitmap? = null
-    private var lastProcessingTime = 0L
-    private val PROCESSING_COOLDOWN = 300L // 300ms cooldown
-
+    private val livenessDetector = LivenessDetector()
 
     //state
     private val _registrationState = MutableLiveData<RegistrationState>()
@@ -29,6 +26,9 @@ class FaceRegisterViewModel(application: Application) : AndroidViewModel(applica
     private val _capturedFace = MutableLiveData<Bitmap?>()
     val capturedFace: LiveData<Bitmap?> = _capturedFace
 
+    //liveness Progress
+    private val _livenessState = MutableLiveData<LivenessDetector.LivenessState>()
+    val livenessState: LiveData<LivenessDetector.LivenessState> = _livenessState
 
     //register check with database
     private val _similarityCheck = MutableLiveData<SimilarityCheckResult>()
@@ -43,14 +43,10 @@ class FaceRegisterViewModel(application: Application) : AndroidViewModel(applica
     }
 
     fun registerFace(name: String, role: String, phone: String, faceBitmap: Bitmap) {
-        val currentTime = System.currentTimeMillis()
-        if (currentTime - lastProcessingTime < PROCESSING_COOLDOWN) {
-            return
-        }
         viewModelScope.launch {
             try {
                 _registrationState.value = RegistrationState.Processing
-                lastProcessingTime = currentTime
+
                 val resizedBitmap = Bitmap.createScaledBitmap(faceBitmap, 160, 160, false)
                 val recognition = repository.getFaceRecognition(resizedBitmap)
 
@@ -107,6 +103,19 @@ class FaceRegisterViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
+    fun processFrame(face: Face, faceBitmap: Bitmap) {
+        val livenessResult = livenessDetector.processFrame(face)
+        _livenessState.value = livenessResult
+
+        if (livenessResult.isComplete) {
+            recognizeFace(faceBitmap)
+        }
+    }
+
+    fun resetLivenessCheck() {
+        livenessDetector.reset()
+        _livenessState.value = LivenessDetector.LivenessState()
+    }
 
     fun setCapturedFace(bitmap: Bitmap?) {
         _capturedFace.value = bitmap

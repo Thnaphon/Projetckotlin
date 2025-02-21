@@ -5,8 +5,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
-import android.util.Log
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -18,41 +16,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import com.example.LockerApp.model.KeystoreManager
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import com.example.LockerApp.model.Account
-import com.example.LockerApp.model.AccountDao
-import com.example.LockerApp.model.LockerDatabase
-import com.example.LockerApp.viewmodel.AccountViewModel
 
 
 @Composable
-fun WelcomePage(accountViewModel: AccountViewModel, navController: NavController) {
+fun WelcomePage(navController: NavController) {
 
     val context = LocalContext.current
     var showPermissionDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
     var permissionDenialCount by remember { mutableStateOf(0) }
-
-    val (isPasswordVisible, setIsPasswordVisible) = remember { mutableStateOf(false) }
-    val (enteredPassword, setEnteredPassword) = remember { mutableStateOf("") }
-    val masterPassword = "Micro_2567" // ตัวอย่างรหัสผ่าน
-    val encryptedData = remember { mutableStateOf<Pair<ByteArray, ByteArray>?>(null) }
-
-    // สร้างกุญแจและเข้ารหัสข้อมูลในตอนเริ่มต้น
-    if (encryptedData.value == null) {
-        LaunchedEffect(Unit) {
-            KeystoreManager.generateKey() // สร้างกุญแจ
-            encryptedData.value = KeystoreManager.encryptData(masterPassword)
-        }
-    }
 
     // Permission launcher
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -64,6 +42,7 @@ fun WelcomePage(accountViewModel: AccountViewModel, navController: NavController
         } else {
             permissionDenialCount++
             if (permissionDenialCount >= 2) {
+                // If user has denied permissions multiple times, show settings dialog
                 showSettingsDialog = true
             } else {
                 showPermissionDialog = true
@@ -71,7 +50,7 @@ fun WelcomePage(accountViewModel: AccountViewModel, navController: NavController
         }
     }
 
-    // ฟังก์ชันเช็คสิทธิ์
+    // Function to check if all permissions are granted
     fun arePermissionsGranted(): Boolean {
         val permissions = arrayOf(
             Manifest.permission.CAMERA,
@@ -82,7 +61,7 @@ fun WelcomePage(accountViewModel: AccountViewModel, navController: NavController
         }
     }
 
-    // เช็คสิทธิ์และขอสิทธิ์
+    // Function to check and request permissions
     fun checkAndRequestPermissions() {
         val permissions = arrayOf(
             Manifest.permission.CAMERA,
@@ -94,6 +73,16 @@ fun WelcomePage(accountViewModel: AccountViewModel, navController: NavController
         } else {
             permissionLauncher.launch(permissions)
         }
+    val context = LocalContext.current
+    val (isPasswordVisible, setIsPasswordVisible) = remember { mutableStateOf(false) }
+    val (enteredPassword, setEnteredPassword) = remember { mutableStateOf("") }
+    val masterPassword = "Micro_2567" // ตัวอย่างรหัสผ่าน
+    val encryptedData = remember { mutableStateOf<Pair<ByteArray, ByteArray>?>(null) }
+
+    // เข้ารหัสรหัสผ่านเมื่อโหลดหน้า
+    LaunchedEffect(Unit) {
+        KeystoreManager.generateKey() // สร้างกุญแจ
+        encryptedData.value = KeystoreManager.encryptData(masterPassword)
     }
 
     Surface(
@@ -127,7 +116,9 @@ fun WelcomePage(accountViewModel: AccountViewModel, navController: NavController
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(
-                onClick = { setIsPasswordVisible(true) },
+                onClick = {
+                    setIsPasswordVisible(true)
+                },
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)
@@ -153,12 +144,18 @@ fun WelcomePage(accountViewModel: AccountViewModel, navController: NavController
                         try {
                             val encrypted = encryptedData.value
                             if (encrypted != null) {
+                                Log.d("WelcomePage", "Stored IV: ${encrypted.second.joinToString()}")
+                                Log.d("WelcomePage", "Stored Encrypted Data: ${encrypted.first.joinToString()}")
+
                                 val decryptedPassword = KeystoreManager.decryptData(
-                                    encrypted.first, encrypted.second
+                                    encrypted.first, // **แก้ให้ใช้ encryptedData ก่อน iv**
+                                    encrypted.second
                                 )
 
+                                Log.d("WelcomePage", "Decrypted Password: $decryptedPassword")
+
                                 if (enteredPassword == decryptedPassword) {
-                                    navController.navigate("main_menu/1")
+                                    navController.navigate("main_menu/{accountid}")
                                 } else {
                                     Toast.makeText(
                                         context,
@@ -168,6 +165,7 @@ fun WelcomePage(accountViewModel: AccountViewModel, navController: NavController
                                 }
                             }
                         } catch (e: Exception) {
+                            Log.e("WelcomePage", "Decryption error", e)
                             Toast.makeText(
                                 context,
                                 "Error during decryption",
@@ -224,10 +222,10 @@ fun WelcomePage(accountViewModel: AccountViewModel, navController: NavController
                 },
                 confirmButton = {
                     Button(onClick = {
-                        val intent =
-                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                data = Uri.fromParts("package", context.packageName, null)
-                            }
+                        // Open app settings
+                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = Uri.fromParts("package", context.packageName, null)
+                        }
                         context.startActivity(intent)
                         showSettingsDialog = false
                     }) {

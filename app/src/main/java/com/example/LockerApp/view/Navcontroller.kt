@@ -26,7 +26,7 @@ import com.example.LockerApp.viewmodel.LockerViewModelFactory
 import com.example.LockerApp.viewmodel.MqttViewModel
 import com.example.LockerApp.viewmodel.UsageLockerViewModel
 import com.example.LockerApp.viewmodel.FaceRegisterViewModel
-import io.ktor.websocket.Frame
+
 import kotlinx.coroutines.delay
 
 import androidx.compose.foundation.gestures.detectTapGestures

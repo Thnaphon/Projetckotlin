@@ -28,17 +28,17 @@ class MqttViewModel(application: Application) : AndroidViewModel(application) {
     val connectionStatus: StateFlow<String> = mqttService.connectionStatus
 
     // ข้อความที่ได้รับ
+    // ข้อความที่ได้รับจาก MQTT
+    private val _receivedMessageTopic = MutableStateFlow("")
     val receivedMessage: StateFlow<String> = mqttService.receivedMessage
 
-    private val _receivedMessageTopic = MutableStateFlow<String>("")
-    val receivedMessageTopic: StateFlow<String> get() = _receivedMessageTopic
 
 
     init {
         // เชื่อมต่อกับ MQTT broker เมื่อเริ่มต้น
         viewModelScope.launch {
             mqttService.connect()
-            subscribeToTopic("respond/locker")
+            mqttService.subscribeToTopic("respond/locker")
         }
 
     }
@@ -92,10 +92,7 @@ class MqttViewModel(application: Application) : AndroidViewModel(application) {
     fun subscribeToTopic(topic: String) {
         viewModelScope.launch {
             mqttService.subscribeToTopic(topic)
-            mqttService.onMessageReceived { message ->
-                // เมื่อได้รับข้อความจาก MQTT, ส่งข้อความไปยัง _statusFlow
-                _receivedMessageTopic.value =  message
-            }
+
         }
     }
     var job: Job? = null
@@ -111,8 +108,9 @@ class MqttViewModel(application: Application) : AndroidViewModel(application) {
                     Log.d("MqttViewModelcheck", "Message received from topic: $topic with message: $message")
 
                     // เคลียร์ค่าหลังจากหน่วงเวลาเล็กน้อย
-                    delay(500) // ป้องกันการเคลียร์เร็วเกินไป
+           // ป้องกันการเคลียร์เร็วเกินไป
                     clearReceivedMessage()
+                    unsubscribeFromTopic(topic)
                 }
             }
         }
@@ -151,8 +149,12 @@ class MqttViewModel(application: Application) : AndroidViewModel(application) {
     val statusLiveData: LiveData<String> = _statusLiveData
 
     // ฟังก์ชันในการสังเกต topic
+
+
     fun clearReceivedMessage() {
-        _receivedMessageTopic.value = "" // เซ็ตค่าให้เป็นค่าว่าง
+        viewModelScope.launch {
+            _receivedMessageTopic.emit("") // ใช้ emit() เพื่อให้ Flow อัปเดตค่าใหม่จริง ๆ
+        }
     }
 
 
