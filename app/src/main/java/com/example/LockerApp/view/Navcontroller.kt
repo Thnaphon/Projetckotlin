@@ -114,161 +114,161 @@ fun LockerApp() {
     // ฟังก์ชันที่จัดการการโต้ตอบ
 
 
-        NavHost(
-            navController = navController,
+    NavHost(
+        navController = navController,
 
-            startDestination = "WelcomePage"
+        startDestination = "WelcomePage"
 //        startDestination = "main_menu"
-        ) {
-            composable("WelcomePage") {
-                WelcomePage(
-                    navController = navController,
-                    accountViewModel = accountViewModel
+    ) {
+        composable("WelcomePage") {
+            WelcomePage(
+                navController = navController,
+                accountViewModel = accountViewModel
 
-                )
-            }
-            composable("BackupScreen") {
-                BackupScreen(
-                    viewModel = viewModel
-                )
-            }
+            )
+        }
+        composable("BackupScreen") {
+            BackupScreen(
+                viewModel = viewModel
+            )
+        }
 
-            composable("UsageHistoryScreen") {
-                UsageHistoryScreen(
-                    accountViewModel = accountViewModel,
-                    usageLockerViewModel = usageLockerViewModel,
-                    navController = navController
-                )
-            }
-            composable(
-                "BorrowUI/{accountid}",
-                arguments = listOf(navArgument("accountid") { type = NavType.IntType })
-            ) { backStackEntry ->
-                val accountid = backStackEntry.arguments?.getInt("accountid") ?: 0
+        composable("UsageHistoryScreen") {
+            UsageHistoryScreen(
+                accountViewModel = accountViewModel,
+                usageLockerViewModel = usageLockerViewModel,
+                navController = navController
+            )
+        }
+        composable(
+            "BorrowUI/{accountid}",
+            arguments = listOf(navArgument("accountid") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val accountid = backStackEntry.arguments?.getInt("accountid") ?: 0
 
-                BorrowUI(
-                    viewModel = lockerViewModel,
-                    mqttViewModel = mqttViewModel,
-                    usageLockerViewModel = usageLockerViewModel,
-                    accountid = accountid // ส่งค่าไปใช้งานใน UI
-                )
-            }
-            composable(
-                "ReturnUI/{accountid}",
-                arguments = listOf(navArgument("accountid") { type = NavType.IntType })
-            ) { backStackEntry ->
-                val accountid = backStackEntry.arguments?.getInt("accountid") ?: 0
+            BorrowUI(
+                viewModel = lockerViewModel,
+                mqttViewModel = mqttViewModel,
+                usageLockerViewModel = usageLockerViewModel,
+                accountid = accountid // ส่งค่าไปใช้งานใน UI
+            )
+        }
+        composable(
+            "ReturnUI/{accountid}",
+            arguments = listOf(navArgument("accountid") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val accountid = backStackEntry.arguments?.getInt("accountid") ?: 0
 
-                ReturnUI(
-                    viewModel = lockerViewModel,
-                    mqttViewModel = mqttViewModel,
-                    usageLockerViewModel = usageLockerViewModel,
-                    accountid = accountid // ส่งค่าไปใช้งานใน UI
-                )
-            }
-            composable(
-                "LockerUI/{accountid}",
-                arguments = listOf(navArgument("accountid") { type = NavType.IntType })
-            ) { backStackEntry ->
-                val accountid = backStackEntry.arguments?.getInt("accountid") ?: 0
+            ReturnUI(
+                viewModel = lockerViewModel,
+                mqttViewModel = mqttViewModel,
+                usageLockerViewModel = usageLockerViewModel,
+                accountid = accountid // ส่งค่าไปใช้งานใน UI
+            )
+        }
+        composable(
+            "LockerUI/{accountid}",
+            arguments = listOf(navArgument("accountid") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val accountid = backStackEntry.arguments?.getInt("accountid") ?: 0
 
-                LockerUI(
-                    lockerDao = lockerDao,
-                    navController = navController,
-                    compartmentDao = compartmentDao,
-                    accountid = accountid, // ส่งค่า accountid ไป
-                    onLockerClick = {
-                        // ใส่โค้ดที่ต้องการให้ทำเมื่อมีการคลิกที่ Locker
+            LockerUI(
+                lockerDao = lockerDao,
+                navController = navController,
+                compartmentDao = compartmentDao,
+                accountid = accountid, // ส่งค่า accountid ไป
+                onLockerClick = {
+                    // ใส่โค้ดที่ต้องการให้ทำเมื่อมีการคลิกที่ Locker
+                }
+            )
+        }
+
+
+
+
+        composable("face_login") {
+            val context = LocalContext.current
+            val viewModel: FaceLoginViewModel = viewModel(
+                factory = ViewModelProvider.AndroidViewModelFactory.getInstance(
+                    context.applicationContext as Application
+                )
+            )
+
+            FaceLoginPage(
+                navController = navController,
+                viewModel = viewModel,
+                onLoginSuccess = { accountid, name, role, phone ->
+                    val route = "main_menu/$accountid"  // สร้าง route ที่จะส่งไป
+                    navController.navigate(route) {   // ใช้ route ที่สร้างขึ้น
+                        popUpTo("face_login") { inclusive = true }
+                        Log.d("FaceAcountid", "$accountid")
                     }
-                )
+                }
+            )
+        }
+
+        composable(
+            "main_menu/{accountid}",
+            arguments = listOf(navArgument("accountid") { type = NavType.IntType })
+        ) { backStackEntry ->
+            // ดึง accountid จาก arguments ที่ส่งมาจาก route
+            val accountid = backStackEntry.arguments?.getInt("accountid") ?: 0
+
+            MainMenuUI(
+                viewModel = lockerViewModel,
+                onNavigateToMqtt = { navController.navigate("mqtt_screen") },
+                mqttViewModel = mqttViewModel,
+                navController = navController,
+                lockerDao = lockerDao,
+                compartmentDao = compartmentDao,
+                accountViewModel = accountViewModel,
+                usageLockerViewModel = usageLockerViewModel,
+                backupViewModel = viewModel,
+                accountid = accountid  // ส่ง accountid ไปใช้ใน UI
+            )
+        }
+
+        composable("compartment_screen/{lockerId}") { backStackEntry ->
+            val lockerId = backStackEntry.arguments?.getString("lockerId")?.toIntOrNull()
+            if (lockerId != null) {
+                CompartmentUI(
+                    lockerId = lockerId,
+                    viewModel = lockerViewModel
+                ) // ส่ง LockerViewModel
             }
+        }
 
+        composable(
+            route = "face_register?name={name}&role={role}&phone={phone}/{accountid}",
+            arguments = listOf(
+                navArgument("accountid") { type = NavType.IntType },
+                navArgument("name") { defaultValue = "" },
+                navArgument("role") { defaultValue = "" },
+                navArgument("phone") { defaultValue = "" },
+            )
+        ) {
+            val accountid = it.arguments?.getInt("accountid")
+            val name = it.arguments?.getString("name") ?: ""
+            val role = it.arguments?.getString("role") ?: ""
+            val phone = it.arguments?.getString("phone") ?: ""
 
-
-
-            composable("face_login") {
-                val context = LocalContext.current
-                val viewModel: FaceLoginViewModel = viewModel(
-                    factory = ViewModelProvider.AndroidViewModelFactory.getInstance(
-                        context.applicationContext as Application
-                    )
+            // Initialize FaceDetectionViewModel
+            val viewModel: FaceRegisterViewModel = viewModel(
+                factory = ViewModelProvider.AndroidViewModelFactory.getInstance(
+                    context.applicationContext as Application
                 )
+            )
 
-                FaceLoginPage(
+            if (accountid != null) {
+                FaceRegisterPage(
                     navController = navController,
                     viewModel = viewModel,
-                    onLoginSuccess = { accountid, name, role, phone ->
-                        val route = "main_menu/$accountid"  // สร้าง route ที่จะส่งไป
-                        navController.navigate(route) {   // ใช้ route ที่สร้างขึ้น
-                            popUpTo("face_login") { inclusive = true }
-                            Log.d("FaceAcountid", "$accountid")
-                        }
-                    }
+                    accountid = accountid,
+                    participantName = name,
+                    participantRole = role,
+                    participantPhone = phone
                 )
-            }
-
-            composable(
-                "main_menu/{accountid}",
-                arguments = listOf(navArgument("accountid") { type = NavType.IntType })
-            ) { backStackEntry ->
-                // ดึง accountid จาก arguments ที่ส่งมาจาก route
-                val accountid = backStackEntry.arguments?.getInt("accountid") ?: 0
-
-                MainMenuUI(
-                    viewModel = lockerViewModel,
-                    onNavigateToMqtt = { navController.navigate("mqtt_screen") },
-                    mqttViewModel = mqttViewModel,
-                    navController = navController,
-                    lockerDao = lockerDao,
-                    compartmentDao = compartmentDao,
-                    accountViewModel = accountViewModel,
-                    usageLockerViewModel = usageLockerViewModel,
-                    backupViewModel = viewModel,
-                    accountid = accountid  // ส่ง accountid ไปใช้ใน UI
-                )
-            }
-
-            composable("compartment_screen/{lockerId}") { backStackEntry ->
-                val lockerId = backStackEntry.arguments?.getString("lockerId")?.toIntOrNull()
-                if (lockerId != null) {
-                    CompartmentUI(
-                        lockerId = lockerId,
-                        viewModel = lockerViewModel
-                    ) // ส่ง LockerViewModel
-                }
-            }
-
-            composable(
-                route = "face_register?name={name}&role={role}&phone={phone}/{accountid}",
-                arguments = listOf(
-                    navArgument("accountid") { type = NavType.IntType },
-                    navArgument("name") { defaultValue = "" },
-                    navArgument("role") { defaultValue = "" },
-                    navArgument("phone") { defaultValue = "" },
-                )
-            ) {
-                val accountid = it.arguments?.getInt("accountid")
-                val name = it.arguments?.getString("name") ?: ""
-                val role = it.arguments?.getString("role") ?: ""
-                val phone = it.arguments?.getString("phone") ?: ""
-
-                // Initialize FaceDetectionViewModel
-                val viewModel: FaceRegisterViewModel = viewModel(
-                    factory = ViewModelProvider.AndroidViewModelFactory.getInstance(
-                        context.applicationContext as Application
-                    )
-                )
-
-                if (accountid != null) {
-                    FaceRegisterPage(
-                        navController = navController,
-                        viewModel = viewModel,
-                        accountid = accountid,
-                        participantName = name,
-                        participantRole = role,
-                        participantPhone = phone
-                    )
-                }
             }
         }
     }
+}

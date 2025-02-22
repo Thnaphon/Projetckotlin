@@ -1,6 +1,7 @@
 package com.example.LockerApp.service
 
 import android.util.Log
+import kotlinx.coroutines.delay
 import org.eclipse.paho.client.mqttv3.MqttClient
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions
 import org.eclipse.paho.client.mqttv3.MqttException
@@ -36,7 +37,7 @@ class MqttService {
             }
 
             // กำหนดค่า mqttClient ใหม่
-            mqttClient = MqttClient("tcp://test.mosquitto.org:1883", MqttClient.generateClientId(), null)
+            mqttClient = MqttClient("tcp://172.20.10.7:1883", MqttClient.generateClientId(), null)
 
             val options = MqttConnectOptions()
             //options.userName = "your-username"  // ถ้ามี
@@ -128,6 +129,16 @@ class MqttService {
             }
         } else {
             Log.e("Mqtt", "MQTT Client is not connected. Cannot unsubscribe.")
+        }
+    }
+    suspend fun waitForMessages() {
+        _receivedMessage.value = "" // เคลียร์ค่าข้อความก่อน
+        while (true) {
+            delay(100) // รอเพื่อให้มีข้อความใหม่
+            if (_receivedMessage.value.isNotEmpty()) {
+                Log.d("Mqtt", "New message received: ${_receivedMessage.value}")
+                break
+            }
         }
     }
 

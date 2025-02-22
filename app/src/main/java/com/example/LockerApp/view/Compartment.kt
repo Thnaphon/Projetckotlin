@@ -99,7 +99,7 @@ fun CompartmentUI(lockerId: Int, viewModel: LockerViewModel = viewModel()) {
                             detailItem = detailItem,
                             onDetailItemChange = { detailItem = it },
 
-                        )
+                            )
                     }
                 }
             }
@@ -118,7 +118,7 @@ fun AddCompartmentCard(
     detailItem: String,
     onDetailItemChange: (String) -> Unit,
 
-) {
+    ) {
 
 
     Card(
@@ -174,4 +174,3 @@ fun CompartmentCard(compartment: Compartment) {
         }
     }
 }
-

@@ -110,11 +110,12 @@ class MqttViewModel(application: Application) : AndroidViewModel(application) {
                     // เคลียร์ค่าหลังจากหน่วงเวลาเล็กน้อย
            // ป้องกันการเคลียร์เร็วเกินไป
                     clearReceivedMessage()
-                    unsubscribeFromTopic(topic)
+
                 }
             }
         }
     }
+
 
 
 
@@ -153,9 +154,10 @@ class MqttViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearReceivedMessage() {
         viewModelScope.launch {
-            _receivedMessageTopic.emit("") // ใช้ emit() เพื่อให้ Flow อัปเดตค่าใหม่จริง ๆ
+            _receivedMessageTopic.emit("") // ล้างค่า StateFlow ที่ใช้รับข้อความ
         }
     }
+
 
 
 }
