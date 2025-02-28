@@ -164,6 +164,7 @@ dependencies {
     // อัปเดตเวอร์ชันที่รองรับ
     implementation("androidx.security:security-crypto:1.0.0")
 
+    implementation("com.airbnb.android:lottie-compose:6.6.2")
 
 
 }

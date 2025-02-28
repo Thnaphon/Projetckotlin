@@ -181,7 +181,7 @@ fun FaceRegisterPage(
                     .fillMaxWidth()
                     .padding(vertical = 8.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 1.0f)
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.0f)
                 )
             ) {
                 Column(

@@ -295,15 +295,20 @@ fun ParticipantScreen(accountViewModel: AccountViewModel,navController: NavContr
 
                             TextButton(
                                 onClick = {
-                                    navController.navigate(
-                                        "face_register?name=${name}&role=${role}&phone=${phone}/$accountid"
-                                    )
+                                    if (accountid == 1) {
+                                        // Master Password admin account - use password verification
+                                        navController.navigate("admin_verification/${accountid}?name=${name}&role=${role}&phone=${phone}")
+                                    } else {
+                                        // Normal user account - use face verification
+                                        navController.navigate("face_verification/${accountid}?name=${name}&role=${role}&phone=${phone}")
+                                    }
+                                    isEditDialogVisible = false // Close the dialog
                                 },
                                 modifier = Modifier
                                     .padding(start = 8.dp, top = 16.dp)
                                     .background(Color.White, shape = RoundedCornerShape(8.dp))
                             ) {
-                                Text("Start Face Recognotion", color = Color(0xFF2A3D4F))
+                                Text("Continue", color = Color(0xFF2A3D4F))
                             }
 
                         }

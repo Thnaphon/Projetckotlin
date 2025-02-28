@@ -46,6 +46,9 @@ fun WelcomePage(accountViewModel: AccountViewModel, navController: NavController
     val masterPassword = "Micro_2567" // ตัวอย่างรหัสผ่าน
     val encryptedData = remember { mutableStateOf<Pair<ByteArray, ByteArray>?>(null) }
 
+    val permissions = arrayOf(
+        Manifest.permission.CAMERA,
+        Manifest.permission.READ_MEDIA_IMAGES)
     // สร้างกุญแจและเข้ารหัสข้อมูลในตอนเริ่มต้น
     if (encryptedData.value == null) {
         LaunchedEffect(Unit) {
@@ -60,7 +63,7 @@ fun WelcomePage(accountViewModel: AccountViewModel, navController: NavController
     ) { permissions ->
         val allPermissionsGranted = permissions.values.all { it }
         if (allPermissionsGranted) {
-            navController.navigate("face_login")
+//            navController.navigate("face_login")
         } else {
             permissionDenialCount++
             if (permissionDenialCount >= 2) {
@@ -84,10 +87,6 @@ fun WelcomePage(accountViewModel: AccountViewModel, navController: NavController
 
     // เช็คสิทธิ์และขอสิทธิ์
     fun checkAndRequestPermissions() {
-        val permissions = arrayOf(
-            Manifest.permission.CAMERA,
-            Manifest.permission.READ_MEDIA_IMAGES
-        )
 
         if (arePermissionsGranted()) {
             navController.navigate("face_login")
@@ -150,6 +149,9 @@ fun WelcomePage(accountViewModel: AccountViewModel, navController: NavController
 
                 Button(
                     onClick = {
+
+                            permissionLauncher.launch(permissions)
+                        if (arePermissionsGranted()){
                         try {
                             val encrypted = encryptedData.value
                             if (encrypted != null) {
@@ -174,7 +176,8 @@ fun WelcomePage(accountViewModel: AccountViewModel, navController: NavController
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
-                    },
+                    }
+                              },
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Green)

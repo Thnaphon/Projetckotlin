@@ -25,6 +25,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
@@ -51,6 +52,11 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import com.example.LockerApp.utils.LivenessDetector
+import com.example.LockerApp.R
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieComposition
 import kotlinx.coroutines.delay
 
 @Composable
@@ -80,67 +86,127 @@ fun LivenessProgressIndicator(progress: Float, modifier: Modifier = Modifier) {
     }
 }
 
-
 @SuppressLint("UnsafeOptInUsageError")
 @Composable
 fun FaceLoginPage(
     navController: NavController,
     viewModel: FaceLoginViewModel,
-    onLoginSuccess: (Int,String, String, String) -> Unit
+    onLoginSuccess: (Int, String, String, String) -> Unit
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
-    val previewView = remember { androidx.camera.view.PreviewView(context) }
+    val previewView = remember { PreviewView(context) }
 
     var isLoginSuccessful by remember { mutableStateOf(false) }
     val loginState by viewModel.loginState.observeAsState(FaceLoginViewModel.LoginState.Scanning)
-    //val livenessState by viewModel.livenessState.observeAsState(LivenessDetector.LivenessState())
+
+    // Animation compositions - make sure the raw resource IDs match your resource names
+    val idleComposition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.idle))
+    val successComposition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.success))
+    val failedComposition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.failed))
+
+    // Animation state
+    var isScanningVisible by remember { mutableStateOf(true) }
+    var isSuccessVisible by remember { mutableStateOf(false) }
+    var isFailedVisible by remember { mutableStateOf(false) }
 
     // Handle login state changes
     LaunchedEffect(loginState) {
         when (loginState) {
+            is FaceLoginViewModel.LoginState.Scanning -> {
+                isScanningVisible = true
+                isSuccessVisible = false
+                isFailedVisible = false
+            }
             is FaceLoginViewModel.LoginState.Success -> {
                 if (!isLoginSuccessful) {
+                    isScanningVisible = false
+                    isSuccessVisible = true
+                    isFailedVisible = false
                     isLoginSuccessful = true
                     delay(1500)
                     val state = loginState as FaceLoginViewModel.LoginState.Success
-                    onLoginSuccess(state.accountid,state.name, state.role, state.phone)
+                    onLoginSuccess(state.accountid, state.name, state.role, state.phone)
                 }
             }
-            else -> {
+            is FaceLoginViewModel.LoginState.Error -> {
+                isScanningVisible = false
+                isSuccessVisible = false
+                isFailedVisible = true
                 isLoginSuccessful = false
             }
         }
     }
 
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = "Face Login",
             fontSize = 24.sp,
+            color = Color(0xFF333333),
             modifier = Modifier.padding(16.dp)
         )
 
-        AndroidView(
-            factory = {
-                previewView.apply {
-                    layoutParams = ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT
-                    )
-                }
-            },
+        Box(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
                 .padding(16.dp)
-        )
+                .background(Color.White)
+        ) {
+            // Camera Preview (hidden but still active for face detection)
+            AndroidView(
+                factory = {
+                    previewView.apply {
+                        layoutParams = ViewGroup.LayoutParams(0, 0) // Zero size to hide it
+                        // Still active but not visible
+                    }
+                },
+                modifier = Modifier.size(1.dp) // Minimal size, essentially hidden
+            )
+
+            // Animations on white background
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                // Idle/Scanning animation
+                if (isScanningVisible) {
+                    LottieAnimation(
+                        composition = idleComposition,
+                        iterations = LottieConstants.IterateForever,
+                        modifier = Modifier.size(250.dp)
+                    )
+                }
+
+                // Success animation
+                if (isSuccessVisible) {
+                    LottieAnimation(
+                        composition = successComposition,
+                        iterations = 1,
+                        modifier = Modifier.size(250.dp)
+                    )
+                }
+
+                // Failed animation
+                if (isFailedVisible) {
+                    LottieAnimation(
+                        composition = failedComposition,
+                        iterations = 1,
+                        modifier = Modifier.size(250.dp)
+                    )
+                }
+            }
+        }
 
         // Recognition status card
+
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -233,15 +299,34 @@ private suspend fun setupCamera(
                 }
             }
 
-        val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+        // Try to use the front camera first, if that fails, try to use any available camera
+        val cameraSelector = try {
+            CameraSelector.DEFAULT_FRONT_CAMERA
+        } catch (e: Exception) {
+            Log.w("FaceLogin", "Front camera not available, trying default camera", e)
+            // Use the default (usually back) camera if front camera is not available
+            CameraSelector.DEFAULT_FRONT_CAMERA
+        }
 
-        cameraProvider.unbindAll()
-        cameraProvider.bindToLifecycle(
-            lifecycleOwner,
-            cameraSelector,
-            preview,
-            imageAnalysis
-        )
+        try {
+            cameraProvider.unbindAll()
+            cameraProvider.bindToLifecycle(
+                lifecycleOwner,
+                cameraSelector,
+                preview,
+                imageAnalysis
+            )
+        } catch (e: Exception) {
+            // If both specific cameras fail, try with a generic selector that works with emulators
+            Log.w("FaceLogin", "Failed to bind specific camera, trying generic selector", e)
+            val genericSelector = CameraSelector.Builder().build() // Generic selector that works with emulators
+            cameraProvider.bindToLifecycle(
+                lifecycleOwner,
+                genericSelector,
+                preview,
+                imageAnalysis
+            )
+        }
     } catch (e: Exception) {
         Log.e("FaceLogin", "Camera setup failed", e)
     }

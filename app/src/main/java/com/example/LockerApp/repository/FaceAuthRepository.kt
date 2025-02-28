@@ -2,24 +2,38 @@ package com.example.LockerApp.repository
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.util.Log
-import com.example.LockerApp.model.Account
 import com.example.LockerApp.model.AccountDao
 import com.example.LockerApp.model.LockerDatabase
 import com.example.LockerApp.view.FaceClassifier
 import com.example.LockerApp.view.TFLiteFaceRecognition
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileOutputStream
 
-class FaceAuthRepository(context: Context) {
+class FaceAuthRepository(private val context: Context) {
     private val accountDao: AccountDao = LockerDatabase.getDatabase(context).accountDao()
-    private val faceClassifier: FaceClassifier = TFLiteFaceRecognition.create(
-        context.assets,
-        "facenet.tflite",
-        160,
-        false,
-        context
-    )
+    private var faceClassifier: FaceClassifier? = null
+
+    // Initialize classifier safely
+    init {
+        try {
+            faceClassifier = TFLiteFaceRecognition.create(
+                context.assets,
+                "facenet.tflite",
+                160,
+                false,
+                context
+            )
+        } catch (e: Exception) {
+            Log.e("FaceAuthRepository", "Error initializing face classifier", e)
+        }
+    }
 
     suspend fun registerFace(
         name: String,
@@ -28,30 +42,97 @@ class FaceAuthRepository(context: Context) {
         recognition: FaceClassifier.Recognition
     ) {
         withContext(Dispatchers.IO) {
-            faceClassifier.register(name, role, phone, recognition)
+            try {
+                faceClassifier?.register(name, role, phone, recognition)
+            } catch (e: Exception) {
+                Log.e("FaceAuthRepository", "Error registering face", e)
+                throw e
+            }
         }
     }
 
     suspend fun recognizeFace(bitmap: Bitmap): RecognitionResult = withContext(Dispatchers.IO) {
-        val recognition = faceClassifier.recognizeImage(bitmap, false)
-        Log.d("tryResiN","Now coming into this first function");
-        if (recognition?.title != null && recognition.title != "Unknown" && recognition.distance!! < 0.7f) {
-            Log.d("tryResiN","Now coming into ที่สอง function");
-            val user = accountDao.getUserByName(recognition.title)
-            if (user != null) {
-                RecognitionResult.Success(
-                    UserDetails(
-                        accountid = user.AccountID,
-                        name = user.Name,
-                        role = user.Role,
-                        phone = user.Phone
-                    )
-                )
-            } else {
-                RecognitionResult.Failure("User not found in database")
+        try {
+            // Ensure the classifier is initialized
+            if (faceClassifier == null) {
+                return@withContext RecognitionResult.Failure("Face recognition system not available")
             }
-        } else {
-            RecognitionResult.Failure("Face not recognized")
+
+            // Preprocess the bitmap to ensure consistent format
+            val processedBitmap = preprocessBitmap(bitmap)
+
+            // Add timeout to prevent hanging if TFLite crashes
+            return@withContext withTimeout(5000) { // 5-second timeout
+                val recognition = try {
+                    faceClassifier?.recognizeImage(processedBitmap, false)
+                } catch (e: Exception) {
+                    Log.e("FaceAuthRepository", "Error during face recognition", e)
+                    return@withTimeout RecognitionResult.Failure("Recognition failed: ${e.message}")
+                }
+
+                if (recognition?.title != null && recognition.title != "Unknown" && recognition.distance!! < 0.7f) {
+                    try {
+                        val user = accountDao.getUserByName(recognition.title)
+                        if (user != null) {
+                            RecognitionResult.Success(
+                                UserDetails(
+                                    accountid = user.AccountID,
+                                    name = user.Name,
+                                    role = user.Role,
+                                    phone = user.Phone
+                                )
+                            )
+                        } else {
+                            RecognitionResult.Failure("User not found in database")
+                        }
+                    } catch (e: Exception) {
+                        Log.e("FaceAuthRepository", "Database error", e)
+                        RecognitionResult.Failure("Database error: ${e.message}")
+                    }
+                } else {
+                    RecognitionResult.Failure("Face not recognized")
+                }
+            }
+        } catch (e: TimeoutCancellationException) {
+            Log.e("FaceAuthRepository", "Face recognition timed out", e)
+            RecognitionResult.Failure("Recognition timed out. Please try again.")
+        } catch (e: OutOfMemoryError) {
+            Log.e("FaceAuthRepository", "Out of memory during face recognition", e)
+            RecognitionResult.Failure("Device memory low. Please try again.")
+        } catch (e: Exception) {
+            Log.e("FaceAuthRepository", "Unexpected error in face recognition", e)
+            RecognitionResult.Failure("Recognition error: ${e.message}")
+        }
+    }
+
+    // Helper method to preprocess bitmap for more consistent results
+    private fun preprocessBitmap(original: Bitmap): Bitmap {
+        try {
+            // Ensure consistent size and format to avoid memory issues
+            val targetSize = 160 // Standard size for facenet model
+
+            // If already correct size, just return a copy to ensure consistent format
+            if (original.width == targetSize && original.height == targetSize) {
+                // Create a copy to ensure we're working with a clean bitmap
+                val copy = original.copy(Bitmap.Config.ARGB_8888, true)
+                return copy
+            }
+
+            // Resize bitmap to appropriate dimensions
+            val resized = Bitmap.createScaledBitmap(original, targetSize, targetSize, true)
+
+            // Convert to consistent format (ARGB_8888) if needed
+            if (resized.config != Bitmap.Config.ARGB_8888) {
+                val converted = resized.copy(Bitmap.Config.ARGB_8888, true)
+                resized.recycle() // Clean up the intermediate bitmap
+                return converted
+            }
+
+            return resized
+        } catch (e: Exception) {
+            Log.e("FaceAuthRepository", "Error preprocessing bitmap", e)
+            // If preprocessing fails, return the original to attempt recognition anyway
+            return original
         }
     }
 
