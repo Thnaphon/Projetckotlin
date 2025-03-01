@@ -59,6 +59,11 @@ fun LockerApp() {
     val usageLockerViewModel: UsageLockerViewModel = viewModel()
     val viewModel: BackupViewModel = viewModel()
 
+    val faceLoginViewModel: FaceLoginViewModel = viewModel(
+        factory = ViewModelProvider.AndroidViewModelFactory.getInstance(
+            context.applicationContext as Application
+        )
+    )
 
 //    val lastInteractionTime = remember { mutableStateOf(System.currentTimeMillis()) }
 //    val timeoutDuration = 1 * 60 * 1000L // 1 นาที
@@ -124,8 +129,8 @@ fun LockerApp() {
         composable("WelcomePage") {
             WelcomePage(
                 navController = navController,
-                accountViewModel = accountViewModel
-
+                accountViewModel = accountViewModel,
+                faceLoginViewModel = faceLoginViewModel
             )
         }
         composable("BackupScreen") {
@@ -187,26 +192,7 @@ fun LockerApp() {
 
 
 
-        composable("face_login") {
-            val context = LocalContext.current
-            val viewModel: FaceLoginViewModel = viewModel(
-                factory = ViewModelProvider.AndroidViewModelFactory.getInstance(
-                    context.applicationContext as Application
-                )
-            )
 
-            FaceLoginPage(
-                navController = navController,
-                viewModel = viewModel,
-                onLoginSuccess = { accountid, name, role, phone ->
-                    val route = "main_menu/$accountid"  // สร้าง route ที่จะส่งไป
-                    navController.navigate(route) {   // ใช้ route ที่สร้างขึ้น
-                        popUpTo("face_login") { inclusive = true }
-                        Log.d("FaceAcountid", "$accountid")
-                    }
-                }
-            )
-        }
 
         composable(
             "main_menu/{accountid}",

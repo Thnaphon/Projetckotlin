@@ -22,6 +22,11 @@ class FaceAuthRepository(private val context: Context) {
 
     // Initialize classifier safely
     init {
+        initializeClassifier()
+    }
+
+    // Method to initialize or re-initialize the classifier
+    private fun initializeClassifier() {
         try {
             faceClassifier = TFLiteFaceRecognition.create(
                 context.assets,
@@ -30,8 +35,20 @@ class FaceAuthRepository(private val context: Context) {
                 false,
                 context
             )
+            Log.d("FaceAuthRepository", "Face classifier initialized successfully")
         } catch (e: Exception) {
             Log.e("FaceAuthRepository", "Error initializing face classifier", e)
+        }
+    }
+
+    // Public method to refresh the face database - call this when returning to welcome page
+    suspend fun refreshFaceData() = withContext(Dispatchers.IO) {
+        try {
+            Log.d("FaceAuthRepository", "Refreshing face recognition data")
+            // Reinitialize the classifier to load latest face data
+            initializeClassifier()
+        } catch (e: Exception) {
+            Log.e("FaceAuthRepository", "Error refreshing face data", e)
         }
     }
 
@@ -55,7 +72,11 @@ class FaceAuthRepository(private val context: Context) {
         try {
             // Ensure the classifier is initialized
             if (faceClassifier == null) {
-                return@withContext RecognitionResult.Failure("Face recognition system not available")
+                // Try to reinitialize if it's null
+                initializeClassifier()
+                if (faceClassifier == null) {
+                    return@withContext RecognitionResult.Failure("Face recognition system not available")
+                }
             }
 
             // Preprocess the bitmap to ensure consistent format

@@ -45,4 +45,19 @@ class FaceLoginViewModel(application: Application) : AndroidViewModel(applicatio
         data class Success(val accountid:Int,val name: String, val role: String, val phone: String) : LoginState()
         data class Error(val message: String) : LoginState()
     }
+    fun resetToScanning() {
+        _loginState.value = LoginState.Scanning
+    }
+
+    fun refreshFaceData() {
+        viewModelScope.launch {
+            try {
+                repository.refreshFaceData()
+                resetToScanning()
+            } catch (e: Exception) {
+                // If refresh fails, just log it and continue
+                _loginState.value = LoginState.Error("Failed to refresh face data: ${e.message}")
+            }
+        }
+    }
 }

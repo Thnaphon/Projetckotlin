@@ -25,34 +25,39 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import com.example.LockerApp.model.KeystoreManager
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import com.example.LockerApp.model.Account
-import com.example.LockerApp.model.AccountDao
-import com.example.LockerApp.model.LockerDatabase
 import com.example.LockerApp.viewmodel.AccountViewModel
-
+import com.example.LockerApp.viewmodel.FaceLoginViewModel
 
 @Composable
-fun WelcomePage(accountViewModel: AccountViewModel, navController: NavController) {
-
+fun WelcomePage(
+    accountViewModel: AccountViewModel,
+    faceLoginViewModel: FaceLoginViewModel, // Add FaceLoginViewModel parameter
+    navController: NavController
+) {
     val context = LocalContext.current
     var showPermissionDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
     var permissionDenialCount by remember { mutableStateOf(0) }
+    var showFaceLoginOverlay by remember { mutableStateOf(false) } // Changed from Loginoverlaypopup
 
     val (isPasswordVisible, setIsPasswordVisible) = remember { mutableStateOf(false) }
     val (enteredPassword, setEnteredPassword) = remember { mutableStateOf("") }
-    val masterPassword = "Micro_2567" // ตัวอย่างรหัสผ่าน
+    val masterPassword = "Micro_2567" // Example password
     val encryptedData = remember { mutableStateOf<Pair<ByteArray, ByteArray>?>(null) }
 
     val permissions = arrayOf(
         Manifest.permission.CAMERA,
         Manifest.permission.READ_MEDIA_IMAGES)
-    // สร้างกุญแจและเข้ารหัสข้อมูลในตอนเริ่มต้น
+
+
+    LaunchedEffect(Unit) {
+        faceLoginViewModel.refreshFaceData()
+        faceLoginViewModel.resetToScanning()
+    }
+    // Generate key and encrypt data at initialization
     if (encryptedData.value == null) {
         LaunchedEffect(Unit) {
-            KeystoreManager.generateKey() // สร้างกุญแจ
+            KeystoreManager.generateKey()
             encryptedData.value = KeystoreManager.encryptData(masterPassword)
         }
     }
@@ -63,7 +68,8 @@ fun WelcomePage(accountViewModel: AccountViewModel, navController: NavController
     ) { permissions ->
         val allPermissionsGranted = permissions.values.all { it }
         if (allPermissionsGranted) {
-//            navController.navigate("face_login")
+            // Show face login overlay instead of navigating
+            showFaceLoginOverlay = true
         } else {
             permissionDenialCount++
             if (permissionDenialCount >= 2) {
@@ -74,7 +80,7 @@ fun WelcomePage(accountViewModel: AccountViewModel, navController: NavController
         }
     }
 
-    // ฟังก์ชันเช็คสิทธิ์
+    // Function to check permissions
     fun arePermissionsGranted(): Boolean {
         val permissions = arrayOf(
             Manifest.permission.CAMERA,
@@ -85,14 +91,29 @@ fun WelcomePage(accountViewModel: AccountViewModel, navController: NavController
         }
     }
 
-    // เช็คสิทธิ์และขอสิทธิ์
+    // Check and request permissions
     fun checkAndRequestPermissions() {
-
         if (arePermissionsGranted()) {
-            navController.navigate("face_login")
+            showFaceLoginOverlay = true
         } else {
             permissionLauncher.launch(permissions)
         }
+    }
+
+    // Show face login overlay if needed
+    if (showFaceLoginOverlay) {
+        FaceLoginOverlay(
+            navController = navController,
+            viewModel = faceLoginViewModel,
+            onDismiss = {
+                showFaceLoginOverlay = false
+            },
+            onLoginSuccess = { accountId, name, role, phone ->
+                showFaceLoginOverlay = false
+                // Navigate to main menu with user info
+                navController.navigate("main_menu/$accountId")
+            }
+        )
     }
 
     Surface(
@@ -149,35 +170,33 @@ fun WelcomePage(accountViewModel: AccountViewModel, navController: NavController
 
                 Button(
                     onClick = {
+                        if (arePermissionsGranted() || permissionLauncher.launch(permissions) != null) {
+                            try {
+                                val encrypted = encryptedData.value
+                                if (encrypted != null) {
+                                    val decryptedPassword = KeystoreManager.decryptData(
+                                        encrypted.first, encrypted.second
+                                    )
 
-                            permissionLauncher.launch(permissions)
-                        if (arePermissionsGranted()){
-                        try {
-                            val encrypted = encryptedData.value
-                            if (encrypted != null) {
-                                val decryptedPassword = KeystoreManager.decryptData(
-                                    encrypted.first, encrypted.second
-                                )
-
-                                if (enteredPassword == decryptedPassword) {
-                                    navController.navigate("main_menu/1")
-                                } else {
-                                    Toast.makeText(
-                                        context,
-                                        "Incorrect password",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
+                                    if (enteredPassword == decryptedPassword) {
+                                        navController.navigate("main_menu/1")
+                                    } else {
+                                        Toast.makeText(
+                                            context,
+                                            "Incorrect password",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
                                 }
+                            } catch (e: Exception) {
+                                Toast.makeText(
+                                    context,
+                                    "Error during decryption",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
-                        } catch (e: Exception) {
-                            Toast.makeText(
-                                context,
-                                "Error during decryption",
-                                Toast.LENGTH_SHORT
-                            ).show()
                         }
-                    }
-                              },
+                    },
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Green)
