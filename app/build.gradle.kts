@@ -7,12 +7,12 @@ plugins {
 
 android {
     namespace = "com.example.LockerApp"
-    compileSdk = 35
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.example.LockerApp"
         minSdk = 33
-        targetSdk = 35
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
@@ -105,7 +105,9 @@ dependencies {
     implementation ("androidx.appcompat:appcompat:1.6.1")
 
     implementation("androidx.compose.material:material:1.7.3")
-    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
 
     //qrcode
     implementation("com.google.zxing:core:3.4.1")
@@ -164,7 +166,9 @@ dependencies {
     // อัปเดตเวอร์ชันที่รองรับ
     implementation("androidx.security:security-crypto:1.0.0")
 
+    // Dream
     implementation("com.airbnb.android:lottie-compose:6.6.2")
+
 
 
 }
