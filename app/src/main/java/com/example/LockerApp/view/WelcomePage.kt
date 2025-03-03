@@ -9,8 +9,11 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,10 +31,21 @@ import com.example.LockerApp.model.KeystoreManager
 import com.example.LockerApp.viewmodel.AccountViewModel
 import com.example.LockerApp.viewmodel.FaceLoginViewModel
 
+import com.example.LockerApp.model.LockerDatabase
+import coil.compose.rememberImagePainter
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.withStyle
+import coil.compose.rememberAsyncImagePainter
+
 @Composable
 fun WelcomePage(
     accountViewModel: AccountViewModel,
-    faceLoginViewModel: FaceLoginViewModel, // Add FaceLoginViewModel parameter
+    faceLoginViewModel: FaceLoginViewModel, // allow to access viewmodel facelogin
     navController: NavController
 ) {
     val context = LocalContext.current
@@ -49,20 +63,27 @@ fun WelcomePage(
         Manifest.permission.CAMERA,
         Manifest.permission.READ_MEDIA_IMAGES)
 
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+
 
     LaunchedEffect(Unit) {
+        // init face in database and reset scan state
         faceLoginViewModel.refreshFaceData()
         faceLoginViewModel.resetToScanning()
     }
-    // Generate key and encrypt data at initialization
+
+    // คำนวณขนาดที่ต้องการตามเปอร์เซ็นต์
+
+    // สร้างกุญแจและเข้ารหัสข้อมูลในตอนเริ่มต้น
     if (encryptedData.value == null) {
         LaunchedEffect(Unit) {
-            KeystoreManager.generateKey()
+            KeystoreManager.generateKey() // สร้างกุญแจ
             encryptedData.value = KeystoreManager.encryptData(masterPassword)
         }
     }
 
-    // Permission launcher
+    // asking for Permission
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -71,8 +92,9 @@ fun WelcomePage(
             // Show face login overlay instead of navigating
             showFaceLoginOverlay = true
         } else {
+            // annoying user What is going on now you have to do it your own
             permissionDenialCount++
-            if (permissionDenialCount >= 2) {
+            if (permissionDenialCount >= 5) {
                 showSettingsDialog = true
             } else {
                 showPermissionDialog = true
@@ -80,7 +102,7 @@ fun WelcomePage(
         }
     }
 
-    // Function to check permissions
+    // ฟังก์ชันเช็คสิทธิ์
     fun arePermissionsGranted(): Boolean {
         val permissions = arrayOf(
             Manifest.permission.CAMERA,
@@ -91,7 +113,7 @@ fun WelcomePage(
         }
     }
 
-    // Check and request permissions
+    // เช็คสิทธิ์และขอสิทธิ์
     fun checkAndRequestPermissions() {
         if (arePermissionsGranted()) {
             showFaceLoginOverlay = true
@@ -100,7 +122,7 @@ fun WelcomePage(
         }
     }
 
-    // Show face login overlay if needed
+    // Show face login overlay on call
     if (showFaceLoginOverlay) {
         FaceLoginOverlay(
             navController = navController,
@@ -110,101 +132,189 @@ fun WelcomePage(
             },
             onLoginSuccess = { accountId, name, role, phone ->
                 showFaceLoginOverlay = false
-                // Navigate to main menu with user info
+                // calling mainmenu if success login state after loginoverlay
                 navController.navigate("main_menu/$accountId")
             }
         )
     }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+            .padding(70.dp)
+
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "Welcome!",
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
+        Column {
+            Row(
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.Start,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(170.dp)
 
-            Spacer(modifier = Modifier.height(24.dp))
 
-            Button(
-                onClick = { checkAndRequestPermissions() },
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.fillMaxWidth()
             ) {
-                Text(text = "Start with FaceScan")
-            }
+                val imagePainter = rememberImagePainter("file:///android_asset/Picture/Welcome.png")
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Image(
+                    painter = imagePainter,
+                    contentDescription = "Image from Assets",
+                    modifier = Modifier
+                        .height(170.dp)
 
-            Button(
-                onClick = { setIsPasswordVisible(true) },
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)
-            ) {
-                Text(text = "Start with Master Pass")
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (isPasswordVisible) {
-                OutlinedTextField(
-                    value = enteredPassword,
-                    onValueChange = { setEnteredPassword(it) },
-                    label = { Text("Enter Master Password") },
-                    modifier = Modifier.fillMaxWidth(),
-                    visualTransformation = VisualTransformation.None,
-                    singleLine = true
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+            }
+            Row {
+                Column(
+                    verticalArrangement = Arrangement.Bottom,
+                    horizontalAlignment = Alignment.Start,
+                    modifier = Modifier
+                        .weight(0.3f)
+                        .height(370.dp)
 
-                Button(
-                    onClick = {
-                        if (arePermissionsGranted() || permissionLauncher.launch(permissions) != null) {
-                            try {
-                                val encrypted = encryptedData.value
-                                if (encrypted != null) {
-                                    val decryptedPassword = KeystoreManager.decryptData(
-                                        encrypted.first, encrypted.second
+                ) {
+                    Button(
+                        onClick = { checkAndRequestPermissions() },
+                        shape = RoundedCornerShape(15.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF3961AA),
+                            contentColor = Color.White
+                        ),
+                        modifier = Modifier
+                            .width(250.dp)
+                            .height(70.dp)
+                            .shadow(8.dp, RoundedCornerShape(20.dp))
+                    ) {
+                        Text(text = "Start Now")
+                    }
+
+                    ClickableText(
+                        text = AnnotatedString.Builder().apply {
+                            append("Visit our ")
+                            withStyle(style = SpanStyle(color = Color(0xFF3961AA))) {
+                                append("Master Password")
+                            }
+                        }.toAnnotatedString(),
+                        onClick = {
+                            setIsPasswordVisible(true)
+                        },modifier = Modifier.padding(top = 16.dp)
+                    )
+
+                    // แสดงข้อความเล็ก ๆ ข้างใต้ข้อความ Visit our Master Password
+                    if (isPasswordVisible) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "กรอกรหัสผ่านของคุณเพื่อเข้าใช้แอปพลิเคชั่น",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+
+                        Row {
+                            OutlinedTextField(
+                                value = enteredPassword,
+                                onValueChange = { setEnteredPassword(it) },
+                                label = {
+                                    Text(
+                                        text = "Enter Master Password",
+                                        style = TextStyle(fontSize = 12.sp) // ปรับขนาดข้อความที่แสดงใน label
                                     )
+                                },
+                                modifier = Modifier
+                                    .width(200.dp),
+                                visualTransformation = VisualTransformation.None,
+                                singleLine = true
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
 
-                                    if (enteredPassword == decryptedPassword) {
-                                        navController.navigate("main_menu/1")
-                                    } else {
-                                        Toast.makeText(
-                                            context,
-                                            "Incorrect password",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp) // ระยะห่างระหว่างปุ่ม
+                            ) {
+                                Button(
+                                    onClick = {
+                                        try {
+                                            val encrypted = encryptedData.value
+                                            if (encrypted != null) {
+                                                val decryptedPassword = KeystoreManager.decryptData(
+                                                    encrypted.first, encrypted.second
+                                                )
+
+                                                if (enteredPassword == decryptedPassword) {
+                                                    navController.navigate("main_menu/1")
+                                                } else {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Incorrect password",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            }
+                                        } catch (e: Exception) {
+                                            Toast.makeText(
+                                                context,
+                                                "Error during decryption",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                    },
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth() // ให้ปุ่มกว้างเท่ากับช่องกรอก Master Password
+                                        .height(30.dp), // กำหนดความสูงของปุ่มให้เท่ากับช่องกรอก
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3961AA))
+                                ) {
+                                    Text(
+                                        text = "Confirm",
+                                        style = TextStyle(fontSize = 12.sp) // ปรับขนาดตัวอักษรที่ต้องการ
+                                    )
                                 }
-                            } catch (e: Exception) {
-                                Toast.makeText(
-                                    context,
-                                    "Error during decryption",
-                                    Toast.LENGTH_SHORT
-                                ).show()
+
+                                Button(
+                                    onClick = {
+                                        setIsPasswordVisible(false) // ยกเลิกการกรอก Master Password
+                                        setEnteredPassword("") // เคลียร์ช่องกรอก
+                                    },
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth() // ให้ปุ่มกว้างเท่ากับช่องกรอก Master Password
+                                        .height(30.dp), // กำหนดความสูงของปุ่มให้เท่ากับช่องกรอก
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red) // สีแดง
+                                ) {
+                                    Text(
+                                        text = "Cancel",
+                                        style = TextStyle(fontSize = 12.sp) // ปรับขนาดตัวอักษรที่ต้องการ
+                                    )
+                                }
                             }
                         }
-                    },
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Green)
+                    }
+                }
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    modifier = Modifier
+                        .weight(0.7f)
+
+                        .height(700.dp)
+
+
                 ) {
-                    Text(text = "Submit")
+                    val imagePainter2 =
+                        rememberAsyncImagePainter("file:///android_asset/Picture/Locker.jpg")
+                    Image(
+                        painter = imagePainter2,
+                        contentDescription = "Image from Assets",
+                        modifier = Modifier
+                    )
                 }
             }
+
         }
+
+
+
+    }
 
         // Permission denied dialog
         if (showPermissionDialog) {
@@ -245,6 +355,7 @@ fun WelcomePage(
                     )
                 },
                 confirmButton = {
+                    // Force user do it their own setup camera perm
                     Button(onClick = {
                         val intent =
                             Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
@@ -264,4 +375,3 @@ fun WelcomePage(
             )
         }
     }
-}

@@ -187,9 +187,9 @@ class BackupViewModel : ViewModel() {
                 val encodedWal = Base64.encodeToString(walBytes, Base64.DEFAULT)
 
                 // ส่งไฟล์ผ่าน MQTT โดยแบ่งเป็นชิ้นๆ
-                sendBackupFileToPi(mqttService, encodedDatabase, "locker/backup/database")
-                sendBackupFileToPi(mqttService, encodedShm, "locker/backup/shm")
-                sendBackupFileToPi(mqttService, encodedWal, "locker/backup/wal")
+                sendBackupFileToPi(context, mqttService, encodedDatabase, "locker/backup/database")
+                sendBackupFileToPi(context, mqttService, encodedShm, "locker/backup/shm")
+                sendBackupFileToPi(context, mqttService, encodedWal, "locker/backup/wal")
 
                 // บันทึกชื่อไฟล์และที่อยู่ของไฟล์สำรองที่ส่งไป
                 Log.d("Backup", "Backup data sent successfully to Pi")
@@ -216,10 +216,10 @@ class BackupViewModel : ViewModel() {
             }
         }
     }
-    fun sendBackupFileToPi(mqttService: MqttService, encodedFile: String, topic: String) {
+    fun sendBackupFileToPi(context: Context,mqttService: MqttService, encodedFile: String, topic: String) {
         // ตรวจสอบสถานะการเชื่อมต่อก่อนส่งข้อความ
 
-        mqttService.connect() // พยายามเชื่อมต่อใหม่ (ตรวจสอบว่า connect method มีอยู่ในคลาสหรือไม่)
+        mqttService.connect(context) // พยายามเชื่อมต่อใหม่ (ตรวจสอบว่า connect method มีอยู่ในคลาสหรือไม่)
 
 
         val chunkSize = 4000 // ขนาดชิ้นส่วนที่ส่งได้
@@ -231,7 +231,7 @@ class BackupViewModel : ViewModel() {
             val chunk = encodedFile.substring(start, end)
 
             val message = MqttMessage(chunk.toByteArray())
-            message.qos = 1
+            message.qos = 2
 
             try {
                 mqttService.sendMessage(topic, chunk) // ส่งผ่าน MQTT

@@ -184,7 +184,7 @@ fun MainMenuUI(
                     ReturnUI(viewModel = viewModel, mqttViewModel = mqttViewModel,usageLockerViewModel= usageLockerViewModel, accountid = accountid) // เพิ่มการเรียก ReturnUI
                 }
                 showLockerUI -> {
-                    LockerUI(navController = navController, lockerDao = lockerDao, compartmentDao = compartmentDao,accountid = accountid) { id ->
+                    LockerUI(navController = navController, lockerDao = lockerDao, compartmentDao = compartmentDao,accountid = accountid,) { id ->
                         lockerId = id
                         showCompartmentUI = true
                         showLockerUI = false
@@ -192,7 +192,7 @@ fun MainMenuUI(
                 }
 
                 showCompartmentUI -> {
-                    CompartmentUI(lockerId = lockerId.toInt())
+                    CompartmentUI(lockerId = lockerId.toInt(),accountid = accountid)
                 }
                 showParticipantUI -> {
                     ParticipantScreen(accountViewModel= accountViewModel,navController = navController , accountid = accountid , faceLoginViewModel = faceLoginViewModel) // แสดงหน้า Participant ที่นี่

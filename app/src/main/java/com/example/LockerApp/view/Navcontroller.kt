@@ -218,12 +218,16 @@ fun LockerApp() {
             )
         }
 
-        composable("compartment_screen/{lockerId}") { backStackEntry ->
+        composable("compartment_screen/{lockerId}/{accountid}",
+            arguments = listOf(navArgument("accountid") { type = NavType.IntType })
+        ) { backStackEntry ->
             val lockerId = backStackEntry.arguments?.getString("lockerId")?.toIntOrNull()
+            val accountid = backStackEntry.arguments?.getInt("accountid") ?: 0
             if (lockerId != null) {
                 CompartmentUI(
                     lockerId = lockerId,
-                    viewModel = lockerViewModel
+                    viewModel = lockerViewModel,
+                    accountid= accountid
                 ) // ส่ง LockerViewModel
             }
         }

@@ -37,13 +37,14 @@ data class Locker(
         childColumns = ["LockerID"],
         onDelete = ForeignKey.CASCADE)]
 )
+
 data class Compartment(
-    @PrimaryKey(autoGenerate = true) val CompartmentID: Int = 0,
+    @PrimaryKey(autoGenerate = true) val CompartmentID: Int=0,
+    val number_compartment: Int,
     val Status: String,
     val LockerID: Int,
     val Name_Item: String,
-    val pic_item: String,
-    val detail: String
+    val pic_item: String
 )
 
 
@@ -82,7 +83,7 @@ data class Account(
             parentColumns = ["CompartmentID"],
             childColumns = ["CompartmentID"],
             onDelete = ForeignKey.CASCADE
-)
+        )
     ]
 )
 data class UsageLocker(
@@ -93,6 +94,60 @@ data class UsageLocker(
     val UsageTime: String,
     val Usage : String,
     val Status: String
+
+)
+
+// Entity สำหรับ UsageLocker
+@Entity(tableName = "manage_locker",
+    foreignKeys = [
+        ForeignKey(
+            entity = Locker::class,
+            parentColumns = ["LockerID"],
+            childColumns = ["LockerID"],
+            onDelete = ForeignKey.CASCADE),
+        ForeignKey(
+            entity = Account::class,
+            parentColumns = ["AccountID"],
+            childColumns = ["AccountID"],
+            onDelete = ForeignKey.CASCADE
+        )
+
+    ]
+)
+data class ManageLocker(
+    @PrimaryKey(autoGenerate = true) val ManageLockerID: Int = 0,
+    val LockerID: Int,
+    val AccountID: Int,
+    val UsageTime: String,
+    val Usage : String,
+    val Status: String
+
+)
+
+// Entity สำหรับ UsageLocker
+@Entity(tableName = "manage_account",
+    foreignKeys = [
+        ForeignKey(
+            entity = Account::class,
+            parentColumns = ["AccountID"],
+            childColumns = ["AccountID"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = Account::class,
+            parentColumns = ["AccountID"],
+            childColumns = ["ByAccountID"],
+            onDelete = ForeignKey.CASCADE
+        )
+
+    ]
+)
+data class ManageAccount(
+    @PrimaryKey(autoGenerate = true) val ManageAccount: Int = 0,
+    val AccountID : Int,
+    val ByAccountID : Int,
+    val UsageTime: String,
+    val Usage : String
 
 )
 
@@ -136,6 +191,9 @@ interface LockerDao {
     @Query("SELECT TokenTopic FROM locker WHERE LockerID = :lockerId")
     suspend fun getMqttTopicByLockerId(lockerId: Int): String?
 
+    @Query("SELECT LockerID FROM locker WHERE TokenTopic = :TokenTopic")
+    suspend fun getLockerIdcByTopic(TokenTopic: String): Int?
+
     @Query("SELECT availableCompartment FROM locker WHERE LockerID = :lockerId")
     suspend fun getavailableCompartmentByLockerId(lockerId: Int): String?
 
@@ -144,13 +202,16 @@ interface LockerDao {
 
     @Query("UPDATE locker SET status = :newStatus WHERE LockerID = :lockerID")
     suspend fun updateLockerStatus(lockerID: Int, newStatus: String)
+
+    @Query("SELECT * FROM locker ORDER BY LockerID DESC LIMIT 1")
+    suspend fun getLastInsertedLocker(): Locker?
 }
 
 // DAO สำหรับ Compartment
 @Dao
 interface CompartmentDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertCompartment(compartment: Compartment)
+    suspend fun insertCompartment(compartment: Compartment): Long
 
     @Query("SELECT * FROM compartment WHERE LockerID = :lockerId")
     suspend fun getCompartmentsByLocker(lockerId: Int): List<Compartment>
@@ -158,6 +219,13 @@ interface CompartmentDao {
     @Query("SELECT LockerID FROM compartment WHERE CompartmentID = :compartmentId LIMIT 1")
     suspend fun getLockerIdByCompartmentId(compartmentId: Int): Int?
 
+    @Query("UPDATE compartment SET Name_Item = :newName, pic_item = :newPic WHERE CompartmentID = :compartmentID AND LockerID = :lockerID")
+    suspend fun updateCompartment(
+        compartmentID: Int,
+        newName: String,
+        newPic: String, // ชื่อไฟล์ของภาพใหม่
+        lockerID: Int
+    )
 
     @Query("UPDATE compartment SET Status = :newStatus WHERE CompartmentID = :compartmentID AND LockerID = :lockerID")
     suspend fun updateCompartmentStatus(compartmentID: Int, newStatus: String, lockerID: Int)
@@ -166,6 +234,20 @@ interface CompartmentDao {
     suspend fun checkLockerExists(lockerID: Int): Boolean
 
 
+    @Query("SELECT CompartmentID FROM compartment")
+    suspend fun getAllCompartmentIds(): List<Int>
+
+    @Query("DELETE FROM compartment WHERE LockerID = :lockerId AND CompartmentID = :compartmentId")
+    suspend fun deleteCompartment(lockerId: Int, compartmentId: Int)
+
+    @Query("SELECT CompartmentID FROM compartment ORDER BY CompartmentID DESC LIMIT 1")
+    fun getLastCompartmentId(): LiveData<Int?>
+
+    @Query("SELECT number_compartment FROM compartment WHERE LockerID = :lockerId")
+    suspend fun getAllCompartmentsNum(lockerId: Int): List<Int>
+
+    @Query("SELECT CompartmentID FROM compartment WHERE LockerID = :lockerId AND number_compartment = :number_compartment")
+    suspend fun getCompartmentId(lockerId: Int, number_compartment: Int): Int
 }
 
 
@@ -196,6 +278,9 @@ interface AccountDao {
 
     @Query("SELECT Name FROM Account WHERE AccountID = :accountId LIMIT 1")
     fun getAccountNameById(accountId: Int): LiveData<String>
+
+    @Query("UPDATE account SET Name = :name, Phone = :phone, Role = :role WHERE AccountID = :accountId")
+    suspend fun updateAccountFields(accountId: Int, name: String, phone: String, role: String)
 }
 
 
@@ -223,17 +308,74 @@ interface UsageLockerDao {
     suspend fun delete(usageLocker: UsageLocker)
 }
 
-// DAO สำหรับ Backup
+@Dao
+interface ManageLockerDao {
+
+    // เพิ่มข้อมูลเข้าในตาราง ManageLocker
+    @Insert
+    suspend fun insert(manageLocker: ManageLocker)
+
+    // อัพเดตข้อมูลในตาราง ManageLocker
+    @Update
+    suspend fun update(manageLocker: ManageLocker)
+
+    // ลบข้อมูลในตาราง ManageLocker
+    @Delete
+    suspend fun delete(manageLocker: ManageLocker)
+
+    // ค้นหาข้อมูลทั้งหมดในตาราง ManageLocker
+    @Query("SELECT * FROM manage_locker")
+    fun getAllManageLockers(): LiveData<List<ManageLocker>>
+
+
+    // ค้นหาข้อมูลโดย AccountID
+    @Query("SELECT * FROM manage_locker WHERE AccountID = :accountId")
+    suspend fun getManageLockerByAccountId(accountId: Int): List<ManageLocker>
+
+    // ค้นหาข้อมูลที่มีการใช้งานโดย Status
+    @Query("SELECT * FROM manage_locker WHERE Status = :status")
+    suspend fun getManageLockerByStatus(status: String): List<ManageLocker>
+
+    // ค้นหาข้อมูลที่มีการใช้งานโดยช่วงเวลาการใช้งาน
+    @Query("SELECT * FROM manage_locker WHERE UsageTime BETWEEN :startTime AND :endTime")
+    suspend fun getManageLockerByUsageTime(startTime: String, endTime: String): List<ManageLocker>
+}
+
+@Dao
+interface ManageAccountDao {
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertManageAccount(manageAccount: ManageAccount): Long
+
+    @Update
+    suspend fun updateManageAccount(manageAccount: ManageAccount)
+
+    @Delete
+    suspend fun deleteManageAccount(manageAccount: ManageAccount)
+
+    @Query("SELECT * FROM manage_account WHERE AccountID = :accountId")
+    suspend fun getManageAccountByAccountId(accountId: Int): List<ManageAccount>
+
+    @Query("SELECT * FROM manage_account WHERE ByAccountID = :byAccountId")
+    suspend fun getManageAccountByByAccountId(byAccountId: Int): List<ManageAccount>
+
+    @Query("SELECT * FROM manage_account ORDER BY UsageTime DESC")
+    suspend fun getAllManageAccounts(): List<ManageAccount>
+
+}
 
 
 // Room Database สำหรับการรวม Entity และ DAO ทั้งหมด
-@Database(entities = [Locker::class, Compartment::class, Account::class,  UsageLocker::class,BackupSettings::class ], version = 1)
+@Database(entities = [Locker::class, Compartment::class, Account::class,  UsageLocker::class,ManageLocker::class,ManageAccount::class,BackupSettings::class ], version = 1)
 abstract class LockerDatabase : RoomDatabase() {
     abstract fun lockerDao(): LockerDao
     abstract fun compartmentDao(): CompartmentDao
     abstract fun accountDao(): AccountDao
     abstract fun usageLockerDao(): UsageLockerDao
     abstract fun backupDao(): BackupDao
+    abstract fun ManageLockerDao(): ManageLockerDao
+    abstract fun ManageAccountDao(): ManageAccountDao
+
 
     companion object {
         @Volatile

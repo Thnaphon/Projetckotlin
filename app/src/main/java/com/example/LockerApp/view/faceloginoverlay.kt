@@ -52,10 +52,10 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
-// Function close camera when out of compose
+// close all cam func
 private fun shutdownCamera(provider: ProcessCameraProvider?, executor: Executor) {
     try {
-        // unbind all
+        // whatever camera is active > deactivate
         provider?.unbindAll()
         if (executor is java.util.concurrent.ExecutorService) {
             executor.shutdown()
@@ -73,8 +73,7 @@ fun FaceLoginOverlay(
     onLoginSuccess: (Int, String, String, String) -> Unit
 ) {
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val coroutineScope = rememberCoroutineScope()
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
     // Camera setup
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }

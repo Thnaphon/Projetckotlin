@@ -1,6 +1,7 @@
 package com.example.LockerApp.viewmodel
 
 import android.app.Application
+import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.AndroidViewModel
@@ -29,24 +30,24 @@ class MqttViewModel(application: Application) : AndroidViewModel(application) {
 
     // ข้อความที่ได้รับ
     // ข้อความที่ได้รับจาก MQTT
-    private val _receivedMessageTopic = MutableStateFlow("")
-    val receivedMessage: StateFlow<String> = mqttService.receivedMessage
-
-
+    private val _mqttData = MutableStateFlow(Pair("", ""))
+    val mqttData: StateFlow<Pair<String, String>> = _mqttData
 
     init {
         // เชื่อมต่อกับ MQTT broker เมื่อเริ่มต้น
         viewModelScope.launch {
-            mqttService.connect()
+            mqttService.connect(getApplication<Application>().applicationContext)
             mqttService.subscribeToTopic("respond/locker")
+
         }
+        observeMqttData()
 
     }
 
     // ฟังก์ชันเชื่อมต่อ
     fun connect() {
         viewModelScope.launch {
-            mqttService.connect()
+            mqttService.connect(getApplication<Application>().applicationContext)
         }
     }
     fun isConnected(): Boolean {
@@ -80,7 +81,7 @@ class MqttViewModel(application: Application) : AndroidViewModel(application) {
             // ส่ง JSON ผ่าน MQTT
             mqttService.sendMessage(topic, jsonMessage)
 
-            Log.d("MqttViewModelcheckkut", "Message type: ${message::class.java.name} sent to topic: $topic with message: $jsonMessage")
+            Log.d("MqttViewModel", "Message type: ${message::class.java.name} sent to topic: $topic with message: $jsonMessage")
         }
     }
 
@@ -91,33 +92,31 @@ class MqttViewModel(application: Application) : AndroidViewModel(application) {
 
     fun subscribeToTopic(topic: String) {
         viewModelScope.launch {
+
             mqttService.subscribeToTopic(topic)
 
         }
     }
-    var job: Job? = null
 
-    fun waitForMessages(topic: String, onMessageReceived: (String) -> Unit) {
-        job = viewModelScope.launch {
-            // Subscribe to the topic
-            mqttService.subscribeToTopic(topic)
+//    fun waitForMessages(topic: String, onMessageReceived: (String) -> Unit) {
+//        job?.cancel()  // Canc
+//        job = viewModelScope.launch {
+//            // Subscribe to the topic
+//            receivedMessage.collect { message ->
+//                if (message.isNotEmpty()) {
+//                    onMessageReceived(message) //0t]v'
+//                    Log.d("MqttViewModelwiatfor", "Message received from topic: $topic with message: $message")
+//                }
+//                clearMessage()  // Clear ข้อความหลังจากรับแล้ว
+//            }
+//        }
+//    }
 
-            receivedMessage.collect { message ->
-                if (message.isNotEmpty()) {
-                    onMessageReceived(message)
-                    Log.d("MqttViewModelcheck", "Message received from topic: $topic with message: $message")
 
-                    // เคลียร์ค่าหลังจากหน่วงเวลาเล็กน้อย
-           // ป้องกันการเคลียร์เร็วเกินไป
-                    clearReceivedMessage()
 
-                }
-            }
-        }
+    fun clearMessage() {
+        mqttService.clearMessage()
     }
-
-
-
 
 
 
@@ -135,16 +134,6 @@ class MqttViewModel(application: Application) : AndroidViewModel(application) {
     }
 
 
-    fun clearRetainedMessage(topic: String) {
-        // ส่งข้อความว่างและตั้งค่า retain เป็น true เพื่อเคลียร์ retained message
-        val message = "" // ข้อความว่าง
-        val qos = 0 // Quality of Service
-        val retain = true  // ตั้งค่า retain เป็น true
-
-        mqttClient?.publish(topic, message.toByteArray(), qos, retain)
-            ?: Log.e("MqttViewModel", "MqttClient is null, unable to clear retained message.")
-    }
-
     // สร้าง LiveData สำหรับสถานะ
     private val _statusLiveData = MutableLiveData<String>()
     val statusLiveData: LiveData<String> = _statusLiveData
@@ -152,12 +141,22 @@ class MqttViewModel(application: Application) : AndroidViewModel(application) {
     // ฟังก์ชันในการสังเกต topic
 
 
-    fun clearReceivedMessage() {
-        viewModelScope.launch {
-            _receivedMessageTopic.emit("") // ล้างค่า StateFlow ที่ใช้รับข้อความ
+    //    fun clearReceivedMessage() {
+//        viewModelScope.launch {
+//            _receivedMessageTopic.emit("")
+//
+//        }
+//    }
+    var job: Job? = null
+    fun observeMqttData() {
+        job?.cancel()
+        job = viewModelScope.launch {
+            mqttService.mqttData.collect { (topic, message) ->
+                _mqttData.value = Pair(topic, message)
+                Log.d("observeMqttData", "MQTT Topic: $topic, Message: $message")
+            }
         }
     }
-
 
 
 }

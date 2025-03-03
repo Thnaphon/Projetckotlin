@@ -104,7 +104,10 @@ dependencies {
     implementation ("androidx.fragment:fragment-ktx:1.8.4")
     implementation ("androidx.appcompat:appcompat:1.6.1")
 
-    implementation("androidx.compose.material:material:1.7.3")
+    implementation("androidx.compose.material:material:1.7.8")
+    implementation ("androidx.compose.material:material-icons-extended:1.7.8")
+
+
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
@@ -117,11 +120,15 @@ dependencies {
     implementation("com.google.api-client:google-api-client-android:1.34.1")
     implementation("com.google.apis:google-api-services-drive:v3-rev136-1.25.0")
     implementation("com.google.http-client:google-http-client-gson:1.41.1")
-    implementation("com.google.code.gson:gson:2.8.9")
     implementation("com.google.auth:google-auth-library-oauth2-http:1.31.0")
     implementation("com.google.android.gms:play-services-auth:21.3.0")
     implementation("androidx.core:core-ktx:1.6.0")
     implementation("androidx.activity:activity-ktx:1.3.1")
+    implementation("com.google.android.gms:play-services-drive:17.0.0")
+
+    implementation("com.google.http-client:google-http-client-android:1.46.1")
+
+    implementation("org.bouncycastle:bcprov-jdk15on:1.70")
 
 
 
