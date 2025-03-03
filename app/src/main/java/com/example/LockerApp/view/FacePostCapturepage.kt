@@ -68,8 +68,23 @@ fun FaceCapturePage(
     var originalBrightness by remember { mutableStateOf(-1f) }
     val similarityCheck by viewModel.similarityCheck.observeAsState()
 
+    // Camera state management
+    var isCameraActive by remember { mutableStateOf(false) }
+    var cameraInitialized by remember { mutableStateOf(false) }
+    var isSurfaceReady by remember { mutableStateOf(false) }
+
+    // Clear any previous face capture and prepare camera with proper delay
+    LaunchedEffect(Unit) {
+        viewModel.setCapturedFace(null)
+        // Add a delay to ensure previous camera resources are released
+        delay(500)
+        isCameraActive = true
+        Log.d("FaceCapturePage", "Setting camera active after initialization delay")
+    }
+
     // Increase screen brightness to 100%
     LaunchedEffect(Unit) {
+        delay(500)
         val activity = context as? ComponentActivity
         activity?.let {
             val window = it.window
@@ -96,6 +111,7 @@ fun FaceCapturePage(
                     window.attributes = layoutParams
                 }
             }
+            // Don't shut down executor here - we'll handle this in the main DisposableEffect
         }
     }
 
@@ -112,6 +128,12 @@ fun FaceCapturePage(
             // Reset countdown for next face
             countdownSeconds = 5
         }
+
+        // CHANGE: Hide countdown if user is in database
+        if (recognizedName.isNotEmpty()) {
+            isCountingDown = false
+        }
+
         // Update previous name for next comparison
         previousRecognizedName = recognizedName
     }
@@ -124,11 +146,13 @@ fun FaceCapturePage(
         // 3. Not already counting down
         // 4. Not in capturing process
         // 5. No face already captured
+        // 6. Camera is active
         if (faceDetected &&
             recognizedName.isEmpty() &&
             !isCountingDown &&
             !capturingFace &&
-            capturedFace == null) {
+            capturedFace == null &&
+            isCameraActive) {
 
             isCountingDown = true
             countdownSeconds = 5
@@ -161,6 +185,35 @@ fun FaceCapturePage(
         }
     }
 
+    // NEW: Effect for turning off camera when face is captured
+    // And auto-register face and navigate to main menu
+    LaunchedEffect(capturedFace) {
+        if (capturedFace != null) {
+            isCameraActive = false
+
+            // Auto-register after a short delay (to show the captured face)
+            delay(500) // 0.5 second delay to show the captured image
+
+            capturedFace?.let { bitmap ->
+                // Set captured face in ViewModel
+                viewModel.setCapturedFace(bitmap)
+
+                // Register the face
+                viewModel.registerFace(
+                    participantName,
+                    participantRole,
+                    participantPhone,
+                    bitmap
+                )
+
+                // Navigate back to main menu
+                navController.navigate("main_menu/$accountid") {
+                    popUpTo("face_register") { inclusive = true }
+                }
+            }
+        }
+    }
+
     // Keep track of last time a face was detected
     var lastFaceDetectionTime by remember { mutableStateOf(0L) }
 
@@ -182,60 +235,117 @@ fun FaceCapturePage(
         }
     }
 
-    // Setup camera
-    LaunchedEffect(Unit) {
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
-            == PackageManager.PERMISSION_GRANTED
-        ) {
-            cameraManager.startCamera(
-                lifecycleOwner = lifecycleOwner,
-                previewView = previewView,
-                cameraExecutor = cameraExecutor,
-                onFaceDetected = { bitmap, rect ->
-                    val faceBitmap = Bitmap.createBitmap(
-                        bitmap,
-                        rect.left.coerceAtLeast(0),
-                        rect.top.coerceAtLeast(0),
-                        rect.width().coerceAtMost(bitmap.width - rect.left),
-                        rect.height().coerceAtMost(bitmap.height - rect.top)
-                    )
+    // Setup camera with proper initialization sequence and lifecycle handling
+    LaunchedEffect(isCameraActive) {
+        if (isCameraActive && !cameraInitialized) {
+            try {
+                Log.d("FaceCapturePage", "Initializing camera")
 
-                    // Update face detection state and timestamp
-                    faceDetected = true
-                    lastFaceDetectionTime = System.currentTimeMillis()
+                if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+                    == PackageManager.PERMISSION_GRANTED
+                ) {
+                    // Important: Wait longer to ensure TextureView is properly setup
+                    delay(500)
 
-                    // Always perform recognition
-                    viewModel.recognizeFace(faceBitmap)
-
-                    // If capture is requested, save the face
-                    if (capturingFace) {
-                        // Create a clean scaled copy for registration
-                        val scaledBitmap = Bitmap.createScaledBitmap(faceBitmap, 250, 250, false)
-                        capturedFace = scaledBitmap
-                        isCountingDown = false
+                    // Ensure we're still active after the delay
+                    if (!isCameraActive) {
+                        Log.d("FaceCapturePage", "Camera no longer active after delay, aborting setup")
+                        return@LaunchedEffect
                     }
+
+                    // Use a coroutine to manage the camera lifecycle
+                    scope.launch {
+                        try {
+                            cameraManager.startCamera(
+                                lifecycleOwner = lifecycleOwner,
+                                previewView = previewView,
+                                cameraExecutor = cameraExecutor,
+                                onFaceDetected = { bitmap, rect ->
+                                    if (!isCameraActive) return@startCamera
+
+                                    val faceBitmap = Bitmap.createBitmap(
+                                        bitmap,
+                                        rect.left.coerceAtLeast(0),
+                                        rect.top.coerceAtLeast(0),
+                                        rect.width().coerceAtMost(bitmap.width - rect.left),
+                                        rect.height().coerceAtMost(bitmap.height - rect.top)
+                                    )
+
+                                    // Update face detection state and timestamp
+                                    faceDetected = true
+                                    lastFaceDetectionTime = System.currentTimeMillis()
+
+                                    // Always perform recognition
+                                    viewModel.recognizeFace(faceBitmap)
+
+                                    // If capture is requested, save the face
+                                    if (capturingFace) {
+                                        // Create a clean scaled copy for registration
+                                        val scaledBitmap = Bitmap.createScaledBitmap(faceBitmap, 250, 250, false)
+                                        capturedFace = scaledBitmap
+                                        isCountingDown = false
+                                    }
+                                }
+                            )
+                            cameraInitialized = true
+                            Log.d("FaceCapturePage", "Camera initialized successfully")
+                        } catch (e: Exception) {
+                            Log.e("FaceCapturePage", "Error in camera coroutine: ${e.message}", e)
+                        }
+                    }
+                } else {
+                    Log.e("FaceCapturePage", "Camera permission not granted")
                 }
-            )
+            } catch (e: Exception) {
+                Log.e("FaceCapturePage", "Error initializing camera: ${e.message}", e)
+                // Try to recover after a delay
+                delay(1000)
+                isCameraActive = true
+                cameraInitialized = false
+            }
+        }
+    }
+
+    // Prevent any rapid changes to camera while navigating
+    DisposableEffect(key1 = Unit) {
+        onDispose {
+            Log.d("FaceCapturePage", "Disposing FaceCapturePage - ensuring clean camera shutdown")
+            isCameraActive = false
+
+            // Give time for camera resources to be released properly
+            scope.launch {
+                delay(300)
+                cameraExecutor.shutdown()
+            }
         }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Camera Preview
-        AndroidView(
-            factory = {
-                previewView.apply {
-                    layoutParams = ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT
-                    )
-                    implementationMode = PreviewView.ImplementationMode.COMPATIBLE
-                    scaleType = PreviewView.ScaleType.FILL_CENTER
+        // Camera Preview - only show when active
+        if (isCameraActive) {
+            AndroidView(
+                factory = {
+                    previewView.apply {
+                        layoutParams = ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT
+                        )
+                        // Use PERFORMANCE mode for more stable camera handling
+                        implementationMode = PreviewView.ImplementationMode.PERFORMANCE
+                        scaleType = PreviewView.ScaleType.FILL_CENTER
+                    }
+                    previewView
+                },
+                modifier = Modifier.fillMaxSize(),
+                // This update function helps ensure the previewView stays connected
+                update = { view ->
+                    if (isCameraActive && !isSurfaceReady) {
+                        isSurfaceReady = true
+                        Log.d("FaceCapturePage", "PreviewView surface ready")
+                    }
                 }
-                previewView
-            },
-
-            modifier = Modifier.fillMaxSize()
-        )
+            )
+        }
 
         // Overlay UI
         Column(
@@ -260,7 +370,7 @@ fun FaceCapturePage(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Face guide outline - using standard border instead of custom one
+            // Face guide outline with captured face or countdown
             Box(
                 modifier = Modifier
                     .size(250.dp)
@@ -278,12 +388,14 @@ fun FaceCapturePage(
                 contentAlignment = Alignment.Center
             ) {
                 if (capturedFace != null) {
+                    // Show captured face image
                     Image(
                         bitmap = capturedFace!!.asImageBitmap(),
                         contentDescription = "Captured Face",
                         modifier = Modifier.fillMaxSize()
                     )
-                } else if (isCountingDown) {
+                } else if (isCountingDown && recognizedName.isEmpty()) {
+                    // CHANGE: Only show countdown when not recognized in database
                     Text(
                         text = countdownSeconds.toString(),
                         fontSize = 64.sp,
@@ -353,7 +465,9 @@ fun FaceCapturePage(
                         }
                         else -> {
                             Text(
-                                text = "Looking for Face...",
+                                text = if (!cameraInitialized && isCameraActive)
+                                    "Initializing Camera..."
+                                else "Looking for Face...",
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
@@ -401,37 +515,19 @@ fun FaceCapturePage(
                         Text("Capture Now")
                     }
                 } else {
-                    Button(
-                        onClick = {
-                            capturedFace?.let { bitmap ->
-                                // Set captured face in ViewModel
-                                viewModel.setCapturedFace(bitmap)
+                    // Progress indicator to show auto-registration is happening
+                    CircularProgressIndicator(
+                        color = Color.Green,
+                        modifier = Modifier.weight(1f)
+                    )
 
-                                // Register the face
-                                scope.launch {
-                                    viewModel.registerFace(
-                                        participantName,
-                                        participantRole,
-                                        participantPhone,
-                                        bitmap
-                                    )
-                                }
-
-                                // Navigate back to main menu
-                                navController.navigate("main_menu/$accountid") {
-                                    popUpTo("face_register") { inclusive = true }
-                                }
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Green.copy(alpha = 0.8f)
-                        ),
+                    Text(
+                        text = "Registering...",
+                        color = Color.White,
+                        fontSize = 16.sp,
                         modifier = Modifier.weight(1f),
-                        enabled = capturedFace != null &&
-                                similarityCheck !is FaceRegisterViewModel.SimilarityCheckResult.Similar
-                    ) {
-                        Text("Register Face")
-                    }
+                        textAlign = TextAlign.Center
+                    )
                 }
             }
         }

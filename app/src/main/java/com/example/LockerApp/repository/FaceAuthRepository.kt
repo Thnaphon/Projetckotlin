@@ -104,14 +104,14 @@ class FaceAuthRepository(private val context: Context) {
                                 )
                             )
                         } else {
-                            RecognitionResult.Failure("User not found in database")
+                            RecognitionResult.Failure("ไม่พบข้อมูล")
                         }
                     } catch (e: Exception) {
                         Log.e("FaceAuthRepository", "Database error", e)
                         RecognitionResult.Failure("Database error: ${e.message}")
                     }
                 } else {
-                    RecognitionResult.Failure("Face not recognized")
+                    RecognitionResult.Failure("ไม่พบข้อมูลผู้ใช้งาน")
                 }
             }
         } catch (e: TimeoutCancellationException) {
@@ -119,7 +119,7 @@ class FaceAuthRepository(private val context: Context) {
             RecognitionResult.Failure("Recognition timed out. Please try again.")
         } catch (e: OutOfMemoryError) {
             Log.e("FaceAuthRepository", "Out of memory during face recognition", e)
-            RecognitionResult.Failure("Device memory low. Please try again.")
+            RecognitionResult.Failure("หน่วยความจำไม่เพียงพอ")
         } catch (e: Exception) {
             Log.e("FaceAuthRepository", "Unexpected error in face recognition", e)
             RecognitionResult.Failure("Recognition error: ${e.message}")

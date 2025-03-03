@@ -36,12 +36,19 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.LockerApp.model.Account
 import com.example.LockerApp.model.AccountDao
+import com.example.LockerApp.view.FaceVerificationOverlay
 import com.example.LockerApp.viewmodel.AccountViewModel
+import com.example.LockerApp.viewmodel.FaceLoginViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun ParticipantScreen(accountViewModel: AccountViewModel,navController: NavController,accountid: Int) {
+fun ParticipantScreen(
+    accountViewModel: AccountViewModel,
+    navController: NavController,
+    faceLoginViewModel: FaceLoginViewModel,
+    accountid: Int,
+) {
     var isEditDialogVisible by remember { mutableStateOf(false) }
     var isEditMode by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
@@ -49,6 +56,8 @@ fun ParticipantScreen(accountViewModel: AccountViewModel,navController: NavContr
     var phone by remember { mutableStateOf("") }
     var accountIdToEdit by remember { mutableStateOf<Int?>(null) }
     var searchQuery by remember { mutableStateOf("") }
+    var showFaceVerification by remember { mutableStateOf(false) } // Add this state variable
+
     val currentDate = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
     val userDetails by accountViewModel.userDetails.observeAsState(emptyList())
     val filteredUsers = userDetails.filter {
@@ -58,8 +67,34 @@ fun ParticipantScreen(accountViewModel: AccountViewModel,navController: NavContr
     }
     val userCount = filteredUsers.size
 
+    // Reset the face login state when entering the screen
+    LaunchedEffect(Unit) {
+        faceLoginViewModel.refreshFaceData()
+        faceLoginViewModel.resetToScanning()
+    }
 
-
+    // Show face verification overlay if needed
+    if (showFaceVerification) {
+        FaceVerificationOverlay(
+            navController = navController,
+            viewModel = faceLoginViewModel,
+            expectedAccountId = accountid,
+            name = name,
+            role = role,
+            phone = phone,
+            onDismiss = {
+                showFaceVerification = false
+            },
+            onVerificationSuccess = {
+                showFaceVerification = false
+                // The navigation to face_capture will be handled by the overlay
+            },
+            onVerificationFailed = {
+                showFaceVerification = false
+                // Just close the overlay on failure
+            }
+        )
+    }
 
     Box(
         modifier = Modifier
@@ -251,8 +286,6 @@ fun ParticipantScreen(accountViewModel: AccountViewModel,navController: NavContr
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-
-
                         // ช่องกรอกชื่อ
                         TextField(
                             value = name,
@@ -281,39 +314,36 @@ fun ParticipantScreen(accountViewModel: AccountViewModel,navController: NavContr
                         )
                     }
 
-                }
+                    Row(
+                        horizontalArrangement = Arrangement.End,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        TextButton(onClick = {
+                            isEditDialogVisible = false
+                        }, modifier = Modifier.padding(top = 16.dp)) {
+                            Text("Cancel", color = Color.White)
+                        }
 
-                        Row(
-                            horizontalArrangement = Arrangement.End,
-                            modifier = Modifier.fillMaxWidth()
+                        TextButton(
+                            onClick = {
+                                if (accountid == 1) {
+                                    // Master Password admin account - use password verification
+                                    navController.navigate("admin_verification/${accountid}?name=${name}&role=${role}&phone=${phone}")
+                                } else {
+                                    // Normal user account - show face verification overlay
+                                    showFaceVerification = true
+                                }
+                                isEditDialogVisible = false // Close the dialog
+                            },
+                            modifier = Modifier
+                                .padding(start = 8.dp, top = 16.dp)
+                                .background(Color.White, shape = RoundedCornerShape(8.dp))
                         ) {
-                            TextButton(onClick = {
-                                isEditDialogVisible = false
-                            }, modifier = Modifier.padding(top = 16.dp)) {
-                                Text("Cancel", color = Color.White)
-                            }
-
-                            TextButton(
-                                onClick = {
-                                    if (accountid == 1) {
-                                        // Master Password admin account - use password verification
-                                        navController.navigate("admin_verification/${accountid}?name=${name}&role=${role}&phone=${phone}")
-                                    } else {
-                                        // Normal user account - use face verification
-                                        navController.navigate("face_verification/${accountid}?name=${name}&role=${role}&phone=${phone}")
-                                    }
-                                    isEditDialogVisible = false // Close the dialog
-                                },
-                                modifier = Modifier
-                                    .padding(start = 8.dp, top = 16.dp)
-                                    .background(Color.White, shape = RoundedCornerShape(8.dp))
-                            ) {
-                                Text("Continue", color = Color(0xFF2A3D4F))
-                            }
-
+                            Text("Continue", color = Color(0xFF2A3D4F))
                         }
                     }
                 }
             }
         }
-
+    }
+}

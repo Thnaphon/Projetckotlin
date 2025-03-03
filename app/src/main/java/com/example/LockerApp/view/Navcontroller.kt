@@ -65,6 +65,8 @@ fun LockerApp() {
         )
     )
 
+
+
 //    val lastInteractionTime = remember { mutableStateOf(System.currentTimeMillis()) }
 //    val timeoutDuration = 1 * 60 * 1000L // 1 นาที
 //    var isSessionTimeout by remember { mutableStateOf(false) }
@@ -211,6 +213,7 @@ fun LockerApp() {
                 accountViewModel = accountViewModel,
                 usageLockerViewModel = usageLockerViewModel,
                 backupViewModel = viewModel,
+                faceLoginViewModel = faceLoginViewModel,
                 accountid = accountid  // ส่ง accountid ไปใช้ใน UI
             )
         }
@@ -225,40 +228,40 @@ fun LockerApp() {
             }
         }
 
-        composable(
-            route = "face_verification/{originAccountId}?name={name}&role={role}&phone={phone}",
-            arguments = listOf(
-                navArgument("originAccountId") { type = NavType.IntType },
-                navArgument("name") { nullable = true; defaultValue = null },
-                navArgument("role") { nullable = true; defaultValue = null },
-                navArgument("phone") { nullable = true; defaultValue = null }
-            )
-        ) { backStackEntry ->
-            val originAccountId = backStackEntry.arguments?.getInt("originAccountId") ?: 0
-            val context = LocalContext.current
-            val viewModel: FaceLoginViewModel = viewModel(
-                factory = ViewModelProvider.AndroidViewModelFactory.getInstance(
-                    context.applicationContext as Application
-                )
-            )
-
-            FaceVerificationPage(
-                navController = navController,
-                viewModel = viewModel,
-                expectedAccountId = originAccountId,
-                onVerificationSuccess = {
-                    // This is called when there's no registration data
-                    // Navigate to the registration form with the verified accountId
-                    navController.navigate("registration_form/$originAccountId") {
-                        popUpTo("face_verification/$originAccountId") { inclusive = true }
-                    }
-                },
-                onVerificationFailed = {
-                    // Navigate back to main menu
-                    navController.popBackStack()
-                }
-            )
-        }
+//        composable(
+//            route = "face_verification/{originAccountId}?name={name}&role={role}&phone={phone}",
+//            arguments = listOf(
+//                navArgument("originAccountId") { type = NavType.IntType },
+//                navArgument("name") { nullable = true; defaultValue = null },
+//                navArgument("role") { nullable = true; defaultValue = null },
+//                navArgument("phone") { nullable = true; defaultValue = null }
+//            )
+//        ) { backStackEntry ->
+//            val originAccountId = backStackEntry.arguments?.getInt("originAccountId") ?: 0
+//            val context = LocalContext.current
+//            val viewModel: FaceLoginViewModel = viewModel(
+//                factory = ViewModelProvider.AndroidViewModelFactory.getInstance(
+//                    context.applicationContext as Application
+//                )
+//            )
+//
+//            FaceVerificationPage(
+//                navController = navController,
+//                viewModel = viewModel,
+//                expectedAccountId = originAccountId,
+//                onVerificationSuccess = {
+//                    // This is called when there's no registration data
+//                    // Navigate to the registration form with the verified accountId
+//                    navController.navigate("registration_form/$originAccountId") {
+//                        popUpTo("face_verification/$originAccountId") { inclusive = true }
+//                    }
+//                },
+//                onVerificationFailed = {
+//                    // Navigate back to main menu
+//                    navController.popBackStack()
+//                }
+//            )
+//        }
 
         composable(
             route = "admin_verification/{adminAccountId}?name={name}&role={role}&phone={phone}",

@@ -42,6 +42,7 @@ import com.example.LockerApp.model.CompartmentDao
 import com.example.LockerApp.model.LockerDao
 import com.example.LockerApp.viewmodel.AccountViewModel
 import com.example.LockerApp.viewmodel.BackupViewModel
+import com.example.LockerApp.viewmodel.FaceLoginViewModel
 
 import com.example.LockerApp.viewmodel.LockerViewModel
 import com.example.LockerApp.viewmodel.MqttViewModel
@@ -58,6 +59,7 @@ fun MainMenuUI(
     accountViewModel: AccountViewModel,
     usageLockerViewModel: UsageLockerViewModel,
     backupViewModel: BackupViewModel,
+    faceLoginViewModel: FaceLoginViewModel,
     accountid: Int // รับค่า accountid
 
 ) {
@@ -193,7 +195,7 @@ fun MainMenuUI(
                     CompartmentUI(lockerId = lockerId.toInt())
                 }
                 showParticipantUI -> {
-                    ParticipantScreen(accountViewModel= accountViewModel,navController = navController , accountid = accountid) // แสดงหน้า Participant ที่นี่
+                    ParticipantScreen(accountViewModel= accountViewModel,navController = navController , accountid = accountid , faceLoginViewModel = faceLoginViewModel) // แสดงหน้า Participant ที่นี่
                 }
                 showUsageHistoryScreen -> {
                     UsageHistoryScreen(accountViewModel= accountViewModel,usageLockerViewModel=  usageLockerViewModel, navController = navController) // แสดงหน้า Participant ที่นี่

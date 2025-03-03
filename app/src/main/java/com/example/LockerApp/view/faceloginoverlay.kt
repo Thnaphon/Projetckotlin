@@ -52,12 +52,11 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
-// Function to properly close camera - moved outside of the composable
+// Function close camera when out of compose
 private fun shutdownCamera(provider: ProcessCameraProvider?, executor: Executor) {
     try {
-        // Unbind all camera use cases
+        // unbind all
         provider?.unbindAll()
-        // Shutdown the executor if it's an ExecutorService
         if (executor is java.util.concurrent.ExecutorService) {
             executor.shutdown()
         }
@@ -124,7 +123,7 @@ fun FaceLoginOverlay(
                 isSuccessVisible = false
                 isFailedVisible = true
                 isLoginSuccessful = false
-                delay(2000) // Show error animation briefly
+                delay(3000) // Show error animation briefly
                 // Reset to scanning state after showing error
                 viewModel.resetToScanning()
             }
@@ -266,7 +265,7 @@ fun FaceLoginOverlay(
                                 is FaceLoginViewModel.LoginState.Success -> {
                                     val state = loginState as FaceLoginViewModel.LoginState.Success
                                     Text(
-                                        text = "ยืนยันตัวตนสำเร็จ",
+                                        text = "กำลังยืนยันตัวตน",
                                         fontSize = 20.sp,
                                         textAlign = TextAlign.Center,
                                         modifier = Modifier.padding(bottom = 8.dp)
