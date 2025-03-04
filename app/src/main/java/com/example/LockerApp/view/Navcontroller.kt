@@ -232,41 +232,6 @@ fun LockerApp() {
             }
         }
 
-//        composable(
-//            route = "face_verification/{originAccountId}?name={name}&role={role}&phone={phone}",
-//            arguments = listOf(
-//                navArgument("originAccountId") { type = NavType.IntType },
-//                navArgument("name") { nullable = true; defaultValue = null },
-//                navArgument("role") { nullable = true; defaultValue = null },
-//                navArgument("phone") { nullable = true; defaultValue = null }
-//            )
-//        ) { backStackEntry ->
-//            val originAccountId = backStackEntry.arguments?.getInt("originAccountId") ?: 0
-//            val context = LocalContext.current
-//            val viewModel: FaceLoginViewModel = viewModel(
-//                factory = ViewModelProvider.AndroidViewModelFactory.getInstance(
-//                    context.applicationContext as Application
-//                )
-//            )
-//
-//            FaceVerificationPage(
-//                navController = navController,
-//                viewModel = viewModel,
-//                expectedAccountId = originAccountId,
-//                onVerificationSuccess = {
-//                    // This is called when there's no registration data
-//                    // Navigate to the registration form with the verified accountId
-//                    navController.navigate("registration_form/$originAccountId") {
-//                        popUpTo("face_verification/$originAccountId") { inclusive = true }
-//                    }
-//                },
-//                onVerificationFailed = {
-//                    // Navigate back to main menu
-//                    navController.popBackStack()
-//                }
-//            )
-//        }
-
         composable(
             route = "admin_verification/{adminAccountId}?name={name}&role={role}&phone={phone}",
             arguments = listOf(
@@ -290,50 +255,6 @@ fun LockerApp() {
             )
         }
 
-//        composable(
-//            "registration_form/{accountId}",
-//            arguments = listOf(navArgument("accountId") { type = NavType.IntType })
-//        ) { backStackEntry ->
-//            val accountId = backStackEntry.arguments?.getInt("accountId") ?: 0
-//
-//            RegistrationForm(
-//                navController = navController,
-//                accountId = accountId
-//            )
-//        }
-
-        composable(
-            route = "face_register?name={name}&role={role}&phone={phone}/{accountid}",
-            arguments = listOf(
-                navArgument("accountid") { type = NavType.IntType },
-                navArgument("name") { defaultValue = "" },
-                navArgument("role") { defaultValue = "" },
-                navArgument("phone") { defaultValue = "" },
-            )
-        ) {
-            val accountid = it.arguments?.getInt("accountid")
-            val name = it.arguments?.getString("name") ?: ""
-            val role = it.arguments?.getString("role") ?: ""
-            val phone = it.arguments?.getString("phone") ?: ""
-
-            // Initialize FaceDetectionViewModel
-            val viewModel: FaceRegisterViewModel = viewModel(
-                factory = ViewModelProvider.AndroidViewModelFactory.getInstance(
-                    context.applicationContext as Application
-                )
-            )
-
-            if (accountid != null) {
-                FaceRegisterPage(
-                    navController = navController,
-                    viewModel = viewModel,
-                    accountid = accountid,
-                    participantName = name,
-                    participantRole = role,
-                    participantPhone = phone
-                )
-            }
-        }
 
         composable(
             route = "face_capture?name={name}&role={role}&phone={phone}/{accountid}",
