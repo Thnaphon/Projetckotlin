@@ -126,7 +126,7 @@ fun LockerApp() {
         navController = navController,
 
         startDestination = "WelcomePage"
-//        startDestination = "main_menu"
+//        startDestination = "face_capture?name=enemyspotted&role=admin&phone=0634215062/2"
     ) {
         composable("WelcomePage") {
             WelcomePage(
@@ -190,9 +190,6 @@ fun LockerApp() {
                 }
             )
         }
-
-
-
 
 
 
@@ -269,8 +266,6 @@ fun LockerApp() {
             val name = it.arguments?.getString("name") ?: ""
             val role = it.arguments?.getString("role") ?: ""
             val phone = it.arguments?.getString("phone") ?: ""
-
-            // Initialize FaceRegisterViewModel
             val viewModel: FaceRegisterViewModel = viewModel(
                 factory = ViewModelProvider.AndroidViewModelFactory.getInstance(
                     context.applicationContext as Application

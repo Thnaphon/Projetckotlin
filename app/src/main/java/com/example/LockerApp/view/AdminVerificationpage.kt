@@ -16,6 +16,8 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.LockerApp.model.KeystoreManager
 import android.widget.Toast
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 
 @Composable
 fun AdminVerificationPage(
@@ -105,7 +107,8 @@ fun AdminVerificationPage(
                 .fillMaxWidth()
                 .padding(bottom = 24.dp),
             visualTransformation = PasswordVisualTransformation(),
-            singleLine = true
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
         )
 
         Row(

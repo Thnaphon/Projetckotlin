@@ -109,7 +109,7 @@ class TFLiteFaceRecognition private constructor(context: Context) : FaceClassifi
     private val appContext = context.applicationContext
 
     private var isModelQuantized = false
-    private val THRESHOLD = 0.7f
+    private val THRESHOLD = 1.12f
 
     // Config values
     private var inputSize = 0

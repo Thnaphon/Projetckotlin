@@ -1,22 +1,17 @@
 package com.example.LockerApp.view
 
 import android.Manifest
-import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.os.Build
-import android.provider.Settings
+import android.graphics.RectF
 import android.util.Log
 import android.view.ViewGroup
-import android.view.WindowManager
+import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,11 +20,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.material.icons.Icons
+import androidx.compose.material3.Icon
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -37,7 +33,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.camera.view.PreviewView
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.navigation.NavController
+import com.example.LockerApp.R
 import com.example.LockerApp.utils.CameraManager
 import com.example.LockerApp.viewmodel.FaceRegisterViewModel
 import kotlinx.coroutines.delay
@@ -53,6 +51,7 @@ fun FaceCapturePage(
     participantPhone: String,
     accountid: Int
 ) {
+    //camera variable setup
     val context = LocalContext.current
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
@@ -60,24 +59,37 @@ fun FaceCapturePage(
     val cameraManager = remember { CameraManager(context) }
     val previewView = remember { PreviewView(context) }
 
+    //variable relate to making register
     val recognizedName by viewModel.recognizedName.observeAsState("")
     var capturingFace by remember { mutableStateOf(false) }
     var capturedFace by remember { mutableStateOf<Bitmap?>(null) }
     var countdownSeconds by remember { mutableStateOf(5) }
     var isCountingDown by remember { mutableStateOf(false) }
-    var originalBrightness by remember { mutableStateOf(-1f) }
-    val similarityCheck by viewModel.similarityCheck.observeAsState()
 
-    // Camera state management
+    //brightness of user
+    var originalBrightness by remember { mutableStateOf(-1f) }
+
+
+    // Camera state
     var isCameraActive by remember { mutableStateOf(false) }
     var cameraInitialized by remember { mutableStateOf(false) }
     var isSurfaceReady by remember { mutableStateOf(false) }
 
+    // state for face position inside rectangle
+    var faceDetected by remember { mutableStateOf(false) }
+    var isFaceWithinBoundary by remember { mutableStateOf(false) }
+    var faceRect by remember { mutableStateOf<RectF?>(null) }
+    var imageWidth by remember { mutableStateOf(0) }
+    var imageHeight by remember { mutableStateOf(0) }
+
     // Clear any previous face capture and prepare camera with proper delay
     LaunchedEffect(Unit) {
+
+        //set state is captured to mt
         viewModel.setCapturedFace(null)
+
         // Add a delay to ensure previous camera resources are released
-        delay(500)
+        delay(750)
         isCameraActive = true
         Log.d("FaceCapturePage", "Setting camera active after initialization delay")
     }
@@ -111,25 +123,26 @@ fun FaceCapturePage(
                     window.attributes = layoutParams
                 }
             }
-            // Don't shut down executor here - we'll handle this in the main DisposableEffect
         }
     }
 
     // Track face detection state to handle face changes
-    var faceDetected by remember { mutableStateOf(false) }
     var previousRecognizedName by remember { mutableStateOf("") }
 
-    // Reset state when recognizedName changes (face in/out of frame)
+    // Reset state when recognizedName changes (face in and out of frame)
     LaunchedEffect(recognizedName) {
-        // If we had a name before and now we don't, a face left the frame
+
+        // If got a name before and now no more or a face left the frame
         if (previousRecognizedName.isNotEmpty() && recognizedName.isEmpty()) {
-            // Reset counting state for new face detection
+
+            // Reset counting state for new face detection incase not save
             isCountingDown = false
+
             // Reset countdown for next face
             countdownSeconds = 5
         }
 
-        // CHANGE: Hide countdown if user is in database
+        // Hide countdown if user is in database
         if (recognizedName.isNotEmpty()) {
             isCountingDown = false
         }
@@ -138,63 +151,81 @@ fun FaceCapturePage(
         previousRecognizedName = recognizedName
     }
 
-    // Detection logic that runs continuously
-    LaunchedEffect(recognizedName, faceDetected) {
-        // Start countdown if:
-        // 1. Face is detected (faceDetected is true)
-        // 2. Face is not in database (recognizedName is empty)
-        // 3. Not already counting down
-        // 4. Not in capturing process
-        // 5. No face already captured
-        // 6. Camera is active
-        if (faceDetected &&
+    // main logic of faceboundary and face in frame
+    LaunchedEffect(isFaceWithinBoundary, recognizedName, faceDetected) {
+
+        /*
+
+            Start countdown for capture the face in sequence by if:
+         1. Face is within boundary rectangle
+         2. Face is detected (That must be face of something Error of my project is
+            you can try something weird like some cartoon character , anime and
+            some kind of something block half a face
+         3. Face is not in database (recognizedName is empty)
+         4. Not already counting down ( the state of counting down isCountingDown)
+         5. Not in capturing process
+         6. No face already captured
+         7. Camera Must active
+
+         */
+
+        if (isFaceWithinBoundary &&
+            faceDetected &&
             recognizedName.isEmpty() &&
             !isCountingDown &&
             !capturingFace &&
             capturedFace == null &&
-            isCameraActive) {
+            isCameraActive
+        ) {
 
             isCountingDown = true
             countdownSeconds = 5
 
             // Countdown loop
-            while (countdownSeconds > 0 && isCountingDown) {
+            while (countdownSeconds > 0 && isCountingDown && isFaceWithinBoundary) {
                 delay(1000)
                 countdownSeconds--
 
-                // If during countdown we detect a face in database, cancel countdown
-                if (recognizedName.isNotEmpty()) {
+                // If during countdown we detect a face in database or face leaves boundary, cancel countdown
+                if (recognizedName.isNotEmpty() || !isFaceWithinBoundary) {
                     isCountingDown = false
                     break
                 }
             }
 
-            // Auto-capture after countdown if still counting down and no match
-            if (isCountingDown && recognizedName.isEmpty()) {
+            // Auto-capture after countdown if still counting down, no match, and face within boundary
+            if (isCountingDown && recognizedName.isEmpty() && isFaceWithinBoundary) {
                 capturingFace = true
                 isCountingDown = false
             }
+        } else if (!isFaceWithinBoundary && isCountingDown) {
+            // Cancel countdown if face moves out of boundary
+            isCountingDown = false
+            countdownSeconds = 5
         }
     }
 
     // Handle auto-capture
     LaunchedEffect(capturingFace) {
         if (capturingFace) {
-            delay(200) // Small delay to ensure clear capture
+
+            // Small delay to ensure clear capture
+            delay(200)
             capturingFace = false
         }
     }
 
-    // NEW: Effect for turning off camera when face is captured
+    // Effect for turning off camera when face is captured
     // And auto-register face and navigate to main menu
     LaunchedEffect(capturedFace) {
         if (capturedFace != null) {
             isCameraActive = false
 
             // Auto-register after a short delay (to show the captured face)
-            delay(500) // 0.5 second delay to show the captured image
+            delay(2000) //delay to show the captured image
 
             capturedFace?.let { bitmap ->
+
                 // Set captured face in ViewModel
                 viewModel.setCapturedFace(bitmap)
 
@@ -206,7 +237,7 @@ fun FaceCapturePage(
                     bitmap
                 )
 
-                // Navigate back to main menu
+                // Navigate back to main menu after capture and preview
                 navController.navigate("main_menu/$accountid") {
                     popUpTo("face_register") { inclusive = true }
                 }
@@ -217,15 +248,18 @@ fun FaceCapturePage(
     // Keep track of last time a face was detected
     var lastFaceDetectionTime by remember { mutableStateOf(0L) }
 
-    // Check for face absence (if no face detected for a period)
+    // Check face
     LaunchedEffect(Unit) {
         while (true) {
+
             delay(500) // Check every half second
             val currentTime = System.currentTimeMillis()
 
             // If no face detected for more than 1 second and a face was previously detected
             if (currentTime - lastFaceDetectionTime > 1000 && faceDetected) {
                 faceDetected = false
+                isFaceWithinBoundary = false
+
                 // Reset counting state when face leaves frame
                 if (isCountingDown && capturedFace == null) {
                     isCountingDown = false
@@ -244,16 +278,18 @@ fun FaceCapturePage(
                 if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
                     == PackageManager.PERMISSION_GRANTED
                 ) {
-                    // Important: Wait longer to ensure TextureView is properly setup
                     delay(500)
 
                     // Ensure we're still active after the delay
                     if (!isCameraActive) {
-                        Log.d("FaceCapturePage", "Camera no longer active after delay, aborting setup")
+                        Log.d(
+                            "FaceCapturePage",
+                            "Camera no longer active after delay, aborting setup"
+                        )
                         return@LaunchedEffect
                     }
 
-                    // Use a coroutine to manage the camera lifecycle
+                    // Use a coroutine to manage the camera
                     scope.launch {
                         try {
                             cameraManager.startCamera(
@@ -271,20 +307,62 @@ fun FaceCapturePage(
                                         rect.height().coerceAtMost(bitmap.height - rect.top)
                                     )
 
+                                    // Set the detected dimensions
+                                    imageWidth = bitmap.width
+                                    imageHeight = bitmap.height
+
                                     // Update face detection state and timestamp
                                     faceDetected = true
                                     lastFaceDetectionTime = System.currentTimeMillis()
 
-                                    // Always perform recognition
+                                    // Update face rectangle
+                                    faceRect = RectF(
+                                        rect.left.toFloat(),
+                                        rect.top.toFloat(),
+                                        rect.right.toFloat(),
+                                        rect.bottom.toFloat()
+                                    )
+
+                                    // Check if face is within boundary rectangle
+                                    val boundaryRect = RectF(
+                                        bitmap.width * 0.25f,  // 25% from left
+                                        bitmap.height * 0.1f,  // 10% from top
+                                        bitmap.width * 0.75f,  // 75% from left (50% width)
+                                        bitmap.height * 0.9f   // 90% from top (80% height)
+                                    )
+
+                                    // Update boundary state
+                                    isFaceWithinBoundary = boundaryRect.contains(
+                                        rect.left.toFloat(),
+                                        rect.top.toFloat(),
+                                        rect.right.toFloat(),
+                                        rect.bottom.toFloat()
+                                    )
+
+                                    // perform recognition all time
                                     viewModel.recognizeFace(faceBitmap)
 
                                     // If capture is requested, save the face
                                     if (capturingFace) {
-                                        // Create a clean scaled copy for registration
-                                        val scaledBitmap = Bitmap.createScaledBitmap(faceBitmap, 250, 250, false)
+                                        val scaledBitmap =
+                                            Bitmap.createScaledBitmap(faceBitmap, 250, 250, false)
                                         capturedFace = scaledBitmap
                                         isCountingDown = false
                                     }
+                                },
+                                onInsufficientLandmarks = {
+                                    // Handle the case when not all facial landmarks are detected
+                                    faceDetected = false
+                                    capturingFace = false
+
+                                    // You can add a UI update here, for example:
+                                        Toast.makeText(
+                                            context,
+                                            "Not enough facial information detected",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+
+                                    // Reset any ongoing processes if needed
                                 }
                             )
                             cameraInitialized = true
@@ -298,6 +376,7 @@ fun FaceCapturePage(
                 }
             } catch (e: Exception) {
                 Log.e("FaceCapturePage", "Error initializing camera: ${e.message}", e)
+
                 // Try to recover after a delay
                 delay(1000)
                 isCameraActive = true
@@ -306,13 +385,13 @@ fun FaceCapturePage(
         }
     }
 
-    // Prevent any rapid changes to camera while navigating
+    // ป้องกันถูกเรียกซ้ำๆ
     DisposableEffect(key1 = Unit) {
         onDispose {
-            Log.d("FaceCapturePage", "Disposing FaceCapturePage - ensuring clean camera shutdown")
+            Log.d("FaceCapturePage", "ensuring clean camera shutdown")
             isCameraActive = false
 
-            // Give time for camera resources to be released properly
+            // หน่วงเวลาให้กล้องไม่เกิดข้อผิดพลาด
             scope.launch {
                 delay(300)
                 cameraExecutor.shutdown()
@@ -320,213 +399,280 @@ fun FaceCapturePage(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        // Camera Preview - only show when active
-        if (isCameraActive) {
-            AndroidView(
-                factory = {
-                    previewView.apply {
-                        layoutParams = ViewGroup.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.MATCH_PARENT
-                        )
-                        // Use PERFORMANCE mode for more stable camera handling
-                        implementationMode = PreviewView.ImplementationMode.PERFORMANCE
-                        scaleType = PreviewView.ScaleType.FILL_CENTER
-                    }
-                    previewView
-                },
-                modifier = Modifier.fillMaxSize(),
-                // This update function helps ensure the previewView stays connected
-                update = { view ->
-                    if (isCameraActive && !isSurfaceReady) {
-                        isSurfaceReady = true
-                        Log.d("FaceCapturePage", "PreviewView surface ready")
-                    }
-                }
-            )
-        }
-
-        // Overlay UI
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+    // Design layout
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+    ) {
+        Card(
+            modifier = Modifier.fillMaxSize(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
-            // Title
-            Text(
-                text = "Face Capture",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                modifier = Modifier
-                    .background(
-                        Color.Black.copy(alpha = 0.6f),
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Face guide outline with captured face or countdown
-            Box(
-                modifier = Modifier
-                    .size(250.dp)
-                    .clip(CircleShape)
-                    .border(
-                        width = 4.dp,
-                        color = when {
-                            capturedFace != null -> Color.Green
-                            recognizedName.isNotEmpty() -> Color.Red
-                            isCountingDown -> Color(0xFFFFA000) // Amber
-                            else -> Color.White
-                        },
-                        shape = CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                if (capturedFace != null) {
-                    // Show captured face image
-                    Image(
-                        bitmap = capturedFace!!.asImageBitmap(),
-                        contentDescription = "Captured Face",
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else if (isCountingDown && recognizedName.isEmpty()) {
-                    // CHANGE: Only show countdown when not recognized in database
-                    Text(
-                        text = countdownSeconds.toString(),
-                        fontSize = 64.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Status message
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.Black.copy(alpha = 0.7f)
-                )
-            ) {
+            Box(modifier = Modifier.fillMaxSize()) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    when {
-                        capturedFace != null -> {
-                            Text(
-                                text = "Face Captured!",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Green
-                            )
-                            Text(
-                                text = "Ready to register $participantName",
-                                fontSize = 16.sp,
-                                color = Color.White,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                        recognizedName.isNotEmpty() -> {
-                            Text(
-                                text = "Face Already Registered",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Red
-                            )
-                            Text(
-                                text = "This face is already registered as: $recognizedName",
-                                fontSize = 16.sp,
-                                color = Color.White,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                        isCountingDown -> {
-                            Text(
-                                text = "New Face Detected",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFFFFA000) // Amber
-                            )
-                            Text(
-                                text = "Auto-capturing in $countdownSeconds seconds...",
-                                fontSize = 16.sp,
-                                color = Color.White,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                        else -> {
-                            Text(
-                                text = if (!cameraInitialized && isCameraActive)
-                                    "Initializing Camera..."
-                                else "Looking for Face...",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                            Text(
-                                text = "Please center your face in the circle",
-                                fontSize = 16.sp,
-                                color = Color.White,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-                }
-            }
 
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Bottom buttons row
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                Button(
-                    onClick = { navController.popBackStack() },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Red.copy(alpha = 0.8f)
-                    ),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Cancel")
-                }
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                if (capturedFace == null) {
-                    Button(
-                        onClick = { capturingFace = true },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Blue.copy(alpha = 0.8f)
-                        ),
-                        modifier = Modifier.weight(1f)
+                    // Header
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Capture Now")
-                    }
-                } else {
-                    // Progress indicator to show auto-registration is happening
-                    CircularProgressIndicator(
-                        color = Color.Green,
-                        modifier = Modifier.weight(1f)
-                    )
+                        Button(
+                            onClick = { navController.navigate("main_menu/$accountid") },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF3F51B5)
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(8.dp),
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
 
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Text(
+                            text = "Face Recognition",
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.Black
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .padding(16.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                    ) {
+                        Column {
+                            // Camera preview card
+                            Row(modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth(0.85f)
+                                        .fillMaxHeight(0.75f),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .fillMaxWidth()
+                                            .padding(16.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(color = Color.DarkGray)
+                                            .align(Alignment.CenterHorizontally),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        // Camera preview code...
+                                        if (isCameraActive) {
+                                            AndroidView(
+                                                factory = {
+                                                    previewView.apply {
+                                                        layoutParams = ViewGroup.LayoutParams(
+                                                            ViewGroup.LayoutParams.MATCH_PARENT,
+                                                            ViewGroup.LayoutParams.MATCH_PARENT
+                                                        )
+                                                        implementationMode = PreviewView.ImplementationMode.PERFORMANCE
+                                                        scaleType = PreviewView.ScaleType.FILL_CENTER
+                                                    }
+                                                    previewView
+                                                },
+                                                modifier = Modifier.fillMaxSize(),
+                                                update = { view ->
+                                                    if (isCameraActive && !isSurfaceReady) {
+                                                        isSurfaceReady = true
+                                                        Log.d("FaceCapturePage", "PreviewView surface ready")
+                                                    }
+                                                }
+                                            )
+                                        }
+
+                                        // apply face to boundary
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(400.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            val overlayResId = when {
+                                                recognizedName.isNotEmpty() && isFaceWithinBoundary -> R.drawable.rectangleerror
+                                                isFaceWithinBoundary -> R.drawable.rectangleok
+                                                else -> R.drawable.rectangle
+                                            }
+
+                                            Image(
+                                                painter = painterResource(id = overlayResId),
+                                                contentDescription = "Face alignment boundary",
+                                                modifier = Modifier.fillMaxSize(),
+                                                contentScale = ContentScale.Fit
+                                            )
+
+                                            if (isCountingDown && recognizedName.isEmpty()) {
+                                                Text(
+                                                    text = countdownSeconds.toString(),
+                                                    fontSize = 64.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color.White,
+                                                    modifier = Modifier
+                                                        .background(
+                                                            Color.Black.copy(alpha = 0.6f),
+                                                            RoundedCornerShape(16.dp)
+                                                        )
+                                                        .padding(horizontal = 24.dp, vertical = 16.dp)
+                                                )
+                                            }
+
+                                            capturedFace?.let { bitmap ->
+                                                Image(
+                                                    bitmap = bitmap.asImageBitmap(),
+                                                    contentDescription = "Captured Face",
+                                                    modifier = Modifier
+                                                        .size(250.dp)
+                                                        .clip(RoundedCornerShape(8.dp))
+                                                        .border(4.dp, Color.Green, RoundedCornerShape(8.dp)),
+                                                    contentScale = ContentScale.Crop
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Status messages row
+                            Row {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (isCountingDown || !cameraInitialized || (faceDetected && !isFaceWithinBoundary && recognizedName.isEmpty()) || capturedFace != null) {
+                                        Card(
+                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                        ) {
+                                            Column(
+                                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                                horizontalAlignment = Alignment.CenterHorizontally
+                                            ) {
+                                                when {
+                                                    capturedFace != null -> {
+                                                        Text(
+                                                            text = "จัดเก็บใบหน้าของ!",
+                                                            fontSize = 22.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = Color.Green
+                                                        )
+                                                        Text(
+                                                            text = "กำลังบันทึกข้อมูลของ $participantName",
+                                                            fontSize = 18.sp,
+                                                            color = Color.Black,
+                                                            textAlign = TextAlign.Center
+                                                        )
+                                                    }
+                                                    isCountingDown -> {
+                                                        Text(
+                                                            text = "กำลังจะบันทึกข้อมูล",
+                                                            fontSize = 22.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = Color(0xFFA15600)
+                                                        )
+                                                        Text(
+                                                            text = "ท่านกำลังจะถูกเก็บใบหน้าในอีก $countdownSeconds วินาที...",
+                                                            fontSize = 18.sp,
+                                                            color = Color.Black,
+                                                            textAlign = TextAlign.Center
+                                                        )
+                                                    }
+                                                    faceDetected && !isFaceWithinBoundary -> {
+                                                        Text(
+                                                            text = "ใบหน้าไม่อยู่ในกรอบ",
+                                                            fontSize = 22.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = Color(0xFFA15600)
+                                                        )
+                                                        Text(
+                                                            text = "โปรดจัดตำแหน่งใบหน้าของท่านให้อยู่ในกรอบ",
+                                                            fontSize = 18.sp,
+                                                            color = Color.Black,
+                                                            textAlign = TextAlign.Center
+                                                        )
+                                                    }
+                                                    !cameraInitialized && isCameraActive -> {
+                                                        Text(
+                                                            text = "กำลังรอกล้องใช้งาน...",
+                                                            fontSize = 22.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = Color.Black
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if (capturedFace == null) {
+                                        if ((recognizedName.isNotEmpty() && isFaceWithinBoundary) || (recognizedName.isNotEmpty() && !isFaceWithinBoundary)) {
+                                            Card(
+                                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                            ) {
+                                                Column(
+                                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                                    horizontalAlignment = Alignment.CenterHorizontally
+                                                ) {
+                                                    when {
+                                                        faceDetected -> {
+                                                            Text(
+                                                                text = "ทำรายการไม่ได้",
+                                                                fontSize = 22.sp,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = Color.Red
+                                                            )
+                                                            Text(
+                                                                text = "ชื่อผู้ใช้งานในระบบของท่านคือ : $recognizedName",
+                                                                fontSize = 18.sp,
+                                                                color = Color.Red,
+                                                                textAlign = TextAlign.Center
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Fixed bottom text Logo
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 32.dp)
+                ) {
                     Text(
-                        text = "Registering...",
-                        color = Color.White,
-                        fontSize = 16.sp,
-                        modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.Center
+                        text = "Face Authentication For Locker Borrowing",
+                        fontSize = 36.sp,
+                        color = Color.Black,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
