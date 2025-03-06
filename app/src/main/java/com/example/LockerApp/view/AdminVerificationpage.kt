@@ -23,6 +23,8 @@ import androidx.compose.ui.text.input.KeyboardType
 fun AdminVerificationPage(
     navController: NavController,
     adminAccountId: Int,
+    adminname : String,
+    adminrole : String,
     name: String?,
     role: String?,
     phone: String?
@@ -143,7 +145,7 @@ fun AdminVerificationPage(
                                     name.isNotEmpty() && role.isNotEmpty() && phone.isNotEmpty()) {
                                     // If we have user data, go to face capture page
                                     navController.navigate(
-                                        "face_capture?name=$name&role=$role&phone=$phone/$adminAccountId"
+                                        "face_capture/$adminAccountId/$adminname/$adminname?name=$name&role=$role&phone=$phone/"
                                     ) {
                                         popUpTo("admin_verification/$adminAccountId") { inclusive = true }
                                     }

@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material.Icon
@@ -12,15 +11,65 @@ import androidx.compose.material.IconButton
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
 import androidx.compose.material.TextField
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.LockerApp.view.FaceVerificationOverlay
+import com.example.LockerApp.viewmodel.FaceLoginViewModel
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.AlertDialog
+import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
+import androidx.compose.material.Divider
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material3.Card
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Text
+import androidx.compose.material.TextButton
+import androidx.compose.material.TextField
+import androidx.compose.material.TextFieldDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Group
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.PersonAdd
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
@@ -28,19 +77,25 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.LockerApp.model.Account
 import com.example.LockerApp.model.AccountDao
-import com.example.LockerApp.view.FaceVerificationOverlay
+import com.example.LockerApp.model.ManageAccount
+import com.example.LockerApp.view.DropdownLocker
 import com.example.LockerApp.viewmodel.AccountViewModel
-import com.example.LockerApp.viewmodel.FaceLoginViewModel
+import com.example.LockerApp.viewmodel.LockerViewModel
+import com.example.LockerApp.viewmodel.ManageAccountViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+
 
 @Composable
 fun ParticipantScreen(
@@ -48,6 +103,9 @@ fun ParticipantScreen(
     navController: NavController,
     faceLoginViewModel: FaceLoginViewModel,
     accountid: Int,
+    adminname: String,
+    adminrole: String,
+    viewModel: LockerViewModel
 ) {
     var isEditDialogVisible by remember { mutableStateOf(false) }
     var isEditMode by remember { mutableStateOf(false) }
@@ -79,6 +137,8 @@ fun ParticipantScreen(
             navController = navController,
             viewModel = faceLoginViewModel,
             expectedAccountId = accountid,
+            adminname = adminname,
+            adminrole = adminrole,
             name = name,
             role = role,
             phone = phone,
@@ -201,7 +261,9 @@ fun ParticipantScreen(
                             ) {
                                 Text(
                                     "Name",
-                                    Modifier.weight(1f).padding(start = 16.dp),
+                                    Modifier
+                                        .weight(1f)
+                                        .padding(start = 16.dp),
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 16.sp
                                 )
@@ -235,7 +297,12 @@ fun ParticipantScreen(
                                     .fillMaxWidth()
                                     .padding(vertical = 8.dp)
                             ) {
-                                Text(user.Name, Modifier.weight(1f).padding(start = 16.dp))
+                                Text(
+                                    user.Name,
+                                    Modifier
+                                        .weight(1f)
+                                        .padding(start = 16.dp)
+                                )
                                 Text(user.Role, Modifier.weight(1f))
                                 Text(user.Phone, Modifier.weight(1f))
                                 Text(user.CreatedDate, Modifier.weight(1f))
@@ -328,7 +395,7 @@ fun ParticipantScreen(
                             onClick = {
                                 if (accountid == 1) {
                                     // Master Password admin account - use password verification
-                                    navController.navigate("admin_verification/${accountid}?name=${name}&role=${role}&phone=${phone}")
+                                    navController.navigate("admin_verification/$accountid/$adminname/$adminrole?name=${name}&role=${role}&phone=${phone}")
                                 } else {
                                     // Normal user account - show face verification overlay
                                     showFaceVerification = true

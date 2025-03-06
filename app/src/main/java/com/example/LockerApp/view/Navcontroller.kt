@@ -66,7 +66,6 @@ fun LockerApp() {
     )
 
 
-
 //    val lastInteractionTime = remember { mutableStateOf(System.currentTimeMillis()) }
 //    val timeoutDuration = 1 * 60 * 1000L // 1 นาที
 //    var isSessionTimeout by remember { mutableStateOf(false) }
@@ -117,8 +116,6 @@ fun LockerApp() {
 //    }
 
 
-
-
     // ฟังก์ชันที่จัดการการโต้ตอบ
 
 
@@ -145,7 +142,8 @@ fun LockerApp() {
             UsageHistoryScreen(
                 accountViewModel = accountViewModel,
                 usageLockerViewModel = usageLockerViewModel,
-                navController = navController
+                navController = navController,
+                viewModel = lockerViewModel
             )
         }
         composable(
@@ -194,12 +192,17 @@ fun LockerApp() {
 
 
         composable(
-            "main_menu/{accountid}",
-            arguments = listOf(navArgument("accountid") { type = NavType.IntType })
+            "main_menu/{accountid}/{name}/{role}",
+            arguments = listOf(
+                navArgument("accountid") { type = NavType.IntType },
+                navArgument("name") { type = NavType.StringType },
+                navArgument("role") { type = NavType.StringType }
+            )
         ) { backStackEntry ->
             // ดึง accountid จาก arguments ที่ส่งมาจาก route
             val accountid = backStackEntry.arguments?.getInt("accountid") ?: 0
-
+            val name = backStackEntry.arguments?.getString("name") ?: "Unknown"
+            val role = backStackEntry.arguments?.getString("role") ?: "Unknown"
             MainMenuUI(
                 viewModel = lockerViewModel,
                 onNavigateToMqtt = { navController.navigate("mqtt_screen") },
@@ -211,11 +214,15 @@ fun LockerApp() {
                 usageLockerViewModel = usageLockerViewModel,
                 backupViewModel = viewModel,
                 faceLoginViewModel = faceLoginViewModel,
-                accountid = accountid  // ส่ง accountid ไปใช้ใน UI
+                accountid = accountid,  // ส่ง accountid ไปใช้ใน UI
+                context = context,
+                nameUser = name,
+                role = role
             )
         }
 
-        composable("compartment_screen/{lockerId}/{accountid}",
+        composable(
+            "compartment_screen/{lockerId}/{accountid}",
             arguments = listOf(navArgument("accountid") { type = NavType.IntType })
         ) { backStackEntry ->
             val lockerId = backStackEntry.arguments?.getString("lockerId")?.toIntOrNull()
@@ -224,45 +231,57 @@ fun LockerApp() {
                 CompartmentUI(
                     lockerId = lockerId,
                     viewModel = lockerViewModel,
-                    accountid= accountid
+                    accountid = accountid
                 ) // ส่ง LockerViewModel
             }
         }
 
         composable(
-            route = "admin_verification/{adminAccountId}?name={name}&role={role}&phone={phone}",
+            route = "admin_verification/{adminAccountId}/{adminname}/{adminrole}?name={name}&role={role}&phone={phone}",
             arguments = listOf(
                 navArgument("adminAccountId") { type = NavType.IntType },
+                navArgument("adminname") { nullable = true; defaultValue = null },
+                navArgument("adminrole") { nullable = true; defaultValue = null },
                 navArgument("name") { nullable = true; defaultValue = null },
                 navArgument("role") { nullable = true; defaultValue = null },
                 navArgument("phone") { nullable = true; defaultValue = null }
             )
         ) { backStackEntry ->
             val adminAccountId = backStackEntry.arguments?.getInt("adminAccountId") ?: 0
+            val adminname = backStackEntry.arguments?.getString("adminname")
+            val adminrole = backStackEntry.arguments?.getString("adminrole")
             val name = backStackEntry.arguments?.getString("name")
             val role = backStackEntry.arguments?.getString("role")
             val phone = backStackEntry.arguments?.getString("phone")
 
-            AdminVerificationPage(
-                navController = navController,
-                adminAccountId = adminAccountId,
-                name = name,
-                role = role,
-                phone = phone
-            )
+            if (adminname != null && adminrole != null) {
+                AdminVerificationPage(
+                    navController = navController,
+                    adminAccountId = adminAccountId,
+                    adminname = adminname,
+                    adminrole = adminrole,
+                    name = name,
+                    role = role,
+                    phone = phone
+                )
+            }
         }
 
 
         composable(
-            route = "face_capture?name={name}&role={role}&phone={phone}/{accountid}",
+            route = "face_capture/{accountid}/{adminname}/{adminrole}?name={name}&role={role}&phone={phone}",
             arguments = listOf(
                 navArgument("accountid") { type = NavType.IntType },
+                navArgument("adminname") { defaultValue = "" },
+                navArgument("adminrole") { defaultValue = "" },
                 navArgument("name") { defaultValue = "" },
                 navArgument("role") { defaultValue = "" },
                 navArgument("phone") { defaultValue = "" }
             )
         ) {
             val accountid = it.arguments?.getInt("accountid")
+            val adminname = it.arguments?.getString("adminname") ?: ""
+            val adminrole = it.arguments?.getString("adminrole") ?: ""
             val name = it.arguments?.getString("name") ?: ""
             val role = it.arguments?.getString("role") ?: ""
             val phone = it.arguments?.getString("phone") ?: ""
@@ -277,6 +296,8 @@ fun LockerApp() {
                     navController = navController,
                     viewModel = viewModel,
                     accountid = accountid,
+                    adminname = adminname,
+                    adminrole = adminrole,
                     participantName = name,
                     participantRole = role,
                     participantPhone = phone

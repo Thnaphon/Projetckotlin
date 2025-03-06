@@ -41,7 +41,8 @@ data class Locker(
 data class Compartment(
     @PrimaryKey(autoGenerate = true) val CompartmentID: Int=0,
     val number_compartment: Int,
-    val Status: String,
+    val usagestatus: String,
+    val status: String,
     val LockerID: Int,
     val Name_Item: String,
     val pic_item: String
@@ -203,8 +204,21 @@ interface LockerDao {
     @Query("UPDATE locker SET status = :newStatus WHERE LockerID = :lockerID")
     suspend fun updateLockerStatus(lockerID: Int, newStatus: String)
 
+    @Query("UPDATE locker SET Lockername = :newNamelocker , detail = :newDetail,status = :newStatus WHERE LockerID = :lockerID")
+    suspend fun updateLocker(lockerID: Int, newStatus: String, newNamelocker: String, newDetail : String)
+
     @Query("SELECT * FROM locker ORDER BY LockerID DESC LIMIT 1")
     suspend fun getLastInsertedLocker(): Locker?
+
+    @Query("DELETE FROM locker WHERE LockerID = :lockerId")
+    suspend fun deleteLocker(lockerId: Int)
+
+    @Query("SELECT TokenTopic FROM locker")
+    suspend fun getAllLockerToekns(): List<String>
+
+    @Query("SELECT COUNT(*) FROM Locker WHERE LockerID = :lockerId")
+    suspend fun getLockerCountById(lockerId: Int): Int
+
 }
 
 // DAO สำหรับ Compartment
@@ -216,18 +230,23 @@ interface CompartmentDao {
     @Query("SELECT * FROM compartment WHERE LockerID = :lockerId")
     suspend fun getCompartmentsByLocker(lockerId: Int): List<Compartment>
 
+    @Query("SELECT * FROM compartment")
+    suspend fun getAllcompartments(): List<Compartment>
+
     @Query("SELECT LockerID FROM compartment WHERE CompartmentID = :compartmentId LIMIT 1")
     suspend fun getLockerIdByCompartmentId(compartmentId: Int): Int?
 
-    @Query("UPDATE compartment SET Name_Item = :newName, pic_item = :newPic WHERE CompartmentID = :compartmentID AND LockerID = :lockerID")
+    @Query("UPDATE compartment SET Name_Item = :newName, pic_item = :newPic ,number_compartment=:numCompartmen,status=:newStatus WHERE CompartmentID = :compartmentID AND LockerID = :lockerID")
     suspend fun updateCompartment(
         compartmentID: Int,
         newName: String,
         newPic: String, // ชื่อไฟล์ของภาพใหม่
-        lockerID: Int
+        lockerID: Int,
+        newStatus: String,
+        numCompartmen : Int
     )
 
-    @Query("UPDATE compartment SET Status = :newStatus WHERE CompartmentID = :compartmentID AND LockerID = :lockerID")
+    @Query("UPDATE compartment SET usagestatus = :newStatus WHERE CompartmentID = :compartmentID AND LockerID = :lockerID")
     suspend fun updateCompartmentStatus(compartmentID: Int, newStatus: String, lockerID: Int)
 
     @Query("SELECT COUNT(*) FROM locker WHERE LockerID = :lockerID")
@@ -244,10 +263,19 @@ interface CompartmentDao {
     fun getLastCompartmentId(): LiveData<Int?>
 
     @Query("SELECT number_compartment FROM compartment WHERE LockerID = :lockerId")
-    suspend fun getAllCompartmentsNum(lockerId: Int): List<Int>
+    suspend fun getAllCompartmentsNumbyLockerId(lockerId: Int): List<Int>
+
+    @Query("SELECT number_compartment FROM compartment ")
+    suspend fun getAllCompartmentsNum(): List<Int>
 
     @Query("SELECT CompartmentID FROM compartment WHERE LockerID = :lockerId AND number_compartment = :number_compartment")
     suspend fun getCompartmentId(lockerId: Int, number_compartment: Int): Int
+
+    @Query("SELECT * FROM compartment ORDER BY CompartmentID DESC LIMIT 1")
+    suspend fun getLastInsertedCompartment(): Compartment?
+
+    @Query("SELECT * FROM compartment WHERE CompartmentID = :compartmentId")
+    suspend fun getCompartmentsBycompartmentId(compartmentId:Int): List<Compartment>
 }
 
 

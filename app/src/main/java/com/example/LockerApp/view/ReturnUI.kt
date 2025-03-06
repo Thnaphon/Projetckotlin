@@ -1,6 +1,7 @@
 package com.example.LockerApp.view
 
 import android.util.Log
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -10,12 +11,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -50,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewModelScope
@@ -74,9 +78,7 @@ fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLocke
     val lockers by viewModel.lockers.collectAsState() // ใช้ StateFlow ในการเก็บค่า locker
     val compartments by viewModel.getCompartmentsByLocker(selectedLocker).collectAsState(initial = emptyList())
     var statusMessage by remember { mutableStateOf("") }
-
     var expanded by remember { mutableStateOf(false) }
-    val compartmentIds by viewModel.getAllCompartmentIds().observeAsState(initial = emptyList())
     var isWaitingForClose by remember { mutableStateOf(false) }
     val compartmentNumber by viewModel.getAllCompartmentNumber(selectedLocker).observeAsState(initial = emptyList())
 
@@ -94,25 +96,30 @@ fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLocke
         }
     }
 
+
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("Return", style = MaterialTheme.typography.h4)
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Top
 
+    ) {
+        Text("Borrow", style = MaterialTheme.typography.h5.copy(fontWeight = FontWeight.Bold), color = Color.Black)
+
+        Spacer(modifier = Modifier.height(10.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("${compartments.size} Compartments", style = MaterialTheme.typography.body1)
+            Text("${compartments.size} Compartments", style = MaterialTheme.typography.h6.copy(fontWeight = FontWeight.SemiBold), color = Color.Black)
 
             ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
                 Box(
                     modifier = Modifier
-                        .width(150.dp)
+                        .wrapContentWidth()
                         .height(48.dp) // ตั้งค่าความสูงให้เหมือนปุ่ม
                         .border(2.dp, Color.Black, RoundedCornerShape(15.dp)) // เพิ่มขอบมน
                         .clickable { expanded = true }
@@ -136,7 +143,8 @@ fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLocke
                 }
                 ExposedDropdownMenu(
                     expanded = expanded,
-                    onDismissRequest = { expanded = false }
+                    onDismissRequest = { expanded = false },
+                    modifier = Modifier.wrapContentSize()
                 ) {
                     lockers.forEach { locker ->
                         DropdownMenuItem(onClick = {
@@ -155,13 +163,13 @@ fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLocke
                 }
             }
         }
-        Spacer(modifier = Modifier.height(20.dp))
+
 
         LazyVerticalGrid(
             modifier = Modifier.width(1000.dp),
             columns = GridCells.Fixed(4), // กำหนดจำนวนคอลัมน์เป็น 3
             content = {
-                items(compartments.filter { it.Status == "borrowed" }) { compartment ->
+                items(compartments.filter { it.usagestatus == "borrowed" && it.status == "available" }) { compartment ->
                     CompartmentCardReturn(
                         compartment = compartment,
                         mqttViewModel = mqttViewModel,  // ส่ง mqttViewModel
@@ -178,6 +186,8 @@ fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLocke
 
     }
 }
+
+
 
 @Composable
 fun CompartmentCardReturn(
@@ -196,11 +206,8 @@ fun CompartmentCardReturn(
 
     var Topic = remember { mutableStateOf(" ") }
 
-    LaunchedEffect(mqttData) {
-        Log.d("mqttData", "MQTT Topic: ${mqttData.first}, Message: ${mqttData.second}")
-    }
 
-    // Run background task using Dispatchers.IO to avoid blocking UI
+
 
     LaunchedEffect(mqttData) {
         Log.d("mqttData", "MQTT Topic: ${mqttData.first}, Message: ${mqttData.second}")
@@ -209,7 +216,7 @@ fun CompartmentCardReturn(
             val usageTime = System.currentTimeMillis().toString()
             val topicMap = mapOf(
                 "token" to splitData[0],
-                "action" to splitData[1] ,
+                "action" to splitData[1],
                 "compartmentId" to splitData[2].toInt(),
                 "status" to splitData[3]
             )
@@ -244,6 +251,10 @@ fun CompartmentCardReturn(
     }
 
 
+
+
+
+
     Card(
         shape = RoundedCornerShape(15.dp),
         modifier = Modifier
@@ -251,140 +262,154 @@ fun CompartmentCardReturn(
             .height(320.dp),
         elevation = 4.dp
     ) {
-        Column {
+        Box {
 
+            Column {
 
-            Column(
-                verticalArrangement = Arrangement.Top,
-            ) {
-                val imageFile = File(compartment.pic_item)
-                Box(
-                    modifier = Modifier
-                        .width(280.dp)  // กำหนดขนาดรูปภาพ
-                        .height(225.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (imageFile.exists()) {
-                        Image(
-                            painter = rememberImagePainter(imageFile),
-                            contentDescription = "Item Image",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop // ปรับให้ภาพเต็มพื้นที่ที่กำหนด
-                        )
-                    }
-                }
 
                 Column(
-                    modifier = Modifier.padding(16.dp)
+                    verticalArrangement = Arrangement.Top,
                 ) {
-                    Text(
-                        "Locker ${compartment.LockerID} | Compartment ${compartment.CompartmentID}",
-                        style = MaterialTheme.typography.body2
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
+                    val imageFile = File(compartment.pic_item)
+                    Box(
+                        modifier = Modifier
+                            .width(280.dp)  // กำหนดขนาดรูปภาพ
+                            .height(225.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = "${compartment.Name_Item}",
-                            style = MaterialTheme.typography.h5
-                        )
-
-                        Spacer(modifier = Modifier.weight(1f))
-
-                        Icon(
-                            imageVector = Icons.Outlined.FileUpload,
-                            contentDescription = "Upload Icon",
-                            modifier = Modifier
-                                .size(45.dp)
-                                .clickable { showDialog = true }, // กดแล้วเปิด Dialog
-                            tint = Color(0xFF3961AA)
-                        )
+                        if (imageFile.exists()) {
+                            Image(
+                                painter = rememberImagePainter(imageFile),
+                                contentDescription = "Item Image",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop // ปรับให้ภาพเต็มพื้นที่ที่กำหนด
+                            )
+                        }
                     }
 
-                }
-            }
-        }
-
-        if (showDialog) {
-            Column(
-                modifier = Modifier
-                    .width(280.dp)  // กำหนดขนาดรูปภาพ
-                    .height(50.dp)
-                ,
-                verticalArrangement = Arrangement.Bottom,
-                horizontalAlignment = Alignment.CenterHorizontally
-
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Color(0xFF2A3D4F),
-                            shape = RoundedCornerShape(15.dp)
-                        )
-
-
-                ) {
                     Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(5.dp)
+                        modifier = Modifier.padding(16.dp)
                     ) {
-                        Text(
-                            text = "Do you want to return?",
-                            style = MaterialTheme.typography.body1.copy(fontSize = 13.sp),
-                            color = Color.White,
-
+                        Row (Modifier.wrapContentSize().padding(bottom = 8.dp)){
+                            Text(
+                                "Locker ${compartment.LockerID} | Compartment ${compartment.number_compartment}",
+                                fontSize = 13.sp
                             )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        }
+
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
+
+                            ) {
+                            Text(
+                                text = "${compartment.Name_Item}",
+                                style = MaterialTheme.typography.h5
+                            )
+
+                            Spacer(modifier = Modifier.weight(1f))
+
+                            Icon(
+                                imageVector = Icons.Outlined.FileUpload,
+                                contentDescription = "Upload Icon",
+                                modifier = Modifier
+                                    .size(45.dp)
+                                    .clickable { showDialog = !showDialog }, // กดแล้วเปิด Dialog
+                                tint = Color(0xFF3961AA)
+                            )
+                        }
+
+                    }
+                }
+            }
+            AnimatedVisibility(visible = showDialog) {
+                Column(
+                    modifier = Modifier
+                        // กำหนดขนาดรูปภาพ
+                        .height(140.dp)
+                    ,
+                    verticalArrangement = Arrangement.Top,
+                    horizontalAlignment = Alignment.CenterHorizontally
+
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .fillMaxHeight()
+                            .background(
+                                Color(0xFF2A3D4F),
+                                shape = RoundedCornerShape(15.dp)
+                            )
+
+
+
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(top = 10.dp, start = 5.dp, end = 5.dp, bottom = 5.dp)
                         ) {
+                            Text(
+                                text = "Do you want to return?",
+                                style = MaterialTheme.typography.body1.copy(fontSize = 13.sp),
+                                color = Color.White,
 
-                            TextButton(onClick = {
+                                )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
 
-                                Log.d("....","${compartment.LockerID}")
+                                TextButton(
+                                    onClick = {
 
-                                coroutineScope.launch {
-                                    viewModel.getMqttTopicFromDatabase(compartment.LockerID)
-                                        .collect { topicMqtt -> // เปลี่ยนจาก onEach เป็น collect ตรงๆ
-                                            Log.d("return", "$topicMqtt")
-                                            topicMqtt?.let { mqttTopic ->
-                                                Topic.value = "$mqttTopic/return/${compartment.number_compartment}/status"
-                                                mqttViewModel.sendMessage("$mqttTopic/return/${compartment.number_compartment}/open", " ")
 
-                                            }
+                                        coroutineScope.launch {
+                                            viewModel.getMqttTopicFromDatabase(compartment.LockerID)
+                                                .collect { topicMqtt -> // เปลี่ยนจาก onEach เป็น collect ตรงๆ
+                                                    Log.d("return", "$topicMqtt")
+                                                    topicMqtt?.let { mqttTopic ->
+                                                        Topic.value =
+                                                            "$mqttTopic/return/${compartment.number_compartment}/status"
+                                                        mqttViewModel.sendMessage(
+                                                            "$mqttTopic/return/${compartment.number_compartment}/open",
+                                                            " "
+                                                        )
+
+                                                    }
+                                                }
                                         }
-                                }
-
 
 
 //
 
-                                showDialog = false
-                            },shape = RoundedCornerShape(8), // ขอบมน
-                                colors = ButtonDefaults.buttonColors(backgroundColor = Color.White), // สีพื้นหลัง
-                                modifier = Modifier.weight(1f)
+                                        showDialog = false
+                                    }, shape = RoundedCornerShape(8), // ขอบมน
+                                    colors = ButtonDefaults.buttonColors(backgroundColor = Color.White), // สีพื้นหลัง
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Confirm", color = Color.Black)
+                                }
+
+
+                            }
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
                             ) {
-                                Text("Confirm", color = Color.Black)
-                            }
-
-
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                        ) {
-                            TextButton(onClick = { showDialog = false }) {
-                                Text("Cancel", color = Color.White)
+                                TextButton(onClick = { showDialog = false }) {
+                                    Text("Cancel", color = Color.White)
+                                }
                             }
                         }
+
                     }
-
-
                 }
             }
         }
     }
 }
+
+
+

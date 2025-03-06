@@ -70,6 +70,8 @@ fun FaceVerificationOverlay(
     navController: NavController,
     viewModel: FaceLoginViewModel,
     expectedAccountId: Int,
+    adminname : String = "",
+    adminrole : String = "",
     name: String = "",
     role: String = "",
     phone: String = "",
@@ -132,7 +134,7 @@ fun FaceVerificationOverlay(
                     if (name.isNotEmpty() && role.isNotEmpty() && phone.isNotEmpty()) {
                         // Registration flow
                         navController.navigate(
-                            "face_capture?name=${name}&role=${role}&phone=${phone}/$expectedAccountId"
+                            "face_capture/$expectedAccountId/$adminname/$adminrole?name=${name}&role=${role}&phone=${phone}"
                         ) {
                             popUpTo("face_verification/${expectedAccountId}") { inclusive = true }
                         }

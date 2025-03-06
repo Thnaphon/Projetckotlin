@@ -62,11 +62,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.BaselineShift
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.LiveData
 import coil.compose.rememberImagePainter
@@ -130,18 +137,18 @@ fun CompartmentUI(lockerId: Int, viewModel: LockerViewModel = viewModel(),accoun
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Top
     ) {
-        Text("Compartments of Locker ID: $lockerId", style = MaterialTheme.typography.h5)
-
+        Text("Compartments of Locker ID: $lockerId", style = MaterialTheme.typography.h5.copy(fontWeight = FontWeight.Bold), color = Color.Black)
+        Spacer(modifier = Modifier.height(10.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Total Compartments: ${compartments.size}", style = MaterialTheme.typography.body1)
+            Text("Total Compartments: ${compartments.size}", style = MaterialTheme.typography.h6.copy(fontWeight = FontWeight.SemiBold), color = Color.Black)
             IconButton(onClick = { showAddCard = !showAddCard }) {
+                selectedImagePath = ""
                 Icon(Icons.Filled.Add, contentDescription = "Add Compartment")
             }
         }
-
         LazyVerticalGrid(
             columns = GridCells.Fixed(4),
             content = {
@@ -155,7 +162,8 @@ fun CompartmentUI(lockerId: Int, viewModel: LockerViewModel = viewModel(),accoun
                                 if (nameItem.isNotBlank()) {
                                     val compartment = Compartment(
                                         number_compartment = selectedCompartmentId ?: 0,
-                                        Status = "return",
+                                        usagestatus = "return",
+                                        status = "available",
                                         LockerID = lockerId,
                                         Name_Item = nameItem,
                                         pic_item = selectedImagePath
@@ -169,15 +177,21 @@ fun CompartmentUI(lockerId: Int, viewModel: LockerViewModel = viewModel(),accoun
                                     Log.d("Compartmentadd", "Compartment added: $compartment")
                                     val usageTime = System.currentTimeMillis().toString()
                                     viewModel.addCompartment(compartment,lockerId)
-                                    //logcompartment
-//                                    usageLockerViewModel.insertUsageLocker(
-//                                        lockerId,
-//                                        compartmentIdInt,
-//                                        usageTime,
-//                                        "Create Compartment",
-//                                        accountid,
-//                                        "Success"
-//                                    )
+
+                                    viewModel.getLatestCompartment { CompartmentId ->
+                                        CompartmentId?.let {
+                                            Log.d("UsageCompartment","${it.CompartmentID} /$accountid")
+                                            usageLockerViewModel.insertUsageLocker(
+                                                lockerId,
+                                                it.CompartmentID,
+                                                usageTime,
+                                                "Create Compartment",
+                                                accountid,
+                                                "Success"
+                                            )
+                                        }
+                                    }
+
                                     // Reset input fields
                                     nameItem = ""
                                     detailItem = ""
@@ -245,18 +259,20 @@ fun EditCompartmentForm(compartment: Compartment, onCancel: () -> Unit,viewModel
 
     val availableCompartments: MutableList<String> = available_compartment?.split(",")?.toMutableList() ?: mutableListOf()
     // ดึง compartmentIds ที่มีอยู่แล้วจากฐานข้อมูล
-    val allCompartmentIds by viewModel.getAllCompartmentIds().observeAsState(emptyList())
+    val compartmentsNumber by viewModel.compartmentsNumber.observeAsState(emptyList())
+    // ดึง compartmentIds ที่มีอยู่แล้วจากฐานข้อมูล
+
     // กรอง compartmentId ที่ถูกใช้ไปแล้วออก
     val availableCompartmentIds = availableCompartments.filter {
         val compartmentId = it.toIntOrNull()
-        compartmentId != null && compartmentId !in allCompartmentIds
+        compartmentId != null && compartmentId !in compartmentsNumber
     }
     var editedNameItem by remember { mutableStateOf(compartment.Name_Item) }
-    var nameItem by remember { mutableStateOf("") }
+    var nameItem by remember { mutableStateOf(compartment.Name_Item) }
     var selectedImagePath by remember { mutableStateOf(compartment.pic_item) }
     var editCompartmentTrigger by remember { mutableStateOf(false) }
-
-
+    var statusCompartment by remember { mutableStateOf(false) }
+    var updatedLockerStatus by remember { mutableStateOf("") }
     Card(
         shape = RoundedCornerShape(15.dp),
         modifier = Modifier
@@ -281,41 +297,67 @@ fun EditCompartmentForm(compartment: Compartment, onCancel: () -> Unit,viewModel
                 )
 
             }
-            Column(
-                modifier = Modifier
-                    .background(Color(0xFF2A3D4F))
-                    .fillMaxSize(),
-            ) {
-
+            Column(modifier = Modifier
+                .background(Color(0xFF2A3D4F))
+                .fillMaxSize().padding(start = 14.dp, end = 8.dp, top = 12.dp),) {
+                Row (modifier = Modifier
+                    .padding()
+                    .wrapContentSize()
+                ){
+                    Text(
+                        text = "Comp",
+                        color = Color.White,
+                        fontSize = 12.sp
+                    )
+                    // ระยะห่างระหว่างข้อความ
+                    Text(
+                        text = "Equipment",
+                        color = Color.White,
+                        modifier = Modifier.padding(start = 33.dp),
+                        fontSize = 12.sp
+                    )
+                }
                 Row(
                     modifier = Modifier
-                        .fillMaxWidth(),
+                        .fillMaxWidth().padding(start = 2.dp, end = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
 
                     ) {
-                    // Dropdown สำหรับเลือก Compartment
-//                    if (availableCompartmentIds.isNotEmpty()) {
                     var expanded by remember { mutableStateOf(false) }
 
-                    Box {
+                    Box(modifier = Modifier.height(49.dp)) {
+
                         Row(
                             modifier = Modifier
                                 .clickable { expanded = !expanded }
-                                .padding(start = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .height(35.dp)
+                                .width(50.dp),
+                            verticalAlignment = Alignment.Bottom,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = selectedCompartmentId?.toString() ?: "  ",
-                                style = MaterialTheme.typography.h4.copy(
-                                    textDecoration = TextDecoration.Underline,
-                                    color = Color.White
+                                text = selectedCompartmentId?.toString() ?: "${compartment.number_compartment}",
+                                style = MaterialTheme.typography.h6.copy(
+
+                                    color = Color.White,
                                 ),
-                                modifier = Modifier.padding(end = 4.dp)
+                                modifier = Modifier // ให้ Text ขยายเต็มความกว้าง
                             )
                             Icon(
                                 imageVector = Icons.Default.KeyboardArrowDown,
                                 contentDescription = "Dropdown Arrow",
                                 tint = Color.White
+                            )
+
+
+                        }
+                        Row(modifier = Modifier
+                            .align(Alignment.BottomStart)){
+                            Box(
+                                modifier = Modifier
+                                    .height(1.dp) // ความหนาของเส้นใต้
+                                    .background(Color.White)
+                                    .width(50.dp)
                             )
                         }
                         DropdownMenu(
@@ -336,44 +378,70 @@ fun EditCompartmentForm(compartment: Compartment, onCancel: () -> Unit,viewModel
                             }
                         }
                     }
-//                    }
+
 
                     // ช่องกรอกชื่ออุปกรณ์
                     UnderlinedTextField(
                         value = nameItem,
                         onValueChange = { nameItem = it },
                         placeholder = compartment.Name_Item, // กรณีที่ต้องการให้ค่าเริ่มต้นเป็น "Equipment"
-                        modifier = Modifier.padding(start = 16.dp)
-                    )
+                        modifier = Modifier
+                            .padding(start = 16.dp)
+                            .height(56.dp),
+
+                        )
                 }
 
                 Row(
                     modifier = Modifier
-                        .padding(start = 16.dp)
+                        .padding(start = 4.dp)
                         .fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
+                    horizontalArrangement = Arrangement.Start,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Switch(
+                        checked = statusCompartment,
+                        onCheckedChange = {
+                            statusCompartment = it
+                            if (it){
+                                updatedLockerStatus="available"
+                            } else {
+                                updatedLockerStatus="unavailable"
+                            }
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White, // สีของ thumb เมื่อ switch เปิด
+                            uncheckedThumbColor = Color.Gray, // สีของ thumb เมื่อ switch ปิด
+                            checkedTrackColor = Color(0xFF34F747), // สีของ track เมื่อ switch เปิด
+                            uncheckedTrackColor = Color.LightGray // สีของ track เมื่อ switch ปิด
+                        ),
+                        modifier = Modifier.scale(1.1f)
+                    )
+                    Text(
+                        text = if (statusCompartment) "Active" else "Inactive",
+                        color = if (statusCompartment) Color.White else Color.White,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .padding(start = 12.dp)
+                            .width(60.dp)
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
                     IconButton(
                         onClick = { onCancel() },
                         modifier = Modifier
-                            .border(2.dp, Color.White, RoundedCornerShape(7.dp)) // ขอบสีขาว
-                            .wrapContentSize()
-                    )
-                    {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Cancel",
-                            tint = Color.White,
-                            modifier = Modifier.size(10.dp)
-                        )
+                            .scale(0.7f)
+                            .background(Color(0xFF2A3D4F)) // ใส่สีพื้นหลังของปุ่ม
+                            .padding(4.dp) // เพิ่ม padding ภายในเพื่อล้อมรอบขอบ
+                            .border(2.dp, Color.White, RoundedCornerShape(7.dp)) // ขอบด้านใน
+                    ) {
+                        Icon(Icons.Filled.Close, contentDescription = "Cancel", tint = Color.White,modifier = Modifier.scale(0.7f))
                     }
                     IconButton(onClick = {
-                        if (nameItem.isNotBlank() && selectedImagePath.isNotBlank() && selectedCompartmentId != null) {
+                        val compartmentNumber = selectedCompartmentId ?: compartment.number_compartment
+                        if (nameItem.isNotBlank() && selectedImagePath.isNotBlank() ) {
                             editCompartmentTrigger=true
-                            Log.d(
-                                "Compartment", "$editCompartmentTrigger")
-                            viewModel.updateCompartment(compartment.CompartmentID!!,nameItem,selectedImagePath,compartment.LockerID)
+                            Log.d("Compartment", "$updatedLockerStatus")
+                            viewModel.updateCompartment(compartment.CompartmentID!!,nameItem,selectedImagePath,compartment.LockerID,compartmentNumber,updatedLockerStatus)
                             onCancel()
                         } else {
                             Log.d(
@@ -381,11 +449,18 @@ fun EditCompartmentForm(compartment: Compartment, onCancel: () -> Unit,viewModel
                                 "Name$nameItem, Image$selectedImagePath, or CompartmentID is blank$selectedCompartmentId"
                             )
                         }
-                    }) {
+                    },modifier = Modifier
+                        .scale(0.7f)
+                        .clip(RoundedCornerShape(7.dp))
+                        .background(Color.White),
+
+                        )
+                    {
                         Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Confirm",
-                            tint = Color.White
+                            Icons.Filled.Check,
+                            contentDescription = "Edit Locker",
+                            tint = Color(0xFF2A3D4F)
+                            ,modifier = Modifier.scale(0.7f)
                         )
                     }
                 }
@@ -433,35 +508,58 @@ fun CompartmentView(compartment: Compartment, onEdit: () -> Unit, onDelete: () -
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp)
+
             ) {
-                Text(
-                    "Locker ${compartment.LockerID} | Compartment ${compartment.number_compartment}",
-                    style = MaterialTheme.typography.body2
-                )
+                Row (
+                    Modifier
+                        .wrapContentSize()
+                        .padding(bottom = 8.dp)){
+                    Text(
+                        "Locker ${compartment.LockerID} | Compartment ${compartment.number_compartment}",
+                        fontSize = 13.sp
+                    )
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
                         text = compartment.Name_Item,
-                        style = MaterialTheme.typography.h5
+                        style = MaterialTheme.typography.h5,
+                        maxLines = 1,  // จำกัดจำนวนบรรทัดที่แสดง
+                        overflow = TextOverflow.Ellipsis ,
+                        modifier = Modifier.width(130.dp)
                     )
-                    Spacer(modifier = Modifier.weight(1f))
 
-                    IconButton(onClick = onEdit) {
-                        Icon(
-                            imageVector = Icons.Outlined.Edit,
-                            contentDescription = "Edit",
-                            tint = Color(0xFF3961AA)
-                        )
-                    }
+                    Row (modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End){
+                        Box(
+                            modifier = Modifier
+                                .size(35.dp) // ขนาดของกล่อง
+                                .clickable(onClick = onEdit),
+                            contentAlignment = Alignment.Center
+                        ){
+                            Icon(
+                                imageVector = Icons.Outlined.Edit,
+                                contentDescription = "Edit",
+                                tint = Color(0xFF3961AA),
 
-                    IconButton(onClick = { showDeleteOptions = !showDeleteOptions }) {
-                        Icon(
-                            imageVector = Icons.Outlined.Delete,
-                            contentDescription = "Delete",
-                            tint = Color(0xFFEE174A)
-                        )
+                                )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(35.dp) // ขนาดของกล่อง
+                                .clickable(onClick = { showDeleteOptions = !showDeleteOptions }),
+                            contentAlignment = Alignment.Center
+                        ){
+                            Icon(
+                                imageVector = Icons.Outlined.Delete,
+                                contentDescription = "Delete",
+                                tint = Color(0xFFEE174A),
+
+                                )
+                        }
                     }
                 }
             }
@@ -533,11 +631,15 @@ fun AddCompartmentCard(
 
     val compartmentsNumber by viewModel.compartmentsNumber.observeAsState(emptyList())
     // ดึง compartmentIds ที่มีอยู่แล้วจากฐานข้อมูล
-    val allCompartmentIds by viewModel.getAllCompartmentIds().observeAsState(emptyList())
+
     // กรอง compartmentId ที่ถูกใช้ไปแล้วออก
-    val availableCompartmentIds = availableCompartments.filter {
-        val compartmentId = it.toIntOrNull()
-        compartmentId != null && compartmentId !in compartmentsNumber
+    val availableCompartmentIds by remember(availableCompartments, compartmentsNumber) {
+        derivedStateOf {
+            availableCompartments.filter {
+                val compartmentId = it.toIntOrNull()
+                compartmentId != null && compartmentId !in compartmentsNumber
+            }
+        }
     }
 
     // ข้างใน UI ของคุณ
@@ -545,7 +647,7 @@ fun AddCompartmentCard(
         shape = RoundedCornerShape(15.dp),
         modifier = Modifier
             .padding(8.dp)
-            .height(320.dp),
+            .height(325.dp),
         elevation = 4.dp
     ) {
         Column(
@@ -568,37 +670,65 @@ fun AddCompartmentCard(
             }
             Column(modifier = Modifier
                 .background(Color(0xFF2A3D4F))
-                .fillMaxSize(),) {
-
+                .fillMaxSize().padding(start = 14.dp, end = 8.dp, top = 12.dp),) {
+                Row (modifier = Modifier
+                    .padding()
+                    .wrapContentSize()
+                ){
+                    Text(
+                        text = "Comp",
+                        color = Color.White,
+                        fontSize = 12.sp
+                    )
+                    // ระยะห่างระหว่างข้อความ
+                    Text(
+                        text = "Equipment",
+                        color = Color.White,
+                        modifier = Modifier.padding(start = 33.dp),
+                        fontSize = 12.sp
+                    )
+                }
                 Row(
                     modifier = Modifier
-                        .fillMaxWidth(),
+                        .fillMaxWidth().padding(start = 2.dp, end = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
 
                     ) {
-                    // Dropdown สำหรับเลือก Compartment
-//                    if (availableCompartmentIds.isNotEmpty()) {
                     var expanded by remember { mutableStateOf(false) }
 
-                    Box {
+                    Box(modifier = Modifier.height(49.dp)) {
+
                         Row(
                             modifier = Modifier
                                 .clickable { expanded = !expanded }
-                                .padding(start = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .height(35.dp)
+                                .width(50.dp),
+                            verticalAlignment = Alignment.Bottom,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
                                 text = selectedCompartmentId?.toString() ?: "  ",
-                                style = MaterialTheme.typography.h4.copy(
-                                    textDecoration = TextDecoration.Underline,
-                                    color = Color.White
+                                style = MaterialTheme.typography.h6.copy(
+
+                                    color = Color.White,
                                 ),
-                                modifier = Modifier.padding(end = 4.dp)
+                                modifier = Modifier // ให้ Text ขยายเต็มความกว้าง
                             )
                             Icon(
                                 imageVector = Icons.Default.KeyboardArrowDown,
                                 contentDescription = "Dropdown Arrow",
                                 tint = Color.White
+                            )
+
+
+                        }
+                        Row(modifier = Modifier
+                            .align(Alignment.BottomStart)){
+                            Box(
+                                modifier = Modifier
+                                    .height(1.dp) // ความหนาของเส้นใต้
+                                    .background(Color.White)
+                                    .width(50.dp)
                             )
                         }
                         DropdownMenu(
@@ -619,37 +749,37 @@ fun AddCompartmentCard(
                             }
                         }
                     }
-//                    }
+
 
                     // ช่องกรอกชื่ออุปกรณ์
                     UnderlinedTextField(
                         value = nameItem,
                         onValueChange = { onNameItemChange(it) },
                         placeholder = "Equipment", // กรณีที่ต้องการให้ค่าเริ่มต้นเป็น "Equipment"
-                        modifier = Modifier.padding(start = 16.dp)
-                    )
+                        modifier = Modifier
+                            .padding(start = 16.dp)
+                            .height(56.dp),
+
+                        )
                 }
 
                 Row(
                     modifier = Modifier
-                        .padding(start = 16.dp)
                         .fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+
+
                     IconButton(
                         onClick = { onCancel() },
                         modifier = Modifier
-                            .border(2.dp, Color.White, RoundedCornerShape(7.dp)) // ขอบสีขาว
-                            .wrapContentSize()
-                    )
-                    {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Cancel",
-                            tint = Color.White,
-                            modifier = Modifier.size(10.dp)
-                        )
+                            .scale(0.7f)
+                            .background(Color(0xFF2A3D4F)) // ใส่สีพื้นหลังของปุ่ม
+                            .padding(4.dp) // เพิ่ม padding ภายในเพื่อล้อมรอบขอบ
+                            .border(2.dp, Color.White, RoundedCornerShape(7.dp)) // ขอบด้านใน
+                    ) {
+                        Icon(Icons.Filled.Close, contentDescription = "Cancel", tint = Color.White,modifier = Modifier.scale(0.7f))
                     }
                     IconButton(onClick = {
                         if (nameItem.isNotBlank() && selectedImagePath.isNotBlank() && selectedCompartmentId != null) {
@@ -662,11 +792,19 @@ fun AddCompartmentCard(
                         } else {
                             Log.d("Compartment", "Name$nameItem, Image$selectedImagePath, or CompartmentID is blank$selectedCompartmentId")
                         }
-                    }) {
+                    },modifier = Modifier
+                        .scale(0.7f)
+
+                        .clip(RoundedCornerShape(7.dp))
+                        .background(Color.White),
+
+                        )
+                    {
                         Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Confirm",
-                            tint = Color.White
+                            Icons.Filled.Check,
+                            contentDescription = "Add Locker",
+                            tint = Color(0xFF2A3D4F)
+                            ,modifier = Modifier.scale(0.7f)
                         )
                     }
                 }
@@ -758,29 +896,36 @@ fun saveImageToInternalStorage(context: Context, imageUri: Uri): String? {
 fun UnderlinedTextField(
     value: String,
     onValueChange: (String) -> Unit,
-    placeholder: String = "Equipment", // กำหนดค่าเริ่มต้นเป็น "Equipment"
+    placeholder: String = "Equipment",
     modifier: Modifier = Modifier
-){
+) {
+
     TextField(
         value = value,
         onValueChange = onValueChange,
-        textStyle = MaterialTheme.typography.body2.copy(color = Color.White),
+        textStyle = MaterialTheme.typography.body1.copy(color = Color.White),
         modifier = modifier
-            .padding(bottom = 4.dp), // เพิ่มระยะห่างจากขอบล่าง
-        singleLine = true, // ให้กรอกข้อความได้แค่ 1 บรรทัด
+            .padding(bottom = 4.dp)
+            .fillMaxWidth(), // ทำให้เต็มความกว้าง
+        singleLine = true,
         placeholder = {
             Text(
                 text = placeholder,
-                style = MaterialTheme.typography.body2.copy(color = Color.White.copy(alpha = 0.5f))
+                style = MaterialTheme.typography.body2.copy(color = Color.White.copy(alpha = 0.5f)),
+                modifier = Modifier.fillMaxWidth(), // ทำให้ข้อความเต็มพื้นที่
+                textAlign = TextAlign.Start
             )
         },
         colors = TextFieldDefaults.textFieldColors(
-            backgroundColor = Color.Transparent, // ให้พื้นหลังเป็นโปร่งใส
-            focusedIndicatorColor = Color.White, // สีเส้นขอบเมื่อกรอก
-            unfocusedIndicatorColor = Color.White // สีเส้นขอบเมื่อไม่ได้กรอก
+            backgroundColor = Color.Transparent,
+            focusedIndicatorColor = Color.White,
+            unfocusedIndicatorColor = Color.White
         )
+
     )
+
 }
+
 @Composable
 fun DeleteConfirmationDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(

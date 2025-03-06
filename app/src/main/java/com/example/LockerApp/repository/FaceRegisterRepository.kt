@@ -21,7 +21,7 @@ class FaceRegisterRepository(private val context: Context) {
     )
 
     suspend fun checkFaceSimilarity(recognition: FaceClassifier.Recognition): SimilarityResult {
-        val threshold = 1.12f
+        val threshold = 0.6f
 
         return when (val result = faceClassifier.recognizeImage(recognition.crop, true)) {
             null -> SimilarityResult(false)

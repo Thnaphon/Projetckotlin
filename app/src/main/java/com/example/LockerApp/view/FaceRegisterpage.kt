@@ -46,6 +46,8 @@ import java.util.concurrent.Executors
 fun FaceCapturePage(
     navController: NavController,
     viewModel: FaceRegisterViewModel,
+    adminname : String,
+    adminrole : String,
     participantName: String,
     participantRole: String,
     participantPhone: String,
@@ -238,7 +240,7 @@ fun FaceCapturePage(
                 )
 
                 // Navigate back to main menu after capture and preview
-                navController.navigate("main_menu/$accountid") {
+                navController.navigate("main_menu/$accountid/$adminname/$adminrole") {
                     popUpTo("face_register") { inclusive = true }
                 }
             }

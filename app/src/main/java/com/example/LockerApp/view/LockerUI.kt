@@ -49,18 +49,42 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import androidx.compose.runtime.LaunchedEffect
 import android.util.Log
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ButtonDefaults
+import androidx.compose.material.Switch
+import androidx.compose.material.SwitchDefaults
 import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import com.example.LockerApp.viewmodel.ManageLockerViewModel
 import com.example.LockerApp.viewmodel.UsageLockerViewModel
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
+
+data class Message(
+    val token: String,
+    val name: String,
+    val availablecompartment: String,
+    val date: String,
+    val time: String,
+
+    )
 
 @Composable
 fun LockerUI(navController: NavController, lockerDao: LockerDao, accountid: Int, compartmentDao: CompartmentDao, onLockerClick: (String) -> Unit) {
@@ -110,20 +134,47 @@ fun LockerUI(navController: NavController, lockerDao: LockerDao, accountid: Int,
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Text("Lockers", style = MaterialTheme.typography.h5.copy(fontWeight = FontWeight.Bold), color = Color.Black)
+        Spacer(modifier = Modifier.height(8.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Top
         ) {
-            Text("Total Lockers: $lockerCount", style = MaterialTheme.typography.h6)
+            Text(
+                "$lockerCount Lockers",
+                style = MaterialTheme.typography.h6.copy(fontWeight = FontWeight.SemiBold),
+                color = Color.Black
+            )
 
             // ปุ่ม "+" เพื่อแสดงการ์ดเพิ่ม Locker
-            IconButton(onClick = { showAddLockerCard = !showAddLockerCard }) {
-                Icon(Icons.Filled.Add, contentDescription = "Add Locker")
+            Card(
+                modifier = Modifier
+                    .size(47.dp)
+                    .clip(RoundedCornerShape(15.dp))
+                    .border(2.dp, Color(0xFF3961AA), RoundedCornerShape(15.dp)), // มุมมนของการ์ด
+                elevation = 8.dp, // ความสูงของเงา
+                backgroundColor = Color.White // พื้นหลังสีขาวของการ์ด
+            ) {
+                IconButton(
+                    onClick = { showAddLockerCard = !showAddLockerCard
+                        mqttViewModel.sendMessage("request/locker", "")
+                    },
+                    modifier = Modifier
+                        .fillMaxSize() // ขยายขนาดให้เต็มการ์ด
+                        .padding(4.dp) // เพิ่ม padding รอบๆ IconButton
+
+                ) {
+                    Icon(
+                        Icons.Filled.Add,
+                        contentDescription = "Add Locker",
+                        tint = Color(0xFF3961AA)
+                    )
+                }
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(3),
@@ -163,7 +214,18 @@ fun LockerUI(navController: NavController, lockerDao: LockerDao, accountid: Int,
 
 
 @Composable
-fun LockerCard(locker: Locker, onClick: () -> Unit, onUpdateStatus: (Int, String) -> Unit) {
+fun LockerCard(locker: Locker, onClick: () -> Unit, onUpdateStatus: (Int, String) -> Unit,) {
+    val viewModel: LockerViewModel = viewModel()
+    var showDeleteOptions by remember { mutableStateOf(false) }
+    var deleteCompartmentTrigger by remember { mutableStateOf(false) }
+    var showEditOptions by remember { mutableStateOf(false) }
+    LaunchedEffect(deleteCompartmentTrigger) {
+        if (deleteCompartmentTrigger) {
+            viewModel.deleteLocker(locker.LockerID)
+            deleteCompartmentTrigger = false // รีเซ็ต trigger หลังจากทำงานเสร็จ
+        }
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -174,20 +236,165 @@ fun LockerCard(locker: Locker, onClick: () -> Unit, onUpdateStatus: (Int, String
         backgroundColor = MaterialTheme.colors.surface,
         shape = RoundedCornerShape(15.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.Start
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+
         ) {
-            Text("${locker.Lockername}", style = MaterialTheme.typography.h6)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("${locker.detail}", style = MaterialTheme.typography.body1)
-            Spacer(modifier = Modifier.height(8.dp))
 
+            Column(
+                modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 16.dp),
+                horizontalAlignment = Alignment.Start,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                )
+                {
+                    Text("${locker.Lockername}", style = MaterialTheme.typography.h6)
 
+                    Spacer(modifier = Modifier.weight(1f))
+                    IconButton(
+                        onClick = { showEditOptions=!showEditOptions},
+                        modifier = Modifier.size(29.dp) // ลดขนาดปุ่ม
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Edit,
+                            contentDescription = "Edit",
+                            tint = Color(0xFF3961AA),
+                            modifier = Modifier.size(29.dp) // ลดขนาดไอคอน
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(5.dp))
+                    IconButton(
+                        onClick = { showDeleteOptions = !showDeleteOptions},
+                        modifier = Modifier.size(29.dp) // ลดขนาดปุ่ม
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Delete,
+                            contentDescription = "Delete",
+                            tint = Color(0xFFEE174A),
+                            modifier = Modifier.size(29.dp) // ลดขนาดไอคอน
+                        )
+                    }
+
+                }
+                Row(
+                    verticalAlignment = Alignment.Top, modifier = Modifier
+                        .height(25.dp)
+                        .fillMaxWidth() // กำหนดให้ Row ขยายเต็มความกว้าง
+                ) {
+                    Text("${locker.detail}", style = MaterialTheme.typography.body1)
+                }
+
+                Row(
+                    modifier = Modifier
+                        .border(1.dp, color = Color(0xFFEAEAEA), RoundedCornerShape(10.dp))
+                        .weight(1f) // ขยายเต็มพื้นที่ที่เหลือใน Column
+                        .fillMaxWidth()
+                ) {
+
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth() // กำหนดให้ Row ขยายเต็มความกว้าง
+                        .height(45.dp)
+                        .border(1.dp, color = Color(0xFFEAEAEA), RoundedCornerShape(10.dp))
+                        .padding(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                )
+                {
+                    val compartments =
+                        locker.availableCompartment.split(",").filter { it.isNotEmpty() }
+                    val Countcompartments = compartments.size
+                    val UsedCompartment by viewModel.getAllCompartmentNumber(locker.LockerID)
+                        .observeAsState(initial = emptyList())
+                    val CountUsedCompartment = UsedCompartment.size
+                    Text("Compartments to used    ", style = MaterialTheme.typography.body2)
+                    Text(
+                        "$CountUsedCompartment/$Countcompartments",
+                        style = MaterialTheme.typography.h6.copy(fontWeight = FontWeight.SemiBold)
+                    )
+
+                }
+            }
+
+            DeleteConfirmation(
+                showDeleteOptions = showDeleteOptions,
+                onConfirmDelete = {
+                    deleteCompartmentTrigger = true
+                    showDeleteOptions = false
+                },
+                onCancelDelete = {
+                    showDeleteOptions = false
+                }
+            )
+            Editlocker(
+                showEditOptions = showEditOptions,
+                locker = locker,
+                onConfirmEdit = {
+                    // Handle Locker Edit Confirmation logic
+                    showEditOptions = false
+                },
+                onCancelEdit = {
+                    showEditOptions = false
+                }
+                ,
+            )
         }
     }
 }
 
+@Composable
+fun DeleteConfirmation(
+    showDeleteOptions: Boolean,
+    onConfirmDelete: () -> Unit,
+    onCancelDelete: () -> Unit
+) {
+    AnimatedVisibility(visible = showDeleteOptions) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFFB71C1C))
+                .padding(16.dp)
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Are you going to delete this Locker?",
+                    color = Color.White,
+                    style = MaterialTheme.typography.body1
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Button(
+                        onClick = {
+                            onConfirmDelete()
+                        },
+                        colors = ButtonDefaults.buttonColors(backgroundColor = Color.White)
+                    ) {
+                        Text(text = "Confirm", color = Color.Red)
+                    }
+
+                    Button(
+                        onClick = { onCancelDelete() },
+                        colors = ButtonDefaults.buttonColors(backgroundColor = Color.White)
+                    ) {
+                        Text(text = "Cancel", color = Color.Black)
+                    }
+                }
+            }
+        }
+    }
+}
 
 
 
@@ -207,16 +414,13 @@ fun AddLockerCard(
     var availableCompartment by remember { mutableStateOf("") }
     var Lockername by remember { mutableStateOf("") }
     var receivedTopic by remember { mutableStateOf("") }
-
+    val scope = rememberCoroutineScope()
     LaunchedEffect(key1 = true) {
         mqttViewModel.observeMqttData() // เรียกฟังก์ชันนี้เพื่อติดตามข้อมูล
     }
 
     val mqttData by mqttViewModel.mqttData.collectAsState()
 
-    LaunchedEffect(mqttData) {
-        Log.d("mqttData", "MQTT Topic: ${mqttData.first}, Message: ${mqttData.second}")
-    }
 
 
     suspend fun isTopicExist(topic: String): Boolean {
@@ -238,42 +442,51 @@ fun AddLockerCard(
             modifier = Modifier.padding(16.dp),
             horizontalAlignment = Alignment.Start
         ) {
-            Text("Create Locker", style = MaterialTheme.typography.h6,color = Color.White)
+            Text("Create Locker", style = MaterialTheme.typography.h6, color = Color.White)
 
-            Spacer(modifier = Modifier.height(20.dp))
 
+            Spacer(modifier = Modifier.height(5.dp))
             TextField(
                 value = Lockername,
                 onValueChange = { Lockername = it },
-                label = { Text("Locker Name",color = Color.White) },
+                label = { Text("Locker Name", color = Color.White,) },
                 colors = TextFieldDefaults.textFieldColors(
                     backgroundColor = Color.Transparent,
                     textColor = Color.White,// กำหนดให้พื้นหลังเป็นโปร่งใส
                     focusedIndicatorColor = Color.White, // กำหนดเส้นใต้เมื่อโฟกัสเป็นสีขาว
                     unfocusedIndicatorColor = Color.White,
                 ),
+                textStyle = TextStyle(
+                    fontSize = 25.sp, // ปรับขนาดตัวอักษรขณะพิมพ์
+                ),
                 modifier = Modifier.fillMaxWidth()
             )
+            Spacer(modifier = Modifier.height(14.dp))
             TextField(
                 value = lockerDetail,
                 onValueChange = { lockerDetail = it },
-                label = { Text("Locker Detail",color = Color.White) },
+                label = { Text("Locker Detail", color = Color.White) },
                 colors = TextFieldDefaults.textFieldColors(
                     backgroundColor = Color.Transparent,
                     textColor = Color.White,// กำหนดให้พื้นหลังเป็นโปร่งใส
                     focusedIndicatorColor = Color.White, // กำหนดเส้นใต้เมื่อโฟกัสเป็นสีขาว
                     unfocusedIndicatorColor = Color.White,
                 ),
+                textStyle = TextStyle(
+                    fontSize = 25.sp, // ปรับขนาดตัวอักษรขณะพิมพ์
+                ),
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(22.dp))
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(end = 6.dp),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
 
-            ){
+            ) {
                 IconButton(
                     onClick = {
                         // รีเซ็ตค่าที่กรอกไป
@@ -292,127 +505,105 @@ fun AddLockerCard(
                     Icon(Icons.Filled.Close, contentDescription = "Cancel", tint = Color.White)
                 }
 
-                Spacer(modifier = Modifier.width(20.dp))
+                Spacer(modifier = Modifier.width(25.dp))
 
-                IconButton(onClick = {
-                    isSaving = true
+                IconButton(
+                    onClick = {
 
-//
-//                    receivedTopic = "mock/topic"
-//                    availableCompartment = "1,2,3,5,6,7,8,9,10,11,12,13,14,15,16,17,18"
-//                    viewModel.addLocker(
-//                        Lockername,
-//                        lockerDetail,
-//                        receivedTopic,  // mock data
-//                        availableCompartment // mock data
-//                    )
+                        isSaving = true
+                        showAddLockerCard()
 
+                        Log.d(
+                            "mqttDats",
+                            "MQTT Topic: ${mqttData.first}, Message: ${mqttData.second}"
+                        )
 
+                        if (mqttData.first == "respond/locker") {
 
-
-
-                    mqttViewModel.sendMessage("request/locker", "")
-                    Log.d("mqttDats", "MQTT Topic: ${mqttData.first}, Message: ${mqttData.second}")
-
-                    if (mqttData.first == "respond/locker") {
-
-                        try {
-                            val jsonObject = JSONObject(mqttData.second)
-                            TokenTopic = jsonObject.getString("Token")
-                            Log.d("TokenTopic","TokenTopic $TokenTopic")
-                            availableCompartment = jsonObject.getString("Compartment")
-                            Log.d("availableCompartment","availableCompartment $availableCompartment")
-
-
-
-                            viewModel.viewModelScope.launch {
-                                val exists = isTopicExist(TokenTopic)
-//                                if (exists) {
-//                                    isSaving = false
-//                                    Log.e("LockerUI", "Topic $TokenTopic already exists.")
-//                                } else {
-                                val usageTime = System.currentTimeMillis().toString()
-                                val formatusageTime = formatTimestamp(usageTime)
-                                val splitDateTime = formatusageTime.split(" ")
-                                val timePart = splitDateTime[0]
-                                val datePart = splitDateTime[1]
-
-                                viewModel.addLocker(
-                                    Lockername,
-                                    lockerDetail,
-                                    TokenTopic,
-                                    availableCompartment
-                                )
-                                Log.d("Create","TokenTopic $TokenTopic")
-                                val message = Message(
-                                    token = TokenTopic,
-                                    name = Lockername,
-                                    availablecompartment = availableCompartment,
-                                    date = datePart,
-                                    time = timePart
+                            try {
+                                val jsonObject = JSONObject(mqttData.second)
+                                TokenTopic = jsonObject.getString("Token")
+                                Log.d("TokenTopic", "TokenTopic $TokenTopic")
+                                availableCompartment = jsonObject.getString("Compartment")
+                                Log.d(
+                                    "availableCompartment",
+                                    "availableCompartment $availableCompartment"
                                 )
 
-                                mqttViewModel.sendMessageJson("lockers", message)
 
-                                val lockerIdcResult = lockerDao.getLockerIdcByTopic(TokenTopic) ?: 0
-                                ManageLockerViewModel.insertManageLocker(
-                                    lockerIdcResult,
-                                    usageTime,
-                                    "Create Locker",
-                                    accountid,
-                                    "Success"
-                                )
 
-                                viewModel.getLatestLocker { latestLocker ->
-                                    latestLocker?.let { locker ->
+                                viewModel.viewModelScope.launch {
+                                    val exists = isTopicExist(TokenTopic)
+                                    if (exists) {
+                                        isSaving = false
+                                        Log.e("LockerUI", "Topic $TokenTopic already exists.")
+                                    } else {
                                         val usageTime = System.currentTimeMillis().toString()
+                                        val formatusageTime = formatTimestamp(usageTime)
+                                        val splitDateTime = formatusageTime.split(" ")
+                                        val timePart = splitDateTime[0]
+                                        val datePart = splitDateTime[1]
 
-                                        ManageLockerViewModel.insertManageLocker(
-                                            lockerId = locker.LockerID,  // ใช้ ID ของ Locker ที่พึ่งเพิ่ม
-                                            usageTime = usageTime,
-                                            usage = "Create Locker",
-                                            AccountID = accountid,
-                                            Status = "Success"
+                                        viewModel.addLocker(
+                                            Lockername,
+                                            lockerDetail,
+                                            TokenTopic,
+                                            availableCompartment
+                                        ){
+
+                                            viewModel.getLatestLocker { LokcerId ->
+                                                LokcerId?.let {
+                                                    Log.d("Usage","${it.LockerID} /$accountid")
+                                                    ManageLockerViewModel.insertManageLocker(
+                                                        lockerId = it.LockerID,
+                                                        usageTime = usageTime,
+                                                        usage = "Create Locker",
+                                                        AccountID = accountid,
+                                                        Status = "Success"
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        Log.d("Create", "TokenTopic $TokenTopic")
+                                        val message = Message(
+                                            token = TokenTopic,
+                                            name = Lockername,
+                                            availablecompartment = availableCompartment,
+                                            date = datePart,
+                                            time = timePart
                                         )
+
+                                        mqttViewModel.sendMessageJson("lockers", message)
+
+
+
+
+                                        isSaving = false
                                     }
                                 }
 
+                            } catch (e: Exception) {
+                                Log.e("LockerUI", "Error parsing JSON: ${e.message}")
                                 isSaving = false
-//                                }
                             }
-
-                        } catch (e: Exception) {
-                            Log.e("LockerUI", "Error parsing JSON: ${e.message}")
-                            isSaving = false
                         }
-                    }
 //
-                },
+                    },
                     modifier = Modifier
                         .size(32.dp)
                         .clip(RoundedCornerShape(7.dp))
-                        .background(Color.White)
-                    ,
+                        .background(Color.White),
                 )
                 {
-                    Icon(Icons.Filled.Check, contentDescription = "Add Locker", tint = Color(0xFF2A3D4F))
+                    Icon(
+                        Icons.Filled.Check,
+                        contentDescription = "Add Locker",
+                        tint = Color(0xFF2A3D4F)
+                    )
                 }
             }
 
 
-
-        }
-
-
-        // ฟังก์ชันแปลง timestamp เป็นรูปแบบ hh:mm dd/MM/yyyy
-        fun formatTimestamp(timestamp: String): String {
-            return try {
-                val date = Date(timestamp.toLong())
-                val sdf = SimpleDateFormat("HH:mm dd/MM/yyyy", Locale.getDefault())
-                sdf.format(date)
-            } catch (e: Exception) {
-                "Invalid date"
-            }
         }
     }
 
@@ -428,11 +619,130 @@ fun AddLockerCard(
         }
     }
 }
-data class Message(
-    val token: String,
-    val name: String,
-    val availablecompartment: String,
-    val date: String,
-    val time: String,
 
-    )
+
+
+
+@Composable
+fun Editlocker(
+    showEditOptions: Boolean,
+    onConfirmEdit: () -> Unit,
+    onCancelEdit: () -> Unit,
+    locker: Locker,
+
+
+    ) {
+
+    var updatedLocker by remember { mutableStateOf(locker.copy()) }
+    val viewModel: LockerViewModel = viewModel()
+    var isConfirmed by remember { mutableStateOf(false) }
+    AnimatedVisibility(visible = showEditOptions) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { /* Add Locker */ },
+            elevation = 4.dp,
+            backgroundColor = androidx.compose.ui.graphics.Color(0xFF2A3D4F),
+            shape = RoundedCornerShape(15.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .wrapContentHeight()
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.Start
+            ) {
+                TextField(
+                    value = updatedLocker.Lockername,
+                    onValueChange = { updatedLocker = updatedLocker.copy(Lockername = it) },
+                    label = { Text("Locker Name", color = Color.White) },
+                    colors = TextFieldDefaults.textFieldColors(
+                        backgroundColor = Color.Transparent,
+                        textColor = Color.White,// กำหนดให้พื้นหลังเป็นโปร่งใส
+                        focusedIndicatorColor = Color.White, // กำหนดเส้นใต้เมื่อโฟกัสเป็นสีขาว
+                        unfocusedIndicatorColor = Color.White,
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                TextField(
+                    value = updatedLocker.detail,
+                    onValueChange = { updatedLocker = updatedLocker.copy(detail = it) },
+                    label = { Text("Locker Detail", color = Color.White) },
+                    colors = TextFieldDefaults.textFieldColors(
+                        backgroundColor = Color.Transparent,
+                        textColor = Color.White,// กำหนดให้พื้นหลังเป็นโปร่งใส
+                        focusedIndicatorColor = Color.White, // กำหนดเส้นใต้เมื่อโฟกัสเป็นสีขาว
+                        unfocusedIndicatorColor = Color.White,
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Row(
+
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .wrapContentHeight()
+                        .fillMaxWidth()
+
+                ) {
+                    Switch(
+                        checked = isConfirmed,
+                        onCheckedChange = {
+                            isConfirmed = it
+                            updatedLocker = updatedLocker.copy(status = if (it) "available" else "unavailable")
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White, // สีของ thumb เมื่อ switch เปิด
+                            uncheckedThumbColor = Color.Gray, // สีของ thumb เมื่อ switch ปิด
+                            checkedTrackColor = Color(0xFF34F747), // สีของ track เมื่อ switch เปิด
+                            uncheckedTrackColor = Color.LightGray // สีของ track เมื่อ switch ปิด
+                        ),
+                        modifier = Modifier.scale(1.5f)// ปรับขนาดของ Switch
+                    )
+                    Text(
+                        text = if (isConfirmed) "Active" else "Inactive",
+                        color = if (isConfirmed) Color.White else Color.White,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 12.dp)
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    IconButton(
+                        onClick = { onCancelEdit() },
+                        modifier = Modifier
+                            .scale(0.8f)
+                            .background(Color(0xFF2A3D4F)) // ใส่สีพื้นหลังของปุ่ม
+                            .padding(4.dp) // เพิ่ม padding ภายในเพื่อล้อมรอบขอบ
+                            .border(2.dp, Color.White, RoundedCornerShape(7.dp)) // ขอบด้านใน
+                    ) {
+                        Icon(Icons.Filled.Close, contentDescription = "Cancel", tint = Color.White,modifier = Modifier.scale(0.8f))
+                    }
+
+                    IconButton(
+                        onClick = {
+                            viewModel.updateLocker(updatedLocker.LockerID,updatedLocker.status,updatedLocker.Lockername,updatedLocker.detail)
+                            onCancelEdit()}
+                        ,
+                        modifier = Modifier
+                            .scale(0.8f)
+
+                            .clip(RoundedCornerShape(7.dp))
+                            .background(Color.White),
+
+                        )
+                    {
+                        Icon(
+                            Icons.Filled.Check,
+                            contentDescription = "Add Locker",
+                            tint = Color(0xFF2A3D4F)
+                            ,modifier = Modifier.scale(0.8f)
+                        )
+                    }
+                }
+
+
+            }
+        }
+    }
+}
+

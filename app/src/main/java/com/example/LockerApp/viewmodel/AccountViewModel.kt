@@ -70,4 +70,10 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         return accountDao.getAccountNameById(accountId)
     }
 
+    fun updateAccountFields(accountId: Int, name: String, phone: String, role: String) {
+        viewModelScope.launch {
+            accountDao.updateAccountFields(accountId, name, phone, role)
+        }
+    }
+
 }

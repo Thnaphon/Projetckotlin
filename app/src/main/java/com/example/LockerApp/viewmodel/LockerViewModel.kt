@@ -10,6 +10,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.liveData
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.LockerApp.model.Compartment
 import com.example.LockerApp.model.CompartmentDao
 import com.example.LockerApp.model.Locker
@@ -106,7 +107,7 @@ class LockerViewModel(private val lockerDao: LockerDao,private val compartmentDa
 
     // ฟังก์ชันเพิ่มล็อคเกอร์ใหม่
 // ฟังก์ชันเพิ่มล็อคเกอร์ใหม่
-    fun addLocker(Lockername: String,detail: String, receivedTopic: String, availableCompartment:String) {
+    fun addLocker(Lockername: String,detail: String, receivedTopic: String, availableCompartment:String,onComplete: () -> Unit) {
 
         val status = "Available"
         val topicMqtt = receivedTopic    // สร้าง topic_mqtt ใหม่
@@ -119,21 +120,27 @@ class LockerViewModel(private val lockerDao: LockerDao,private val compartmentDa
             _lockerCount.value = _lockerCount.value + 1
             // รีเฟรชข้อมูลล็อคเกอร์ใหม่
             loadLockers()
+            onComplete()
 
         }
     }
 
     fun getCompartmentsByLocker(lockerId: Int): Flow<List<Compartment>> = flow {
-        val compartments = compartmentDao.getCompartmentsByLocker(lockerId)
-        emit(compartments)
+        val compartments = if (lockerId == 0) {
+            compartmentDao.getAllcompartments() // ดึงทุก compartment
+        } else {
+            compartmentDao.getCompartmentsByLocker(lockerId) // ดึงเฉพาะ compartment ของ lockerId ที่เลือก
+        }
+        emit(compartments) // emit ค่าออกไป
     }
+
 
     // ฟังก์ชันสำหรับเพิ่ม Compartment
     fun addCompartment(compartment: Compartment,lockerId: Int) {
         viewModelScope.launch {
             compartmentDao.insertCompartment(compartment)
             loadCompartments(lockerId)
-
+            loadCompartmentsByLockerNumber(lockerId)
         }
     }
     // ฟังก์ชันใน ViewModel ที่จะเรียกใน Coroutine
@@ -253,7 +260,11 @@ class LockerViewModel(private val lockerDao: LockerDao,private val compartmentDa
     }
     fun getAllCompartmentNumber(lockerID:Int): LiveData<List<Int>> {
         return liveData {
-            val compartmentNumber = compartmentDao.getAllCompartmentsNum(lockerID)
+            val compartmentNumber = if (lockerID == 0) {
+                compartmentDao.getAllCompartmentsNum() // ดึงหมายเลขของทุก compartment
+            } else {
+                compartmentDao.getAllCompartmentsNumbyLockerId(lockerID)
+            }
             emit(compartmentNumber)
         }
     }
@@ -266,19 +277,29 @@ class LockerViewModel(private val lockerDao: LockerDao,private val compartmentDa
 
         }
     }
+    fun getLatestCompartment(onResult: (Compartment?) -> Unit) {
+        viewModelScope.launch {
+            val latestCompartment = compartmentDao.getLastInsertedCompartment()
+            onResult(latestCompartment)
+
+        }
+    }
     fun delteCompartment(lockerID:Int,compartmentID:Int){
         viewModelScope.launch{
             compartmentDao.deleteCompartment(lockerID, compartmentID)
             loadCompartments(lockerID)
+            loadCompartmentsByLockerNumber(lockerID)
         }
     }
 
-    fun updateCompartment(compartmentID: Int, newName: String, newPic: String, lockerID: Int) {
+    fun updateCompartment(compartmentID: Int, newName: String, newPic: String, lockerID: Int,numcompartment:Int,newStatus:String) {
         // เรียกใช้ภายใน viewModelScope เพื่อทำงานใน Coroutine
         viewModelScope.launch {
             Log.d("Updatecomparatment","$compartmentID/ $newName/$newPic,$lockerID")
-            compartmentDao.updateCompartment(compartmentID, newName, newPic, lockerID)
+            compartmentDao.updateCompartment(compartmentID, newName, newPic, lockerID,newStatus,numcompartment)
             loadCompartments(lockerID)
+            loadCompartmentsByLockerNumber(lockerID)
+
 
         }
     }
@@ -286,7 +307,7 @@ class LockerViewModel(private val lockerDao: LockerDao,private val compartmentDa
     fun loadCompartmentsByLockerNumber(lockerId: Int) {
         viewModelScope.launch {
             // เรียกใช้ฟังก์ชันใน DAO เพื่อดึงข้อมูล number_compartment
-            _compartmentsNumber.postValue(compartmentDao.getAllCompartmentsNum(lockerId))
+            _compartmentsNumber.postValue(compartmentDao.getAllCompartmentsNumbyLockerId(lockerId))
         }
     }
 
@@ -296,4 +317,31 @@ class LockerViewModel(private val lockerDao: LockerDao,private val compartmentDa
         val compartments = compartmentDao.getCompartmentId(lockerId, number_compartment)
         emit(compartments)
     }
+
+    fun deleteLocker(lockerId: Int) {
+        viewModelScope.launch {
+            lockerDao.deleteLocker(lockerId)
+            loadLockers()
+            loadCompartmentsByLockerNumber(lockerId)
+        }
+    }
+    fun updateLocker(lockerID: Int, newStatus: String, newNamelocker: String, newDetail: String){
+        viewModelScope.launch {
+            lockerDao.updateLocker(lockerID, newStatus, newNamelocker, newDetail)
+            loadLockers()
+        }
+    }
+
+    val allLockerToken: LiveData<List<String>> = liveData {
+        emit(lockerDao.getAllLockerToekns())
+    }
+
+    fun getCompartmentBycompartmentId(compartmentID: Int): Flow<List<Compartment>> = flow{
+
+        val CompartmentById = compartmentDao.getCompartmentsBycompartmentId(compartmentID)
+        Log.d("Database", "Compartments: $CompartmentById")
+        emit(CompartmentById)
+    }
+
+
 }

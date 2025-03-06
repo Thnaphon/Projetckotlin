@@ -139,7 +139,7 @@ fun WelcomePage(
             onLoginSuccess = { accountId, name, role, phone ->
                 showFaceLoginOverlay = false
                 // calling mainmenu if success login state after loginoverlay
-                navController.navigate("main_menu/$accountId")
+                navController.navigate("main_menu/$accountId/$role/$phone")
 //                navController.navigate("main_menu/$accountId/$name/$role")
             }
         )
@@ -247,7 +247,7 @@ fun WelcomePage(
                                                         )
 
                                                     if (enteredPassword == decryptedPassword) {
-                                                        navController.navigate("main_menu/1")
+                                                        navController.navigate("main_menu/1/Service/Service")
                                                     } else {
                                                         Toast.makeText(
                                                             context,
