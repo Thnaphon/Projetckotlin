@@ -104,24 +104,7 @@ fun LockerUI(navController: NavController, lockerDao: LockerDao, accountid: Int,
             Log.d("LockerUI", "Sending message to: $topicToSend")
             mqttViewModel.sendMessage(topicToSend, "")
 
-            try {
-                // รอรับข้อความในเวลาที่กำหนด (20 วินาที)
-//                withTimeout(20000) {
-//                    mqttViewModel.waitForMessages("${locker.TokenTopic}/check/respond") { message ->
-//                        Log.d("LockerUI", "Received message: $message for locker ${locker.LockerID}")
-//                        viewModel.viewModelScope.launch {
-//                            if (message == "ACK") {
-//                                Log.d("LockerUI", "Locker ${locker.LockerID} is available")
-//                                viewModel.updateLockerStatus(locker.LockerID, "Available")
-//                                mqttViewModel.clearMessage()
-//                            }
-//                        }
-//                    }
-//                }
-            } catch (e: TimeoutCancellationException) {
-                Log.d("LockerUI", "Timeout reached for locker ${locker.LockerID}. Setting status to Unavailable")
-                viewModel.updateLockerStatus(locker.LockerID, "Unavailable")
-            }
+
         }
 
     }
@@ -190,7 +173,8 @@ fun LockerUI(navController: NavController, lockerDao: LockerDao, accountid: Int,
                 LockerCard(
                     locker = locker,
                     onClick = { onLockerClick(locker.LockerID.toString()) },
-                    onUpdateStatus = { lockerID, newStatus -> viewModel.updateLockerStatus(lockerID, newStatus) }
+                    onUpdateStatus = { lockerID, newStatus -> viewModel.updateLockerStatus(lockerID, newStatus) },
+                    accountid = accountid
                 )
             }
 
@@ -214,15 +198,25 @@ fun LockerUI(navController: NavController, lockerDao: LockerDao, accountid: Int,
 
 
 @Composable
-fun LockerCard(locker: Locker, onClick: () -> Unit, onUpdateStatus: (Int, String) -> Unit,) {
+fun LockerCard(locker: Locker, onClick: () -> Unit, onUpdateStatus: (Int, String) -> Unit,accountid: Int) {
     val viewModel: LockerViewModel = viewModel()
     var showDeleteOptions by remember { mutableStateOf(false) }
     var deleteCompartmentTrigger by remember { mutableStateOf(false) }
     var showEditOptions by remember { mutableStateOf(false) }
+    val ManageLockerViewModel: ManageLockerViewModel = viewModel()
+
     LaunchedEffect(deleteCompartmentTrigger) {
         if (deleteCompartmentTrigger) {
             viewModel.deleteLocker(locker.LockerID)
             deleteCompartmentTrigger = false // รีเซ็ต trigger หลังจากทำงานเสร็จ
+//            val usageTime = System.currentTimeMillis().toString()
+//            ManageLockerViewModel.insertManageLocker(
+//                lockerId = locker.LockerID,
+//                usageTime = usageTime,
+//                usage = "Delete Locker",
+//                AccountID = accountid,
+//                Status = "Success"
+//            )
         }
     }
 
@@ -335,6 +329,7 @@ fun LockerCard(locker: Locker, onClick: () -> Unit, onUpdateStatus: (Int, String
             Editlocker(
                 showEditOptions = showEditOptions,
                 locker = locker,
+                accountid=accountid,
                 onConfirmEdit = {
                     // Handle Locker Edit Confirmation logic
                     showEditOptions = false
@@ -564,7 +559,18 @@ fun AddLockerCard(
                                                 }
                                             }
                                         }
+                                        availableCompartment.forEach{ compartment ->
+                                            if (compartment != ',') {
+                                                mqttViewModel.subscribeToTopic("$TokenTopic/borrow/$compartment/status")
+                                                mqttViewModel.subscribeToTopic("$TokenTopic/return/$compartment/status")
+                                            }
+                                        }
+
+
                                         Log.d("Create", "TokenTopic $TokenTopic")
+
+
+
                                         val message = Message(
                                             token = TokenTopic,
                                             name = Lockername,
@@ -629,13 +635,13 @@ fun Editlocker(
     onConfirmEdit: () -> Unit,
     onCancelEdit: () -> Unit,
     locker: Locker,
-
-
-    ) {
-
+    accountid:Int
+) {
+    val ManageLockerViewModel: ManageLockerViewModel = viewModel()
     var updatedLocker by remember { mutableStateOf(locker.copy()) }
     val viewModel: LockerViewModel = viewModel()
     var isConfirmed by remember { mutableStateOf(false) }
+
     AnimatedVisibility(visible = showEditOptions) {
         Card(
             modifier = Modifier
@@ -721,6 +727,15 @@ fun Editlocker(
                     IconButton(
                         onClick = {
                             viewModel.updateLocker(updatedLocker.LockerID,updatedLocker.status,updatedLocker.Lockername,updatedLocker.detail)
+                            val usageTime = System.currentTimeMillis().toString()
+                            ManageLockerViewModel.insertManageLocker(
+                                lockerId = updatedLocker.LockerID,
+                                usageTime = usageTime,
+                                usage = "Edit Locker",
+                                AccountID = accountid,
+                                Status = "Success"
+                            )
+                            Log.d("EditLocker","Test")
                             onCancelEdit()}
                         ,
                         modifier = Modifier

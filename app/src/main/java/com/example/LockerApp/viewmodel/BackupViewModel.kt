@@ -27,6 +27,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import android.util.Base64
+import kotlinx.coroutines.delay
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
 import org.eclipse.paho.client.mqttv3.MqttCallback
 import org.eclipse.paho.client.mqttv3.MqttMessage
@@ -242,7 +243,62 @@ class BackupViewModel : ViewModel() {
         }
     }
 
+    fun restoreBackupFromPi(mqttService: MqttService, context: Context) {
+        viewModelScope.launch {
+            try {
+                val restoredDatabase = StringBuilder()
+                val restoredShm = StringBuilder()
+                val restoredWal = StringBuilder()
+                mqttService.sendMessage("request/restore","")
+                // รอรับข้อมูลจาก MQTT
+                val databaseTopic = "locker/restore/database"
+                val shmTopic = "locker/restore/shm"
+                val walTopic = "locker/restore/wal"
 
+                // ตั้งค่า listener
+                mqttService.setOnMessageReceivedListener { topic, message ->
+                    when (topic) {
+                        databaseTopic -> restoredDatabase.append(String(message.payload))
+                        shmTopic -> restoredShm.append(String(message.payload))
+                        walTopic -> restoredWal.append(String(message.payload))
+                    }
+                }
 
+                // สมัครรับข้อมูลจากแต่ละ topic
 
+                mqttService.subscribeToTopic(databaseTopic)
+                mqttService.subscribeToTopic(shmTopic)
+                mqttService.subscribeToTopic(walTopic)
+
+                // รอให้ข้อมูลครบ
+                delay(5000)  // เพิ่มเวลาที่เหมาะสมในการรับข้อมูลทั้งหมด
+
+                // รวมข้อมูลที่ได้รับ
+                val databaseBytes = Base64.decode(restoredDatabase.toString(), Base64.DEFAULT)
+                val shmBytes = Base64.decode(restoredShm.toString(), Base64.DEFAULT)
+                val walBytes = Base64.decode(restoredWal.toString(), Base64.DEFAULT)
+
+                // เขียนไฟล์ที่ได้รับลงในฐานข้อมูลหรือไฟล์ต่างๆ
+                val databaseFile = context.getDatabasePath("locker_database")
+                val shmFile = context.getDatabasePath("locker_database-shm")
+                val walFile = context.getDatabasePath("locker_database-wal")
+
+                Log.d("Database Path", "Database file path: ${databaseFile.absolutePath}")
+                // เขียนข้อมูลลงในไฟล์
+                if (databaseBytes.isNotEmpty() && shmBytes.isNotEmpty() && walBytes.isNotEmpty()) {
+                    // เขียนข้อมูลลงในไฟล์
+                    FileOutputStream(databaseFile).use { it.write(databaseBytes) }
+                    FileOutputStream(shmFile).use { it.write(shmBytes) }
+                    FileOutputStream(walFile).use { it.write(walBytes) }
+                } else {
+                    Log.e("Restore", "ข้อมูลที่ได้รับไม่ครบถ้วน")
+                }
+
+                // แจ้งผลการ restore
+                Log.d("Restore", "ข้อมูลถูกรีสโตร์สำเร็จ")
+            } catch (e: Exception) {
+                Log.e("Restore", "การ restore ข้อมูลล้มเหลว", e)
+            }
+        }
+    }
 }

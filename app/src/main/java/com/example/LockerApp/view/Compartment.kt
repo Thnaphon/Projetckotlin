@@ -77,6 +77,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.LiveData
 import coil.compose.rememberImagePainter
+import com.example.LockerApp.viewmodel.ManageLockerViewModel
 import com.example.LockerApp.viewmodel.UsageLockerViewModel
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -110,6 +111,29 @@ fun CompartmentUI(lockerId: Int, viewModel: LockerViewModel = viewModel(),accoun
 
     var selectedCompartmentId by remember { mutableStateOf<Int?>(null) }
     val compartmentsNumber by viewModel.compartmentsNumber.observeAsState(emptyList())
+    val namelocker by viewModel.getLockername(lockerId).collectAsState(initial = null)
+    val mqttData by mqttViewModel.mqttData.collectAsState()
+    var Topic = remember { mutableStateOf(" ") }
+    LaunchedEffect(mqttData) {
+
+        if (mqttData.first == Topic.value && mqttData.second == "OPEN") {
+            val usageTime = System.currentTimeMillis().toString()
+            viewModel.getLatestCompartment { CompartmentId ->
+                CompartmentId?.let {
+                    Log.d("UsageCompartment","${it.CompartmentID} /$accountid")
+                    usageLockerViewModel.insertUsageLocker(
+                        lockerId,
+                        it.CompartmentID,
+                        usageTime,
+                        "Create Compartment",
+                        accountid,
+                        "Success"
+                    )
+                }
+            }
+        }
+
+    }
 
 
     LaunchedEffect(lockerId) {
@@ -118,15 +142,7 @@ fun CompartmentUI(lockerId: Int, viewModel: LockerViewModel = viewModel(),accoun
     }
 
 
-    LaunchedEffect(mqttTopic) {
-        mqttTopic?.let { topic ->
-            val checkTopic = "$topic/check/compartment"
-            mqttViewModel.sendMessage(checkTopic, "check") // ส่งข้อความ "check"
-            Log.d("MQTT", "Published to topic: $checkTopic")
-            mqttViewModel.subscribeToTopic("$topic/respond/compartment")
-        }
-        mqttViewModel.clearMessage()
-    }
+
 
     LaunchedEffect(compartments) {
         // Log เมื่อข้อมูลของ compartments เปลี่ยน
@@ -140,7 +156,7 @@ fun CompartmentUI(lockerId: Int, viewModel: LockerViewModel = viewModel(),accoun
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top
     ) {
-        Text("Compartments of Locker ID: $lockerId", style = MaterialTheme.typography.h5.copy(fontWeight = FontWeight.Bold), color = Color.Black)
+        Text("Compartments of Locker $namelocker", style = MaterialTheme.typography.h5.copy(fontWeight = FontWeight.Bold), color = Color.Black)
         Spacer(modifier = Modifier.height(10.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("Total Compartments: ${compartments.size}", style = MaterialTheme.typography.h6.copy(fontWeight = FontWeight.SemiBold), color = Color.Black)
@@ -153,9 +169,10 @@ fun CompartmentUI(lockerId: Int, viewModel: LockerViewModel = viewModel(),accoun
             columns = GridCells.Fixed(4),
             content = {
                 items(compartments) { compartment ->
-                    CompartmentCard(compartment)
+                    CompartmentCard(compartment=compartment,viewModel=viewModel,accountid=accountid)
                 }
                 if (showAddCard) {
+
                     item {
                         AddCompartmentCard(
                             onAdd = {
@@ -171,26 +188,16 @@ fun CompartmentUI(lockerId: Int, viewModel: LockerViewModel = viewModel(),accoun
 
 
 
-                                    Log.d("SubTopicCompartmentPic", "$mqttTopic/borrow/${compartment.CompartmentID}/status")
+
                                     // ตรวจสอบ log
                                     Log.d("CompartmentPic", "$selectedCompartmentId")
                                     Log.d("Compartmentadd", "Compartment added: $compartment")
-                                    val usageTime = System.currentTimeMillis().toString()
-                                    viewModel.addCompartment(compartment,lockerId)
 
-                                    viewModel.getLatestCompartment { CompartmentId ->
-                                        CompartmentId?.let {
-                                            Log.d("UsageCompartment","${it.CompartmentID} /$accountid")
-                                            usageLockerViewModel.insertUsageLocker(
-                                                lockerId,
-                                                it.CompartmentID,
-                                                usageTime,
-                                                "Create Compartment",
-                                                accountid,
-                                                "Success"
-                                            )
-                                        }
-                                    }
+                                    viewModel.addCompartment(compartment,lockerId)
+                                    Topic.value = "$mqttTopic/create/$selectedCompartmentId/status"
+                                    mqttViewModel.subscribeToTopic(Topic.value)
+                                    mqttViewModel.sendMessage("$mqttTopic/create/$selectedCompartmentId","")
+
 
                                     // Reset input fields
                                     nameItem = ""
@@ -217,15 +224,24 @@ fun CompartmentUI(lockerId: Int, viewModel: LockerViewModel = viewModel(),accoun
 }
 
 @Composable
-fun CompartmentCard(compartment: Compartment, viewModel: LockerViewModel = viewModel()) {
+fun CompartmentCard(compartment: Compartment, viewModel: LockerViewModel = viewModel(),accountid: Int) {
     var selectedCompartmentId by remember { mutableStateOf<Int?>(null) }
     var deleteCompartmentTrigger by remember { mutableStateOf(false) }
     var isEditing by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    val usageLockerViewModel: UsageLockerViewModel = viewModel()
     // ใช้ LaunchedEffect ที่อยู่ในระดับของ Composable
     LaunchedEffect(deleteCompartmentTrigger) {
         if (deleteCompartmentTrigger) {
             viewModel.delteCompartment(compartment.LockerID, compartment.CompartmentID)
+//            usageLockerViewModel.insertUsageLocker(
+//                compartment.LockerID,
+//                compartment.CompartmentID,
+//                usageTime,
+//                "Delete Compartment",
+//                accountid,
+//                "Success"
+//            )
             deleteCompartmentTrigger = false // รีเซ็ต trigger หลังจากทำงานเสร็จ
         }
     }
@@ -239,7 +255,7 @@ fun CompartmentCard(compartment: Compartment, viewModel: LockerViewModel = viewM
     ) {
         Column {
             if (isEditing) {
-                EditCompartmentForm(compartment = compartment, onCancel = { isEditing = false },onCompartmentSelected = { selectedCompartmentId = it })
+                EditCompartmentForm(compartment = compartment, onCancel = { isEditing = false },onCompartmentSelected = { selectedCompartmentId = it },accountid=accountid)
             } else {
                 CompartmentView(compartment = compartment, onEdit = { isEditing = true }, onDelete = { deleteCompartmentTrigger = true })
             }
@@ -251,11 +267,11 @@ fun CompartmentCard(compartment: Compartment, viewModel: LockerViewModel = viewM
 }
 
 @Composable
-fun EditCompartmentForm(compartment: Compartment, onCancel: () -> Unit,viewModel: LockerViewModel = viewModel(),onCompartmentSelected: (Int?) -> Unit,) {
+fun EditCompartmentForm(compartment: Compartment, onCancel: () -> Unit,viewModel: LockerViewModel = viewModel(),onCompartmentSelected: (Int?) -> Unit,accountid:Int) {
     var selectedCompartmentId by remember { mutableStateOf<Int?>(null) }
 
     val available_compartment by viewModel.getavailableCompartmentByLockerId(compartment.LockerID).collectAsState(initial = null)
-
+    val usageLockerViewModel: UsageLockerViewModel = viewModel()
 
     val availableCompartments: MutableList<String> = available_compartment?.split(",")?.toMutableList() ?: mutableListOf()
     // ดึง compartmentIds ที่มีอยู่แล้วจากฐานข้อมูล
@@ -441,7 +457,16 @@ fun EditCompartmentForm(compartment: Compartment, onCancel: () -> Unit,viewModel
                         if (nameItem.isNotBlank() && selectedImagePath.isNotBlank() ) {
                             editCompartmentTrigger=true
                             Log.d("Compartment", "$updatedLockerStatus")
+                            val usageTime = System.currentTimeMillis().toString()
                             viewModel.updateCompartment(compartment.CompartmentID!!,nameItem,selectedImagePath,compartment.LockerID,compartmentNumber,updatedLockerStatus)
+                            usageLockerViewModel.insertUsageLocker(
+                                compartment.LockerID,
+                                compartment.CompartmentID,
+                                usageTime,
+                                "Edit Compartment",
+                                accountid,
+                                "Success"
+                            )
                             onCancel()
                         } else {
                             Log.d(

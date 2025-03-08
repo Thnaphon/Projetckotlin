@@ -192,6 +192,9 @@ interface LockerDao {
     @Query("SELECT TokenTopic FROM locker WHERE LockerID = :lockerId")
     suspend fun getMqttTopicByLockerId(lockerId: Int): String?
 
+    @Query("SELECT Lockername FROM locker WHERE LockerID = :lockerId")
+    suspend fun getNamelocker(lockerId: Int): String?
+
     @Query("SELECT LockerID FROM locker WHERE TokenTopic = :TokenTopic")
     suspend fun getLockerIdcByTopic(TokenTopic: String): Int?
 

@@ -2,6 +2,8 @@ package com.example.LockerApp.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.LockerApp.model.LockerDatabase
@@ -19,9 +21,10 @@ class ManageAccountViewModel(application: Application) : AndroidViewModel(applic
     private val manageAccountDao: ManageAccountDao =
         LockerDatabase.getDatabase(application).ManageAccountDao()
 
-    private val _manageAccounts = MutableStateFlow<List<ManageAccount>>(emptyList())
-    val manageAccounts: StateFlow<List<ManageAccount>> = _manageAccounts.asStateFlow()
 
+
+    private val _manageAccounts = MutableLiveData<List<ManageAccount>>()
+    val manageAccounts: LiveData<List<ManageAccount>> = _manageAccounts
     init {
         getAllManageAccounts()
     }
@@ -59,7 +62,7 @@ class ManageAccountViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
-    private fun getAllManageAccounts() {
+    fun getAllManageAccounts() {
         viewModelScope.launch {
             _manageAccounts.value = manageAccountDao.getAllManageAccounts()
         }

@@ -67,10 +67,11 @@ import java.util.Locale
 fun BackupScreen(viewModel: BackupViewModel) {
     val context = LocalContext.current
     val mqttService = MqttService() // สร้าง mqttService ที่นี่
-
+    var isBackupInProgress by remember { mutableStateOf(false) }
+    var backupStatusMessage by remember { mutableStateOf("") }
     // ตัวแปรสำหรับแสดงวันที่สำรองข้อมูลล่าสุด
     var lastBackupDate by remember { mutableStateOf("ไม่พบข้อมูลการสำรอง") }
-
+    var isRestoreInProgress by remember { mutableStateOf(false) }
     // ดึงข้อมูลการสำรองล่าสุดจากฐานข้อมูล
     LaunchedEffect(Unit) {
         // ในกรณีนี้เราจะไม่ดึงข้อมูลจากฐานข้อมูลจริง ๆ แต่ให้แสดงผลเป็นข้อมูลจำลอง
@@ -140,7 +141,31 @@ fun BackupScreen(viewModel: BackupViewModel) {
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
             shape = RoundedCornerShape(16.dp)
         ) {
+            Button(
+                onClick = {
+                    isBackupInProgress = true
+                    backupStatusMessage = "กำลังสำรองข้อมูล..."
+                    // เรียกฟังก์ชัน performBackupToPi
+                    viewModel.performBackupToPi(mqttService, context)
+                },
+            ) {
+                Text("สำรองข้อมูล")
+            }
 
+            // แสดงข้อความสถานะการสำรองข้อมูล
+            if (isBackupInProgress) {
+                Text(text = backupStatusMessage)
+            }
+
+            Button(
+                onClick = {
+                    isRestoreInProgress = true
+                    // เรียกฟังก์ชัน restoreBackupFromPi
+                    viewModel.restoreBackupFromPi(mqttService, context)
+                },
+            ) {
+                Text("รีสโตร์ข้อมูล")
+            }
         }
     }
 }

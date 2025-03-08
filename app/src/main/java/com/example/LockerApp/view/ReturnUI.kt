@@ -76,24 +76,27 @@ import java.io.File
 fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLockerViewModel: UsageLockerViewModel,accountid: Int) {
     var selectedLocker by remember { mutableStateOf(0) } // เริ่มต้นที่ All Lockers
     val lockers by viewModel.lockers.collectAsState() // ใช้ StateFlow ในการเก็บค่า locker
-    val compartments by viewModel.getCompartmentsByLocker(selectedLocker).collectAsState(initial = emptyList())
+    val compartments by viewModel.compartments.collectAsState(initial = emptyList())
     var statusMessage by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
     var isWaitingForClose by remember { mutableStateOf(false) }
     val compartmentNumber by viewModel.getAllCompartmentNumber(selectedLocker).observeAsState(initial = emptyList())
 
-    LaunchedEffect(selectedLocker) {
-        selectedLocker?.let { lockerId ->
-            viewModel.loadLockersUi()  // โหลดข้อมูลใหม่เมื่อเลือก Locker
-            viewModel.getMqttTopicFromDatabase(lockerId).collect { mqttTopic ->
-                compartmentNumber?.forEach { Number ->
-                    mqttTopic?.let {
-                        mqttViewModel.subscribeToTopic("$it/borrow/$Number/status")
-                        mqttViewModel.subscribeToTopic("$it/return/$Number/status")
-                    }
+    LaunchedEffect(Unit) {
+        viewModel.loadCompartments(selectedLocker)
+        viewModel.loadLockersUi()  // โหลดข้อมูลใหม่เมื่อเลือก Locker
+        compartments?.forEach { Number ->
+            viewModel.getMqttTopicFromDatabase(Number.LockerID).collect { mqttTopic ->
+                mqttTopic?.let {
+                    mqttViewModel.subscribeToTopic("$it/borrow/${Number.number_compartment}/status")
+                    mqttViewModel.subscribeToTopic("$it/return/${Number.number_compartment}/status")
                 }
             }
         }
+
+    }
+    LaunchedEffect(selectedLocker) {
+        viewModel.loadCompartments(selectedLocker)
     }
 
 
@@ -247,6 +250,7 @@ fun CompartmentCardReturn(
                     status
                 )
             }
+
         }
     }
 

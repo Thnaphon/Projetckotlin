@@ -97,25 +97,23 @@ fun BorrowUI(
 ) {
     var selectedLocker by remember { mutableStateOf(0) } // เริ่มต้นที่ All Lockers
     val lockers by viewModel.lockers.collectAsState() // ใช้ StateFlow ในการเก็บค่า locker
-    val compartments by viewModel.getCompartmentsByLocker(selectedLocker).collectAsState(initial = emptyList())
+    val compartments by viewModel.compartments.collectAsState(initial = emptyList())
     var statusMessage by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
     var isWaitingForClose by remember { mutableStateOf(false) }
     val compartmentNumber by viewModel.getAllCompartmentNumber(selectedLocker).observeAsState(initial = emptyList())
 
-    LaunchedEffect(selectedLocker) {
-        selectedLocker?.let { lockerId ->
-            viewModel.loadLockersUi()  // โหลดข้อมูลใหม่เมื่อเลือก Locker
-            viewModel.getMqttTopicFromDatabase(lockerId).collect { mqttTopic ->
-                compartmentNumber?.forEach { Number ->
-                    mqttTopic?.let {
-                        mqttViewModel.subscribeToTopic("$it/borrow/$Number/status")
-                        mqttViewModel.subscribeToTopic("$it/return/$Number/status")
-                    }
-                }
-            }
-        }
+
+    LaunchedEffect(Unit) {
+        viewModel.loadCompartments(selectedLocker)
+        viewModel.loadLockersUi()  // โหลดข้อมูลใหม่เมื่อเลือก Locker
     }
+
+    LaunchedEffect(selectedLocker) {
+        viewModel.loadCompartments(selectedLocker)
+    }
+
+
 
 
 
@@ -228,8 +226,6 @@ fun CompartmentCard(
     var Topic = remember { mutableStateOf(" ") }
 
 
-
-
     LaunchedEffect(mqttData) {
         Log.d("mqttData", "MQTT Topic: ${mqttData.first}, Message: ${mqttData.second}")
         if (mqttData.first == Topic.value && mqttData.second == "OPEN") {
@@ -311,7 +307,10 @@ fun CompartmentCard(
                     Column(
                         modifier = Modifier.padding(16.dp)
                     ) {
-                        Row (Modifier.wrapContentSize().padding(bottom = 8.dp)){
+                        Row (
+                            Modifier
+                                .wrapContentSize()
+                                .padding(bottom = 8.dp)){
                             Text(
                                 "Locker ${compartment.LockerID} | Compartment ${compartment.number_compartment}",
                                 fontSize = 13.sp
@@ -384,8 +383,6 @@ fun CompartmentCard(
 
                                 TextButton(
                                     onClick = {
-
-
                                         coroutineScope.launch {
                                             viewModel.getMqttTopicFromDatabase(compartment.LockerID)
                                                 .collect { topicMqtt -> // เปลี่ยนจาก onEach เป็น collect ตรงๆ
@@ -400,11 +397,8 @@ fun CompartmentCard(
 
                                                     }
                                                 }
+
                                         }
-
-
-//
-
                                         showDialog = false
                                     }, shape = RoundedCornerShape(8), // ขอบมน
                                     colors = ButtonDefaults.buttonColors(backgroundColor = Color.White), // สีพื้นหลัง

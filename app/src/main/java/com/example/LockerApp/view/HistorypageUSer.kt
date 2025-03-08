@@ -1,5 +1,6 @@
 package com.example.LockerApp.view
 
+
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -89,7 +90,7 @@ import kotlin.math.log
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun UsageHistoryScreen(accountViewModel: AccountViewModel, usageLockerViewModel: UsageLockerViewModel, navController: NavController,viewModel: LockerViewModel) {
+fun UsageHistoryScreenUser(accountViewModel: AccountViewModel, usageLockerViewModel: UsageLockerViewModel, navController: NavController,viewModel: LockerViewModel,accountid:Int) {
     var searchQuery by remember { mutableStateOf("") }
     val manageAccountViewModel : ManageAccountViewModel = viewModel()
     // ดึงข้อมูลจาก ViewModel
@@ -99,10 +100,10 @@ fun UsageHistoryScreen(accountViewModel: AccountViewModel, usageLockerViewModel:
     var filterShowcolumn by remember { mutableStateOf("Showlocker") }
 
     val filteredUsageLockers = usageLockers.filter {
-        it.Usage.contains(searchQuery, ignoreCase = true) ||
+        (it.Usage.contains(searchQuery, ignoreCase = true) ||
                 it.LockerID.toString().contains(searchQuery, ignoreCase = true) ||
-                it.CompartmentID.toString().contains(searchQuery, ignoreCase = true)
-
+                it.CompartmentID.toString().contains(searchQuery, ignoreCase = true)) &&
+                it.AccountID == accountid
     }
 
     val usageLockerCount = filteredUsageLockers.size
@@ -176,9 +177,7 @@ fun UsageHistoryScreen(accountViewModel: AccountViewModel, usageLockerViewModel:
                         .border(2.dp, Color(0xFF8D8B8B), RoundedCornerShape(25))
 
                 )
-                Spacer(modifier = Modifier.width(10.dp))
 
-                DropdownLocker(viewModel=viewModel,OnshowLocker={filterShowcolumn= "Showlocker"},OnshowUser={filterShowcolumn= "Showuser"})
                 Spacer(modifier = Modifier.width(10.dp))
 
                 DropdownHistory(viewModel)
@@ -343,74 +342,6 @@ fun UsageHistoryScreen(accountViewModel: AccountViewModel, usageLockerViewModel:
                                 }
                                 Divider(color = Color(0xFFE8E8E8), thickness = 1.dp)
                             }
-
-                            items(manageLockers) { manageLocker ->
-                                val accountNameUsageLocker by accountViewModel.getAccountNameById(manageLocker.AccountID).observeAsState("Unknown")
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = 17.dp, bottom = 12.dp)
-                                ) {
-                                    Text(
-                                        text = accountNameUsageLocker,
-                                        modifier = Modifier.weight(0.8f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Text(
-                                        text = "Locker ${manageLocker.LockerID.toString()}",
-                                        modifier = Modifier
-                                            .weight(0.8f)
-                                            .padding(start = 16.dp),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Text(
-                                        text = "N/A",
-                                        modifier = Modifier
-                                            .weight(0.5f)
-                                            .padding(start = 16.dp),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Text(
-                                        text = "N/A",
-                                        modifier = Modifier
-                                            .weight(0.8f)
-                                            .padding(start = 16.dp),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Text(
-                                        text = formatTimestamp(manageLocker.UsageTime),
-                                        modifier = Modifier.weight(1.4f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Text(
-                                        text = manageLocker.Usage,
-                                        modifier = Modifier.weight(1f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Text(
-                                        text = manageLocker.Status,
-                                        modifier = Modifier.weight(1f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center
-                                    )
-                                }
-                                Divider(color = Color(0xFFE8E8E8), thickness = 1.dp)
-                            }
-
                         }
                     }
                     else{
@@ -520,127 +451,5 @@ fun UsageHistoryScreen(accountViewModel: AccountViewModel, usageLockerViewModel:
     }
 }
 
-// ฟังก์ชันแปลง timestamp เป็นรูปแบบ hh:mm dd/MM/yyyy
-fun formatTimestamp(timestamp: String): String {
-    return try {
-        val date = Date(timestamp.toLong())
-        val sdf = SimpleDateFormat("HH:mm dd/MM/yyyy", Locale.getDefault())
-        sdf.format(date)
-    } catch (e: Exception) {
-        "Invalid date"
-    }
-}
-@OptIn(ExperimentalMaterialApi::class)
-@Composable
-fun DropdownLocker(viewModel: LockerViewModel,OnshowLocker: () -> Unit,OnshowUser: () -> Unit) {
 
-    val lockers by viewModel.lockers.collectAsState()
-    var selectedLocker by remember { mutableStateOf(0) }
-    var expanded by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
-        Box(
-            modifier = Modifier
-                .wrapContentWidth()
-                .height(56.dp) // ตั้งค่าความสูงให้เหมือนปุ่ม
-                .border(2.dp, Color(0xFF8D8B8B), RoundedCornerShape(15.dp)) // เพิ่มขอบมน
-                .clickable { expanded = true }
-                .padding(horizontal = 16.dp, vertical = 12.dp), // จัดการ padding
-            contentAlignment = Alignment.CenterStart
-        ) {
-            Row(
-                modifier = Modifier.wrapContentWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = if (selectedLocker == 0) "All Lockers" else "All Users",
-                    style = MaterialTheme.typography.body1
-                )
-                Icon(
-                    imageVector = Icons.Filled.KeyboardArrowDown, // เปลี่ยนไอคอนเป็นลูกศรลง
-                    contentDescription = "Dropdown Icon"
-                )
-            }
-        }
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.wrapContentSize()
-        ) {
-            DropdownMenuItem(onClick = {
-                selectedLocker = 0 // เลือก All Lockers
-                OnshowLocker()
-                expanded = false
-
-            }) {
-                Text("All Lockers")
-            }
-
-            DropdownMenuItem(onClick = {
-                selectedLocker = 1
-                OnshowUser()
-                expanded = false
-            }) {
-                Text("All Users")
-            }
-
-
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterialApi::class)
-@Composable
-fun DropdownHistory(viewModel: LockerViewModel) {
-
-    val lockers by viewModel.lockers.collectAsState()
-    var selectedLocker by remember { mutableStateOf(0) }
-    var expanded by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
-        Box(
-            modifier = Modifier
-                .wrapContentWidth()
-                .height(56.dp) // ตั้งค่าความสูงให้เหมือนปุ่ม
-                .border(2.dp, Color(0xFF8D8B8B), RoundedCornerShape(15.dp)) // เพิ่มขอบมน
-                .clickable { expanded = true }
-                .padding(horizontal = 16.dp, vertical = 12.dp), // จัดการ padding
-            contentAlignment = Alignment.CenterStart
-        ) {
-            Row(
-                modifier = Modifier.wrapContentWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = if (selectedLocker == 0) "All Lockers" else "Locker $selectedLocker",
-                    style = MaterialTheme.typography.body1
-                )
-                Icon(
-                    imageVector = Icons.Filled.KeyboardArrowDown, // เปลี่ยนไอคอนเป็นลูกศรลง
-                    contentDescription = "Dropdown Icon"
-                )
-            }
-        }
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.wrapContentSize()
-        ) {
-            lockers.forEach { locker ->
-                DropdownMenuItem(onClick = {
-                    selectedLocker = locker.LockerID
-                    expanded = false
-                }) {
-                    Text("Locker ${locker.LockerID}")
-                }
-            }
-            DropdownMenuItem(onClick = {
-                selectedLocker = 0 // เลือก All Lockers
-                expanded = false
-            }) {
-                Text("All History")
-            }
-        }
-    }
-}
 
