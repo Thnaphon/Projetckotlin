@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,6 +19,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
 import androidx.compose.material.TextField
@@ -47,11 +49,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
 import com.example.LockerApp.viewmodel.AccountViewModel
 import com.example.LockerApp.viewmodel.FaceLoginViewModel
@@ -531,113 +536,221 @@ fun RoleDropdown(
 
 @Composable
 fun PdpDialog(onConfirm: () -> Unit, onCancel: () -> Unit) {
-    AlertDialog(
+    // Track if user has scrolled to bottom
+    var canAccept by remember { mutableStateOf(false) }
+    val lazyListState = rememberLazyListState()
+
+    // Only check scroll position when necessary
+    LaunchedEffect(lazyListState.layoutInfo.visibleItemsInfo.size, lazyListState.firstVisibleItemIndex) {
+        val lastVisibleItem = lazyListState.layoutInfo.visibleItemsInfo.lastOrNull()
+        val totalItems = lazyListState.layoutInfo.totalItemsCount
+
+        // Check if last item is visible
+        if (lastVisibleItem != null && lastVisibleItem.index >= totalItems - 1) {
+            canAccept = true
+        }
+    }
+
+    // Custom dialog implementation instead of AlertDialog
+    Dialog(
         onDismissRequest = onCancel,
-        title = {
-            Text(
-                text = "นโยบายความเป็นส่วนตัว (Privacy Policy)",
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
-            )
-        },
-        backgroundColor = Color(0xFF2A3D4F),
-        shape = RoundedCornerShape(16.dp),
-
-        text = {
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true,
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = Color.White,
+            modifier = Modifier
+                .width(600.dp)
+                .height(400.dp)
+        ) {
             Column(
-                modifier = Modifier
-                    .verticalScroll(rememberScrollState())
-                    .padding(vertical = 8.dp)
+                modifier = Modifier.fillMaxSize()
             ) {
+                // Fixed title area
                 Text(
-                    text = "แอปพลิเคชัน Face Authentication Locker for Equipment Borrowing ให้ความสำคัญกับความเป็นส่วนตัวของผู้ใช้ และมุ่งมั่นในการปกป้องข้อมูลส่วนบุคคลของคุณตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)",
-                    color = Color.White
+                    text = "นโยบายความเป็นส่วนตัว",
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                // Scrollable content area with fixed height
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                ) {
+                    // Scrollable content
+                    LazyColumn(
+                        state = lazyListState,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp)
+                    ) {
+                        item {
+                            Text(
+                                text = "แอปพลิเคชัน Face Authentication Locker for Equipment Borrowing ให้ความสำคัญกับความเป็นส่วนตัวของผู้ใช้ตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)",
+                                color = Color.Black,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+                        }
 
-                Text(
-                    text = "1. ข้อมูลที่เราเก็บรวบรวม",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "เมื่อคุณใช้แอปพลิเคชันของเรา เราอาจเก็บรวบรวมข้อมูลส่วนบุคคลของคุณ ได้แก่:",
-                    color = Color.White
-                )
+                        item { Spacer(modifier = Modifier.height(16.dp)) }
 
-                BulletPoint("ชื่อ: เพื่อใช้ในการระบุตัวตน")
-                BulletPoint("เบอร์โทรศัพท์: เพื่อการติดต่อและยืนยันตัวตน")
-                BulletPoint("ข้อมูลใบหน้า: เพื่อใช้ในฟีเจอร์ระบุตัวตนหรือการตรวจสอบใบหน้า")
+                        item {
+                            Text(
+                                text = "1. ข้อมูลที่เราเก็บรวบรวม",
+                                color = Color.Black,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                        item {
+                            Text(
+                                text = "เมื่อคุณใช้แอปพลิเคชันของเรา เราอาจเก็บรวบรวมข้อมูลส่วนบุคคลของคุณ ได้แก่:",
+                                color = Color.Black
+                            )
+                        }
 
-                Text(
-                    text = "2. วัตถุประสงค์ในการใช้ข้อมูล",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "เราจะใช้ข้อมูลของคุณเพื่อวัตถุประสงค์ดังต่อไปนี้:",
-                    color = Color.White
-                )
+                        item { BulletPoint("ชื่อ: เพื่อใช้ในการระบุตัวตน") }
+                        item { BulletPoint("เบอร์โทรศัพท์: เพื่อการติดต่อและยืนยันตัวตน") }
+                        item { BulletPoint("ข้อมูลใบหน้า: เพื่อใช้ในฟีเจอร์ระบุตัวตนหรือการตรวจสอบใบหน้า") }
 
-                BulletPoint("การให้บริการตามฟังก์ชันของแอปพลิเคชัน")
-                BulletPoint("การยืนยันตัวตนและความปลอดภัยของบัญชี")
-                BulletPoint("การติดต่อผู้ใช้เกี่ยวกับการใช้งานแอปพลิเคชัน")
+                        item { Spacer(modifier = Modifier.height(8.dp)) }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                        item {
+                            Text(
+                                text = "2. วัตถุประสงค์ในการใช้ข้อมูล",
+                                color = Color.Black,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
 
-                Text(
-                    text = "3. การเก็บรักษาข้อมูล",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "ข้อมูลของคุณจะถูกเก็บรักษาอย่างปลอดภัยและจะถูกลบเมื่อไม่มีความจำเป็นในการใช้งานอีกต่อไป",
-                    color = Color.White
-                )
+                        item {
+                            Text(
+                                text = "เราจะใช้ข้อมูลของคุณเพื่อวัตถุประสงค์ดังต่อไปนี้:",
+                                color = Color.Black
+                            )
+                        }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                        item { BulletPoint("การให้บริการตามฟังก์ชันของแอปพลิเคชัน") }
+                        item { BulletPoint("การยืนยันตัวตนและความปลอดภัยของบัญชี") }
+                        item { BulletPoint("การติดต่อผู้ใช้เกี่ยวกับการใช้งานแอปพลิเคชัน") }
 
-                Text(
-                    text = "4. สิทธิของเจ้าของข้อมูล",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "คุณมีสิทธิ์ในการ",
-                    color = Color.White
-                )
+                        item { Spacer(modifier = Modifier.height(8.dp)) }
 
-                BulletPoint("ขอเข้าถึง แก้ไข หรือลบข้อมูลส่วนบุคคลของคุณ")
-                BulletPoint("ขอให้ระงับหรือคัดค้านการประมวลผลข้อมูลของคุณ")
-                BulletPoint("เพิกถอนความยินยอมในการเก็บและใช้ข้อมูล")
+                        item {
+                            Text(
+                                text = "3. การเก็บรักษาข้อมูล",
+                                color = Color.Black,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
 
-                Text(
-                    text = "หากคุณต้องการใช้สิทธิ์ของคุณ หรือมีข้อสงสัยเกี่ยวกับนโยบายนี้ กรุณาติดต่อ ผู้ให้บริการแอปพลิเคชัน",
-                    color = Color.White,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm , modifier = Modifier
-                .padding(start = 8.dp , bottom = 10.dp, end = 8.dp)
-                .background(Color.Green, shape = RoundedCornerShape(8.dp))) {
-                Text("ยอมรับ", color = Color.White)
+                        item {
+                            Text(
+                                text = "ข้อมูลของคุณจะถูกเก็บรักษาอย่างปลอดภัยและจะถูกลบเมื่อไม่มีความจำเป็นในการใช้งานอีกต่อไป",
+                                color = Color.Black
+                            )
+                        }
 
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onCancel , modifier = Modifier
-                .padding(start = 8.dp,bottom = 10.dp, end = 8.dp)
-                .background(Color.Red, shape = RoundedCornerShape(8.dp))) {
-                Text("ยกเลิก", color = Color.Black)
+                        item { Spacer(modifier = Modifier.height(8.dp)) }
+
+                        item {
+                            Text(
+                                text = "4. สิทธิของเจ้าของข้อมูล",
+                                color = Color.Black,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        item {
+                            Text(
+                                text = "คุณมีสิทธิ์ในการ",
+                                color = Color.Black
+                            )
+                        }
+
+                        item { BulletPoint("ขอเข้าถึง แก้ไข หรือลบข้อมูลส่วนบุคคลของคุณ") }
+                        item { BulletPoint("ขอให้ระงับหรือคัดค้านการประมวลผลข้อมูลของคุณ") }
+                        item { BulletPoint("เพิกถอนความยินยอมในการเก็บและใช้ข้อมูล") }
+
+                        item {
+                            Text(
+                                text = "หากคุณต้องการใช้สิทธิ์ของคุณ หรือมีข้อสงสัยเกี่ยวกับนโยบายนี้ กรุณาติดต่อ ผู้ให้บริการแอปพลิเคชัน",
+                                color = Color.Black,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+
+                        // Add extra padding at the bottom to ensure content can be fully scrolled
+                        item { Spacer(modifier = Modifier.height(50.dp)) }
+                    }
+
+                    // Fixed overlay gradient with scroll indicator
+                    if (!canAccept) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .height(60.dp)
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(Color.Transparent, Color.White),
+                                        startY = 0f,
+                                        endY = 120f
+                                    )
+                                )
+                        ) {
+                            Icon(
+                                Icons.Default.KeyboardArrowDown,
+                                contentDescription = "Scroll down to continue",
+                                modifier = Modifier.align(Alignment.Center),
+                                tint = Color.Gray
+                            )
+                        }
+                    }
+                }
+
+                // Fixed buttons area
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.White)
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(
+                        onClick = onCancel,
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        Text("ยกเลิก", color = Color.Black)
+                    }
+
+                    TextButton(
+                        onClick = onConfirm,
+                        enabled = canAccept,
+                        modifier = Modifier
+                            .background(
+                                color = if (canAccept) Color(0xFF3A4750) else Color.Gray,
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Text("ยอมรับ", color = Color.White)
+                    }
+                }
             }
         }
-    )
+    }
 }
 
 @Composable
@@ -648,13 +761,13 @@ private fun BulletPoint(text: String) {
     ) {
         Text(
             text = "•",
-            color = Color.White,
+            color = Color.Black,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(end = 8.dp, top = 0.dp)
         )
         Text(
             text = text,
-            color = Color.White
+            color = Color.Black
         )
     }
 }

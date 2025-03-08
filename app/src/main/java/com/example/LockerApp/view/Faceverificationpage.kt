@@ -1,21 +1,7 @@
 package com.example.LockerApp.view
 
 import android.Manifest
-import android.annotation.SuppressLint
-import android.content.Context
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.Matrix
-import android.media.Image
-import android.util.Log
-import android.view.ViewGroup
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ExperimentalGetImage
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageProxy
-import androidx.camera.core.Preview
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,7 +13,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -35,35 +20,17 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.LockerApp.R
+import com.example.LockerApp.utils.CameraManager
 import com.example.LockerApp.viewmodel.FaceLoginViewModel
-import com.google.common.util.concurrent.ListenableFuture
-import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.face.FaceDetection
-import com.google.mlkit.vision.face.FaceDetectorOptions
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import java.util.concurrent.Executor
 import java.util.concurrent.Executors
-
-// Function to close camera when out of compose
-private fun shutdownCamera(provider: ProcessCameraProvider?, executor: Executor) {
-    try {
-        // unbind all
-        provider?.unbindAll()
-        if (executor is java.util.concurrent.ExecutorService) {
-            executor.shutdown()
-        }
-    } catch (e: Exception) {
-        Log.e("FaceVerificationOverlay", "Error shutting down camera", e)
-    }
-}
 
 @Composable
 fun FaceVerificationOverlay(
@@ -82,12 +49,9 @@ fun FaceVerificationOverlay(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val coroutineScope = rememberCoroutineScope()
-
-    // Camera setup
-    val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
-    var cameraProvider by remember { mutableStateOf<ProcessCameraProvider?>(null) }
+    val cameraManager = remember { CameraManager(context) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
-    val previewView = remember { PreviewView(context) }
+    val previewView = remember { androidx.camera.view.PreviewView(context) }
 
     // Face recognition state
     var isVerificationSuccessful by remember { mutableStateOf(false) }
@@ -106,10 +70,6 @@ fun FaceVerificationOverlay(
     var verificationMessage by remember { mutableStateOf("กำลังสแกนใบหน้า") }
 
     // Handle login state changes for verification
-    LaunchedEffect (Unit){
-        viewModel.refreshFaceData()
-        viewModel.resetToScanning()
-    }
     LaunchedEffect(loginState) {
         when (loginState) {
             is FaceLoginViewModel.LoginState.Scanning -> {
@@ -131,7 +91,7 @@ fun FaceVerificationOverlay(
                     delay(1500) // Show success animation briefly
 
                     // Clean up before navigation
-                    shutdownCamera(cameraProvider, cameraExecutor)
+                    cameraManager.shutdown()
                     viewModel.resetToScanning()
 
                     // Navigate based on the verification purpose
@@ -174,32 +134,29 @@ fun FaceVerificationOverlay(
         }
     }
 
-    // Get camera provider on initialization
+    // Initialize camera
     LaunchedEffect(Unit) {
         try {
-            cameraProvider = cameraProviderFuture.get()
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
                 == PackageManager.PERMISSION_GRANTED
             ) {
-                setupCamera(
-                    context = context,
+                cameraManager.startCameraForOverlay(
                     lifecycleOwner = lifecycleOwner,
-                    cameraProviderFuture = cameraProviderFuture,
                     previewView = previewView,
                     cameraExecutor = cameraExecutor,
-                    onFaceBitmapCaptured = { bitmap ->
-                        viewModel.recognizeFace(bitmap)
+                    onFaceBitmapCaptured = { faceBitmap ->
+                        viewModel.recognizeFace(faceBitmap)
                     }
                 )
             }
         } catch (e: Exception) {
-            Log.e("FaceVerificationOverlay", "Failed to get camera provider", e)
+            // Handle camera errors
         }
     }
 
     // Handle dismiss with proper camera shutdown
     val handleDismiss = {
-        shutdownCamera(cameraProvider, cameraExecutor)
+        cameraManager.shutdown()
         // Deactivate recognition when dismissing to prevent stale data
         viewModel.resetToScanning()
         onDismiss()
@@ -208,11 +165,11 @@ fun FaceVerificationOverlay(
     // Cleanup when the composable is disposed
     DisposableEffect(Unit) {
         onDispose {
-            shutdownCamera(cameraProvider, cameraExecutor)
+            cameraManager.shutdown()
         }
     }
 
-    // Dialog UI - now completely transparent
+    // Dialog UI
     Dialog(
         onDismissRequest = handleDismiss,
         properties = DialogProperties(
@@ -221,6 +178,9 @@ fun FaceVerificationOverlay(
             usePlatformDefaultWidth = false
         )
     ) {
+        // ... The rest of the UI code remains the same as in your FaceVerificationOverlay
+        // Just ensure you use the previewView setup above instead of creating a new one
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -230,8 +190,8 @@ fun FaceVerificationOverlay(
             // Hidden camera preview (still active for face detection)
             AndroidView(
                 factory = { previewView.apply {
-                    layoutParams = ViewGroup.LayoutParams(1, 1) // Tiny size to hide it
-                    implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                    layoutParams = android.view.ViewGroup.LayoutParams(1, 1) // Tiny size to hide it
+                    implementationMode = androidx.camera.view.PreviewView.ImplementationMode.COMPATIBLE
                 } },
                 modifier = Modifier.size(1.dp) // Minimal size
             )
@@ -314,16 +274,6 @@ fun FaceVerificationOverlay(
                                     else -> Color.Unspecified
                                 }
                             )
-
-//                            if (name.isNotEmpty()) {
-//                                Spacer(modifier = Modifier.height(8.dp))
-//                                Text(
-//                                    text = "Adding new user: $name",
-//                                    fontSize = 14.sp,
-//                                    textAlign = TextAlign.Center,
-//                                    color = Color.Gray
-//                                )
-//                            }
                         }
                     }
                 }
@@ -347,107 +297,5 @@ fun FaceVerificationOverlay(
                 }
             }
         }
-    }
-}
-
-@SuppressLint("UnsafeOptInUsageError")
-private suspend fun setupCamera(
-    context: Context,
-    lifecycleOwner: LifecycleOwner,
-    cameraProviderFuture: ListenableFuture<ProcessCameraProvider>,
-    previewView: PreviewView,
-    cameraExecutor: Executor,
-    onFaceBitmapCaptured: (Bitmap) -> Unit
-) {
-    try {
-        val cameraProvider = cameraProviderFuture.get()
-        val preview = Preview.Builder()
-            .build()
-            .also { it.setSurfaceProvider(previewView.surfaceProvider) }
-
-        val imageAnalysis = ImageAnalysis.Builder()
-            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-            .build()
-            .apply {
-                setAnalyzer(cameraExecutor) { imageProxy ->
-                    analyzeImage(
-                        imageProxy = imageProxy,
-                        onFaceBitmapCaptured = onFaceBitmapCaptured
-                    )
-                }
-            }
-
-        // Try to use the front camera
-        val cameraSelector = try {
-            CameraSelector.DEFAULT_FRONT_CAMERA
-        } catch (e: Exception) {
-            Log.w("FaceVerificationOverlay", "Front camera not available but let's try again", e)
-            CameraSelector.DEFAULT_FRONT_CAMERA
-        }
-
-        try {
-            cameraProvider.unbindAll()
-            cameraProvider.bindToLifecycle(
-                lifecycleOwner,
-                cameraSelector,
-                preview,
-                imageAnalysis
-            )
-        } catch (e: Exception) {
-            Log.w("FaceVerificationOverlay", "Failed to bind specific camera, trying generic selector", e)
-            val genericSelector = CameraSelector.Builder().build()
-            cameraProvider.bindToLifecycle(
-                lifecycleOwner,
-                genericSelector,
-                preview,
-                imageAnalysis
-            )
-        }
-    } catch (e: Exception) {
-        Log.e("FaceVerificationOverlay", "Camera setup failed", e)
-    }
-}
-
-@ExperimentalGetImage
-private fun analyzeImage(
-    imageProxy: ImageProxy,
-    onFaceBitmapCaptured: (Bitmap) -> Unit
-) {
-    val mediaImage = imageProxy.image
-    if (mediaImage != null) {
-        val rotationDegrees = imageProxy.imageInfo.rotationDegrees
-        val image = InputImage.fromMediaImage(mediaImage, rotationDegrees)
-
-        val faceDetector = FaceDetection.getClient(
-            FaceDetectorOptions.Builder()
-                .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
-                .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
-                .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
-                .build()
-        )
-
-        faceDetector.process(image)
-            .addOnSuccessListener { faces ->
-                if (faces.isNotEmpty()) {
-                    val face = faces.first()
-                    val bitmap = mediaImageToBitmap(mediaImage, rotationDegrees)
-                    val faceBitmap = Bitmap.createBitmap(
-                        bitmap,
-                        face.boundingBox.left.coerceAtLeast(0),
-                        face.boundingBox.top.coerceAtLeast(0),
-                        face.boundingBox.width().coerceAtMost(bitmap.width - face.boundingBox.left),
-                        face.boundingBox.height().coerceAtMost(bitmap.height - face.boundingBox.top)
-                    )
-                    val resizedFaceBitmap = Bitmap.createScaledBitmap(faceBitmap, 160, 160, false)
-                    onFaceBitmapCaptured(resizedFaceBitmap)
-                }
-                imageProxy.close()
-            }
-            .addOnFailureListener { e ->
-                Log.e("FaceVerificationOverlay", "Face detection failed", e)
-                imageProxy.close()
-            }
-    } else {
-        imageProxy.close()
     }
 }
