@@ -3,6 +3,7 @@ package com.example.LockerApp.view
 
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,6 +38,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -53,6 +55,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.LockerApp.model.BackupSettings
@@ -66,17 +69,12 @@ import java.util.Locale
 @Composable
 fun BackupScreen(viewModel: BackupViewModel) {
     val context = LocalContext.current
-    val mqttService = MqttService() // สร้าง mqttService ที่นี่
+    val mqttService = MqttService()
     var isBackupInProgress by remember { mutableStateOf(false) }
-    var backupStatusMessage by remember { mutableStateOf("") }
-    // ตัวแปรสำหรับแสดงวันที่สำรองข้อมูลล่าสุด
-    var lastBackupDate by remember { mutableStateOf("ไม่พบข้อมูลการสำรอง") }
-    var isRestoreInProgress by remember { mutableStateOf(false) }
-    // ดึงข้อมูลการสำรองล่าสุดจากฐานข้อมูล
-    LaunchedEffect(Unit) {
-        // ในกรณีนี้เราจะไม่ดึงข้อมูลจากฐานข้อมูลจริง ๆ แต่ให้แสดงผลเป็นข้อมูลจำลอง
-        lastBackupDate = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
-    }
+    var lastBackupDate by remember { mutableStateOf("21 March 2024 At 8:45 AM") }
+    var scheduledBackup by remember { mutableStateOf("Daily") }
+    var backupTime by remember { mutableStateOf("0:00 O’Clock") }
+    var description by remember { mutableStateOf("Full Backup") }
 
     Column(
         modifier = Modifier
@@ -84,88 +82,241 @@ fun BackupScreen(viewModel: BackupViewModel) {
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top
-
     ) {
-
-        Text(
-            "Backup",
-            style = MaterialTheme.typography.h5.copy(fontWeight = FontWeight.Bold),
-            color = Color.Black
-        )
-
+        Text("Backup", style = MaterialTheme.typography.h5.copy(fontWeight = FontWeight.Bold))
         Spacer(modifier = Modifier.height(10.dp))
-        Row(modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = Icons.Outlined.Backup,
-                contentDescription = "History Icon",
-                tint = Color.Black,
-                modifier = Modifier.size(32.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                "Scheduled",
-                style = MaterialTheme.typography.h6.copy(fontWeight = FontWeight.SemiBold),
-                color = Color.Black
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            Card(
-                modifier = Modifier
-                    .size(47.dp)
-                    .clip(RoundedCornerShape(15.dp))
-                    .border(2.dp, Color(0xFF3961AA), RoundedCornerShape(15.dp)), // มุมมนของการ์ด
-                elevation = 8.dp, // ความสูงของเงา
-                backgroundColor = Color.White // พื้นหลังสีขาวของการ์ด
-            ) {
-                IconButton(
-                    onClick = {},
-                    modifier = Modifier
-                        .fillMaxSize() // ขยายขนาดให้เต็มการ์ด
-                        .padding(4.dp) // เพิ่ม padding รอบๆ IconButton
 
-                ) {
-                    Icon(
-                        Icons.Filled.Add,
-                        contentDescription = "Add Locker",
-                        tint = Color(0xFF3961AA)
-                    )
-                }
-            }
-        }
-        androidx.compose.material3.Card(
+        // Scheduled Backup Section
+        BackupSectionTitle(title = "Scheduled")
+        BackupSectionHeader(title = "Scheduled")
+        ScheduledBackupCard(scheduledBackup, backupTime, description)
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Recent Backup Section
+        BackupSectionTitle(title = "Recent")
+        RecentBackupHeader(title = "Recent")
+        RecentBackupCard(lastBackupDate, description)
+    }
+}
+
+@Composable
+fun BackupSectionTitle(title: String) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Icon(imageVector = Icons.Outlined.Backup, contentDescription = "$title Icon", modifier = Modifier.size(32.dp))
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(title, style = MaterialTheme.typography.h6.copy(fontWeight = FontWeight.SemiBold))
+    }
+}
+
+@Composable
+fun BackupSectionHeader(title: String) {
+    Card(
+        elevation = 8.dp
+    ) {
+        Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(vertical = 8.dp)
-                .weight(1f),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-            shape = RoundedCornerShape(16.dp)
+                .fillMaxWidth()
+                .height(46.dp)
+                .background(Color(0xFF1E293B))
+                .padding(vertical = 10.dp)
+                .padding(horizontal = 15.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Button(
-                onClick = {
-                    isBackupInProgress = true
-                    backupStatusMessage = "กำลังสำรองข้อมูล..."
-                    // เรียกฟังก์ชัน performBackupToPi
-                    viewModel.performBackupToPi(mqttService, context)
-                },
-            ) {
-                Text("สำรองข้อมูล")
+            Column(modifier = Modifier
+                .width(150.dp)) {
+                Text("Operation", color = Color.White)
             }
-
-            // แสดงข้อความสถานะการสำรองข้อมูล
-            if (isBackupInProgress) {
-                Text(text = backupStatusMessage)
+            Column(modifier = Modifier
+                .width(150.dp)) {
+                Text("Date/Time", color = Color.White)
             }
-
-            Button(
-                onClick = {
-                    isRestoreInProgress = true
-                    // เรียกฟังก์ชัน restoreBackupFromPi
-                    viewModel.restoreBackupFromPi(mqttService, context)
-                },
-            ) {
-                Text("รีสโตร์ข้อมูล")
+            Column(modifier = Modifier
+                .width(150.dp)) {
+                Text("Scheduled", color = Color.White)
+            }
+            Column(modifier = Modifier
+                .width(350.dp)) {
+                Text("Description", color = Color.White)
             }
         }
     }
+}
+
+@Composable
+fun ScheduledBackupCard(schedule: String, time: String, description: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = 8.dp,
+    ) {
+        Column() {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(65.dp)
+                    .background(Color.White)
+                    .padding(15.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier
+                    .width(150.dp)) {
+                    Text("Backup", color = Color.Black, fontWeight = FontWeight.Bold)
+
+                }
+                Column(modifier = Modifier
+                    .width(150.dp)) {
+                    Row(){
+                        Text("21 March 2024", color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+                    Row(){
+                        Text("At 8:45 AM", color = Color.Black)
+                    }
+                }
+                Column(modifier = Modifier
+                    .width(150.dp)) {
+                    Row(){
+                        Text("0:00 O'Clock", color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+                    Row(){
+                        Text("Daily", color = Color.Black)
+                    }
+                }
+                Column(modifier = Modifier
+                    .width(350.dp)) {
+                    Text("Full Backup", color = Color.Black)
+                }
+            }
+        }
+//        Row() {
+//            Column(modifier = Modifier.padding(16.dp)) {
+//                Row(
+//                    modifier = Modifier.fillMaxWidth(),
+//                    horizontalArrangement = Arrangement.SpaceBetween
+//                ) {
+//                    Text("Scheduled", color = Color.White)
+//                    Text(schedule, color = Color.White)
+//                }
+//                Row(
+//                    modifier = Modifier.fillMaxWidth(),
+//                    horizontalArrangement = Arrangement.SpaceBetween
+//                ) {
+//                    Text("Time", color = Color.White)
+//                    Text(time, color = Color.White)
+//                }
+//                Row(
+//                    modifier = Modifier.fillMaxWidth(),
+//                    horizontalArrangement = Arrangement.SpaceBetween
+//                ) {
+//                    Text("Description", color = Color.White)
+//                    Text(description, color = Color.White)
+//                }
+//            }
+//        }
+    }
+}
+
+@Composable
+fun RecentBackupHeader(title: String) {
+    Card(
+        elevation = 8.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(46.dp)
+                .background(Color(0xFF1E293B))
+                .padding(vertical = 10.dp)
+                .padding(horizontal = 15.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier
+                .width(150.dp)) {
+                Text("Operation", color = Color.White)
+
+            }
+            Column(modifier = Modifier
+                .width(150.dp)) {
+                Text("Date/Time", color = Color.White)
+            }
+            Column(modifier = Modifier
+                .width(150.dp)) {
+                Text("Status", color = Color.White)
+            }
+            Column(modifier = Modifier
+                .width(350.dp)) {
+                Text("Description", color = Color.White)
+            }
+
+        }
+    }
+}
+
+@Composable
+fun RecentBackupCard(date: String, description: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = 8.dp
+    ) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(65.dp)
+                    .background(Color.White)
+                    .padding(15.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier
+                    .width(150.dp)) {
+                    Text("Backup", color = Color.Black, fontWeight = FontWeight.Bold)
+
+                }
+                Column(modifier = Modifier
+                    .width(150.dp)) {
+                    Row(){
+                        Text("21 March 2024", color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+                    Row(){
+                        Text("At 8:45 AM", color = Color.Black)
+                    }
+                }
+                Column(modifier = Modifier
+                    .width(150.dp)) {
+                    Text("Completed", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+                Column(modifier = Modifier
+                    .width(350.dp)) {
+                    Text("Full Backup", color = Color.Black)
+                }
+
+            }
+//            Row(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .padding(16.dp),
+//                horizontalArrangement = Arrangement.SpaceBetween,
+//                verticalAlignment = Alignment.CenterVertically
+//            ) {
+//                Column {
+//                    Text("Backup", fontWeight = FontWeight.Bold)
+//                    Text(date, color = Color.Gray)
+//                }
+//                Text("Completed", color = Color(0xFF16A34A), fontWeight = FontWeight.Bold)
+//                Text(description)
+//                Button(onClick = { /* Restore Action */ }) {
+//                    Text("Restore")
+//                }
+//            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewBackupScreen() {
+    val mockViewModel = BackupViewModel()
+    BackupScreen(viewModel = mockViewModel)
 }

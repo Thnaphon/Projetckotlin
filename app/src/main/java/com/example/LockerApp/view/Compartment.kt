@@ -315,7 +315,8 @@ fun EditCompartmentForm(compartment: Compartment, onCancel: () -> Unit,viewModel
             }
             Column(modifier = Modifier
                 .background(Color(0xFF2A3D4F))
-                .fillMaxSize().padding(start = 14.dp, end = 8.dp, top = 12.dp),) {
+                .fillMaxSize()
+                .padding(start = 14.dp, end = 8.dp, top = 12.dp),) {
                 Row (modifier = Modifier
                     .padding()
                     .wrapContentSize()
@@ -335,7 +336,8 @@ fun EditCompartmentForm(compartment: Compartment, onCancel: () -> Unit,viewModel
                 }
                 Row(
                     modifier = Modifier
-                        .fillMaxWidth().padding(start = 2.dp, end = 8.dp),
+                        .fillMaxWidth()
+                        .padding(start = 2.dp, end = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
 
                     ) {
@@ -501,7 +503,9 @@ fun EditCompartmentForm(compartment: Compartment, onCancel: () -> Unit,viewModel
 fun CompartmentView(compartment: Compartment, onEdit: () -> Unit, onDelete: () -> Unit) {
     val imageFile = File(compartment.pic_item)
     var showDeleteOptions by remember { mutableStateOf(false) }
-
+    val viewModel:LockerViewModel= viewModel()
+    val lockerName by viewModel.getLockername(compartment.LockerID).collectAsState(initial = "Loading...")
+    val safeLockerName = lockerName ?: "Unknown"
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -540,10 +544,11 @@ fun CompartmentView(compartment: Compartment, onEdit: () -> Unit, onDelete: () -
                         .wrapContentSize()
                         .padding(bottom = 8.dp)){
                     Text(
-                        "Locker ${compartment.LockerID} | Compartment ${compartment.number_compartment}",
+                        text = "Locker ${safeLockerName.take(11)}${if (safeLockerName.length > 11) "..." else ""} | Comp ${compartment.number_compartment}",
                         fontSize = 13.sp
                     )
                 }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -695,7 +700,8 @@ fun AddCompartmentCard(
             }
             Column(modifier = Modifier
                 .background(Color(0xFF2A3D4F))
-                .fillMaxSize().padding(start = 14.dp, end = 8.dp, top = 12.dp),) {
+                .fillMaxSize()
+                .padding(start = 14.dp, end = 8.dp, top = 12.dp),) {
                 Row (modifier = Modifier
                     .padding()
                     .wrapContentSize()
@@ -715,7 +721,8 @@ fun AddCompartmentCard(
                 }
                 Row(
                     modifier = Modifier
-                        .fillMaxWidth().padding(start = 2.dp, end = 8.dp),
+                        .fillMaxWidth()
+                        .padding(start = 2.dp, end = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
 
                     ) {

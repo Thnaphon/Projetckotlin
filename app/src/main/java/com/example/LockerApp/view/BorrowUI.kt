@@ -222,7 +222,8 @@ fun CompartmentCard(
     val coroutineScope = rememberCoroutineScope()
 
     val mqttData by mqttViewModel.mqttData.collectAsState()
-
+    val lockerName by viewModel.getLockername(compartment.LockerID).collectAsState(initial = "Loading...")
+    val safeLockerName = lockerName ?: "Unknown"
     var Topic = remember { mutableStateOf(" ") }
 
 
@@ -312,7 +313,7 @@ fun CompartmentCard(
                                 .wrapContentSize()
                                 .padding(bottom = 8.dp)){
                             Text(
-                                "Locker ${compartment.LockerID} | Compartment ${compartment.number_compartment}",
+                                text = "Locker ${safeLockerName.take(11)}${if (safeLockerName.length > 11) "..." else ""} | Comp ${compartment.number_compartment}",
                                 fontSize = 13.sp
                             )
                         }

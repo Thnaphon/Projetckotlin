@@ -209,7 +209,8 @@ fun CompartmentCardReturn(
 
     var Topic = remember { mutableStateOf(" ") }
 
-
+    val lockerName by viewModel.getLockername(compartment.LockerID).collectAsState(initial = "Loading...")
+    val safeLockerName = lockerName ?: "Unknown"
 
 
     LaunchedEffect(mqttData) {
@@ -296,7 +297,7 @@ fun CompartmentCardReturn(
                     ) {
                         Row (Modifier.wrapContentSize().padding(bottom = 8.dp)){
                             Text(
-                                "Locker ${compartment.LockerID} | Compartment ${compartment.number_compartment}",
+                                text = "Locker ${safeLockerName.take(11)}${if (safeLockerName.length > 11) "..." else ""} | Comp ${compartment.number_compartment}",
                                 fontSize = 13.sp
                             )
                         }

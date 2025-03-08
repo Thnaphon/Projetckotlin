@@ -211,7 +211,10 @@ fun MainMenuUser(
                 iconSize = 25.dp,
                 selected = false,
                 onClick = {
-                    navController.navigate("WelcomePage")
+                    navController.navigate("WelcomePage") {
+                        // Clear the back stack to prevent the user from going back to the previous screen
+                        popUpTo("WelcomePage") { inclusive = true }
+                    }
 
                 }
             )
