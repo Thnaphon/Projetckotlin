@@ -558,6 +558,7 @@ fun AddLockerCard(
                                                     )
                                                 }
                                             }
+
                                         }
                                         availableCompartment.forEach{ compartment ->
                                             if (compartment != ',') {
@@ -589,7 +590,7 @@ fun AddLockerCard(
                                 }
 
                             } catch (e: Exception) {
-                                Log.e("LockerUI", "Error parsing JSON: ${e.message}")
+                                Log.e("LockerUI", "Error parse JSON: ${e.message}")
                                 isSaving = false
                             }
                         }
