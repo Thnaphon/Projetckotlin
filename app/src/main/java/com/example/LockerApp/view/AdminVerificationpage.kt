@@ -1,5 +1,8 @@
 package com.example.LockerApp.view
 
+import android.content.Context
+import android.util.Base64
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -30,8 +33,24 @@ fun AdminVerificationPage(
     phone: String?
 ) {
     val context = LocalContext.current
-    var enteredPassword by remember { mutableStateOf("") }
-    val masterPassword = "Micro_2567" // Same as in WelcomePage
+    val sharedPreferences = context.getSharedPreferences("LockerAppPrefs", Context.MODE_PRIVATE)
+    val (enteredPassword, setEnteredPassword) = remember { mutableStateOf("") }
+    var masterPassword by remember {
+        mutableStateOf(
+            try {
+                sharedPreferences.getString("encrypted_master_password", null)?.let { encrypted ->
+                    val encryptedData = Base64.decode(encrypted, Base64.DEFAULT)
+                    val iv = sharedPreferences.getString("encryption_iv", null)?.let { ivBase64 ->
+                        Base64.decode(ivBase64, Base64.DEFAULT)
+                    }
+                    if (iv != null) KeystoreManager.decryptData(encryptedData, iv) else null
+                } ?: "Micro_2567" // ถ้าไม่มีค่า ให้ใช้ค่าเริ่มต้น
+            } catch (e: Exception) {
+                Log.e("LockerApp", "Error decrypting password: ${e.message}")
+                "Micro_2567" // ใช้ค่าเริ่มต้นถ้ามีข้อผิดพลาด
+            }
+        )
+    }
     val encryptedData = remember { mutableStateOf<Pair<ByteArray, ByteArray>?>(null) }
 
     // Initialize encryption
@@ -103,7 +122,7 @@ fun AdminVerificationPage(
 
         OutlinedTextField(
             value = enteredPassword,
-            onValueChange = { enteredPassword = it },
+            onValueChange = { setEnteredPassword(it)},
             label = { Text("Master Password") },
             modifier = Modifier
                 .fillMaxWidth()

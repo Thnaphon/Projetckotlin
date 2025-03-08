@@ -124,7 +124,6 @@ class CameraManager(private val context: Context) {
         previewView: PreviewView,
         cameraExecutor: Executor,
         onFaceBitmapCaptured: (Bitmap) -> Unit, // Simplified callback for overlays
-        onInsufficientLandmarks: () -> Unit,
         hidePreview: Boolean = true // Optional parameter to hide preview
     ) {
         try {
@@ -149,7 +148,7 @@ class CameraManager(private val context: Context) {
                 .build()
                 .apply {
                     setAnalyzer(cameraExecutor) { imageProxy ->
-                        processImageForOverlay(imageProxy, onFaceBitmapCaptured, onInsufficientLandmarks)
+                        processImageForOverlay(imageProxy, onFaceBitmapCaptured)
                     }
                     Log.d("CameraManager", "Image analyzer set for overlay")
                 }
@@ -395,7 +394,6 @@ class CameraManager(private val context: Context) {
     private fun processImageForOverlay(
         imageProxy: ImageProxy,
         onFaceBitmapCaptured: (Bitmap) -> Unit,
-        onInsufficientLandmarks: () -> Unit
     ) {
         val currentTimeStamp = System.currentTimeMillis()
         if (currentTimeStamp - lastProcessingTimeStamp < MINIMUM_TIME_BETWEEN_FRAMES) {
@@ -417,13 +415,6 @@ class CameraManager(private val context: Context) {
                                 val bitmap = mediaImageToBitmap(mediaImage, imageProxy.imageInfo.rotationDegrees)
 
                                 // Validate all required landmarks are present
-                                val allLandmarksDetected = validateRequiredLandmarks(face)
-
-                                if (allLandmarksDetected) {
-                                    Log.d("CameraManager", "All validation checks passed, processing face for overlay")
-                                    // Reset the notification flag when face is valid
-                                    insufficientLandmarksNotified = false
-
                                     // Extract and resize the face bitmap
                                     val faceBitmap = Bitmap.createBitmap(
                                         bitmap,
@@ -436,17 +427,7 @@ class CameraManager(private val context: Context) {
 
                                     // Pass only the face bitmap to the callback
                                     onFaceBitmapCaptured(resizedFaceBitmap)
-                                } else {
-                                    // Only trigger the callback if we haven't recently notified
-                                    if (!insufficientLandmarksNotified ||
-                                        (currentTimeStamp - lastInsufficientLandmarksTime) > MINIMUM_TIME_BETWEEN_INSUFFICIENT_LANDMARKS) {
 
-                                        Log.w("CameraManager", "Face validation failed for overlay")
-                                        lastInsufficientLandmarksTime = currentTimeStamp
-                                        insufficientLandmarksNotified = true
-                                        onInsufficientLandmarks()
-                                    }
-                                }
                             } catch (e: Exception) {
                                 Log.e("CameraManager", "Error processing face for overlay: ${e.message}", e)
                             }

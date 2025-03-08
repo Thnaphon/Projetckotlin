@@ -160,8 +160,8 @@ fun LockerApp() {
     NavHost(
         navController = navController,
 
-        startDestination = "WelcomePage"
-//        startDestination = "main_menu/1/service/service"
+//        startDestination = "WelcomePage"
+        startDestination = "main_menu/1/service/service"
 //        startDestination = "face_capture?name=enemyspotted&role=admin&phone=0634215062/2"
     ) {
         composable("WelcomePage") {
@@ -308,6 +308,32 @@ fun LockerApp() {
                 role = role
             )
         }
+
+        composable(
+            "main_menu_user/{accountid}/{name}/{role}",
+            arguments = listOf(
+                navArgument("accountid") { type = NavType.IntType },
+                navArgument("name") { type = NavType.StringType },
+                navArgument("role") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            // ดึง accountid จาก arguments ที่ส่งมาจาก route
+            val accountid = backStackEntry.arguments?.getInt("accountid") ?: 0
+            val name = backStackEntry.arguments?.getString("name") ?: "Unknown"
+            val role = backStackEntry.arguments?.getString("role") ?: "Unknown"
+            MainMenuUser(
+                viewModel = lockerViewModel,
+                mqttViewModel = mqttViewModel,
+                navController = navController,
+                accountViewModel = accountViewModel,
+                usageLockerViewModel = usageLockerViewModel,
+                accountid = accountid,  // ส่ง accountid ไปใช้ใน UI
+                nameUser = name,
+                role = role
+            )
+        }
+
+
 
         composable(
             route = "face_capture/{accountid}/{adminname}/{adminrole}?name={name}&role={role}&phone={phone}",

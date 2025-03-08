@@ -265,6 +265,7 @@ fun WelcomePage(
                                     Button(
                                         onClick = {
                                             try {
+                                                arePermissionsGranted()
                                                 val encrypted = encryptedData.value
                                                 if (encrypted != null) {
                                                     val decryptedPassword =
