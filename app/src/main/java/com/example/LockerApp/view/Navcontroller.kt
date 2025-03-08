@@ -122,7 +122,8 @@ fun LockerApp() {
     NavHost(
         navController = navController,
 
-        startDestination = "WelcomePage"
+//        startDestination = "WelcomePage"
+        startDestination = "main_menu/1/service/service"
 //        startDestination = "face_capture?name=enemyspotted&role=admin&phone=0634215062/2"
     ) {
         composable("WelcomePage") {

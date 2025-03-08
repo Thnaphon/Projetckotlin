@@ -106,6 +106,10 @@ fun FaceVerificationOverlay(
     var verificationMessage by remember { mutableStateOf("กำลังสแกนใบหน้า") }
 
     // Handle login state changes for verification
+    LaunchedEffect (Unit){
+        viewModel.refreshFaceData()
+        viewModel.resetToScanning()
+    }
     LaunchedEffect(loginState) {
         when (loginState) {
             is FaceLoginViewModel.LoginState.Scanning -> {

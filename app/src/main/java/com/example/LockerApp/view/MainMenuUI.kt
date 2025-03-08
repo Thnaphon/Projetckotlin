@@ -1,7 +1,5 @@
 package com.example.LockerApp.view
 
-
-import ParticipantScreen
 import android.app.Activity
 import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult

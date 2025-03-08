@@ -150,7 +150,7 @@ fun AdminVerificationPage(
                                         popUpTo("admin_verification/$adminAccountId") { inclusive = true }
                                     }
                                 } else {
-                                    // Otherwise go to registration form
+                                    // fixed no more nav to this stage
                                     navController.navigate("registration_form/$adminAccountId") {
                                         popUpTo("admin_verification/$adminAccountId") { inclusive = true }
                                     }
