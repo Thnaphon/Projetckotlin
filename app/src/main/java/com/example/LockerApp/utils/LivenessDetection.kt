@@ -26,9 +26,9 @@ class LivenessDetector {
     private var completedActions = mutableListOf<Action>()
     private var currentActionIndex = 0
     private var lastActionTime = 0L
-    private val actionTimeout = 3000L // 3 seconds timeout between actions
+    private val actionTimeout = 3000L
 
-    // Thresholds
+    // Thresholds // bias
     private val blinkThreshold = 0.2f
     private val turnThreshold = 25f
     private val smileThreshold = 0.8f

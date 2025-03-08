@@ -104,22 +104,20 @@ dependencies {
     implementation ("androidx.fragment:fragment-ktx:1.8.4")
     implementation ("androidx.appcompat:appcompat:1.6.1")
 
-    implementation("androidx.compose.material:material:1.7.3")
-    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    implementation("androidx.compose.material:material:1.7.8")
+    implementation ("androidx.compose.material:material-icons-extended:1.7.8")
+
+
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
 
     //qrcode
     implementation("com.google.zxing:core:3.4.1")
-
-
-    //Google Drive
-    implementation("com.google.api-client:google-api-client-android:1.34.1")
-    implementation("com.google.apis:google-api-services-drive:v3-rev136-1.25.0")
-    implementation("com.google.http-client:google-http-client-gson:1.41.1")
-    implementation("com.google.code.gson:gson:2.8.9")
-    implementation("com.google.auth:google-auth-library-oauth2-http:1.31.0")
-    implementation("com.google.android.gms:play-services-auth:21.3.0")
     implementation("androidx.core:core-ktx:1.6.0")
     implementation("androidx.activity:activity-ktx:1.3.1")
+
+    implementation("org.bouncycastle:bcprov-jdk15on:1.70")
 
 
 
@@ -154,11 +152,20 @@ dependencies {
     implementation("org.tensorflow:tensorflow-lite-gpu:2.16.1")
     implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
 
+    implementation("com.google.http-client:google-http-client-gson:1.41.1")
 
     //ktor
     // Ktor and serialization dependencies
     implementation("io.ktor:ktor-client-android:2.2.3")  // อัปเดตเป็นเวอร์ชันที่รองรับ
     implementation("io.ktor:ktor-client-content-negotiation:2.2.3")
     implementation("io.ktor:ktor-serialization-kotlinx-json:2.2.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")  // อัปเดตเวอร์ชันที่รองรับ
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+    // อัปเดตเวอร์ชันที่รองรับ
+    implementation("androidx.security:security-crypto:1.0.0")
+
+    // Dream
+    implementation("com.airbnb.android:lottie-compose:6.6.2")
+
+
+
 }

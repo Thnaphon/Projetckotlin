@@ -3,15 +3,20 @@ package com.example.LockerApp.view
 
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -22,12 +27,17 @@ import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.ExposedDropdownMenuBox
 import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedButton
 import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.outlined.Backup
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -38,12 +48,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.LockerApp.model.BackupSettings
 import com.example.LockerApp.model.LockerDatabase
+import com.example.LockerApp.service.MqttService
 import com.example.LockerApp.viewmodel.BackupViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -52,6 +66,8 @@ import java.util.Locale
 @Composable
 fun BackupScreen(viewModel: BackupViewModel) {
     val context = LocalContext.current
+    val mqttService = MqttService() // สร้าง mqttService ที่นี่
+
     // ตัวแปรสำหรับแสดงวันที่สำรองข้อมูลล่าสุด
     var lastBackupDate by remember { mutableStateOf("ไม่พบข้อมูลการสำรอง") }
 
@@ -66,48 +82,65 @@ fun BackupScreen(viewModel: BackupViewModel) {
             .fillMaxSize()
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Top
+
     ) {
-        // แสดงข้อความเกี่ยวกับสถานะการสำรองข้อมูลล่าสุด
-        Text(text = "วันที่สำรองข้อมูลล่าสุด: $lastBackupDate")
 
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // ปุ่มสำหรับเริ่มการสำรองข้อมูล
-        Button(
-            onClick = {
-                // เรียกฟังก์ชันสำรองข้อมูล
-                viewModel.performBackup(context)
-                Toast.makeText(context, "กำลังทำการสำรองข้อมูล...", Toast.LENGTH_SHORT).show()
-            }
-        ) {
-            Text("สำรองข้อมูลทันที")
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // ปุ่มสำหรับการคืนค่าข้อมูลจากไฟล์สำรอง
-        Button(
-            onClick = {
-                // เรียกฟังก์ชัน restore ข้อมูล
-                viewModel.performRestore(context)
-                Toast.makeText(context, "กำลังทำการคืนค่าข้อมูล...", Toast.LENGTH_SHORT).show()
-            }
-        ) {
-            Text("คืนค่าข้อมูลจากสำรอง")
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // แสดงสถานะการสำรองข้อมูล
         Text(
-            text = "สถานะการสำรองข้อมูล: ${if (lastBackupDate == "ไม่พบข้อมูลการสำรอง") "ยังไม่มีการสำรอง" else "สำรองข้อมูลล่าสุดเมื่อ $lastBackupDate"}"
+            "Backup",
+            style = MaterialTheme.typography.h5.copy(fontWeight = FontWeight.Bold),
+            color = Color.Black
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(10.dp))
+        Row(modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Outlined.Backup,
+                contentDescription = "History Icon",
+                tint = Color.Black,
+                modifier = Modifier.size(32.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                "Scheduled",
+                style = MaterialTheme.typography.h6.copy(fontWeight = FontWeight.SemiBold),
+                color = Color.Black
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Card(
+                modifier = Modifier
+                    .size(47.dp)
+                    .clip(RoundedCornerShape(15.dp))
+                    .border(2.dp, Color(0xFF3961AA), RoundedCornerShape(15.dp)), // มุมมนของการ์ด
+                elevation = 8.dp, // ความสูงของเงา
+                backgroundColor = Color.White // พื้นหลังสีขาวของการ์ด
+            ) {
+                IconButton(
+                    onClick = {},
+                    modifier = Modifier
+                        .fillMaxSize() // ขยายขนาดให้เต็มการ์ด
+                        .padding(4.dp) // เพิ่ม padding รอบๆ IconButton
 
-        // แสดงชื่อไฟล์และที่อยู่ของไฟล์สำรอง
-        Text("ชื่อไฟล์สำรอง: ${viewModel.backupFileName.value}")
-        Text("ที่อยู่ไฟล์สำรอง: ${viewModel.backupFilePath.value}")
+                ) {
+                    Icon(
+                        Icons.Filled.Add,
+                        contentDescription = "Add Locker",
+                        tint = Color(0xFF3961AA)
+                    )
+                }
+            }
+        }
+        androidx.compose.material3.Card(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(vertical = 8.dp)
+                .weight(1f),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+
+        }
     }
 }

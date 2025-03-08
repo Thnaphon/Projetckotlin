@@ -14,9 +14,11 @@ import androidx.lifecycle.viewModelScope
 import com.example.LockerApp.model.BackupSettings
 
 import com.example.LockerApp.model.LockerDatabase
+import com.example.LockerApp.service.MqttService
 
 import kotlinx.coroutines.launch
 import java.io.File
+import java.io.FileInputStream
 
 
 import java.io.IOException
@@ -24,7 +26,11 @@ import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
+import android.util.Base64
+import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
+import org.eclipse.paho.client.mqttv3.MqttCallback
+import org.eclipse.paho.client.mqttv3.MqttMessage
+import java.io.FileOutputStream
 
 class BackupViewModel : ViewModel() {
     // ใช้ mutableStateOf สำหรับเก็บชื่อไฟล์สำรองและที่อยู่ไฟล์
@@ -162,4 +168,81 @@ class BackupViewModel : ViewModel() {
             }
         }
     }
+
+    fun performBackupToPi(mqttService: MqttService, context: Context) {
+        viewModelScope.launch {
+            val sourceDatabaseFile = context.getDatabasePath("locker_database")
+            val sourceShmFile = context.getDatabasePath("locker_database-shm")
+            val sourceWalFile = context.getDatabasePath("locker_database-wal")
+
+            try {
+                // อ่านไฟล์ database, SHM และ WAL
+                val databaseBytes = sourceDatabaseFile.readBytes()
+                val shmBytes = sourceShmFile.readBytes()
+                val walBytes = sourceWalFile.readBytes()
+
+                // แปลงไฟล์เป็น Base64 หรือส่งข้อมูลผ่าน MQTT โดยตรง
+                val encodedDatabase = Base64.encodeToString(databaseBytes, Base64.DEFAULT)
+                val encodedShm = Base64.encodeToString(shmBytes, Base64.DEFAULT)
+                val encodedWal = Base64.encodeToString(walBytes, Base64.DEFAULT)
+
+                // ส่งไฟล์ผ่าน MQTT โดยแบ่งเป็นชิ้นๆ
+                sendBackupFileToPi(context, mqttService, encodedDatabase, "locker/backup/database")
+                sendBackupFileToPi(context, mqttService, encodedShm, "locker/backup/shm")
+                sendBackupFileToPi(context, mqttService, encodedWal, "locker/backup/wal")
+
+                // บันทึกชื่อไฟล์และที่อยู่ของไฟล์สำรองที่ส่งไป
+                Log.d("Backup", "Backup data sent successfully to Pi")
+
+                // อัพเดตวันที่สำรองล่าสุด
+                val currentDate =
+                    SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+                val backupDao = LockerDatabase.getDatabase(context).backupDao()
+                val backupSettings = backupDao.getBackupSettings()
+
+                if (backupSettings != null) {
+                    backupDao.updateLastBackupDate(backupSettings.id, currentDate)
+                } else {
+                    val newBackupSettings = BackupSettings(
+                        frequency = "Daily",
+                        backupTime = "02:00 AM",
+                        lastBackupDate = currentDate
+                    )
+                    backupDao.insertOrUpdateBackupSettings(newBackupSettings)
+                }
+
+            } catch (e: IOException) {
+                Log.e("Backup", "Backup failed", e)
+            }
+        }
+    }
+    fun sendBackupFileToPi(context: Context,mqttService: MqttService, encodedFile: String, topic: String) {
+        // ตรวจสอบสถานะการเชื่อมต่อก่อนส่งข้อความ
+
+        mqttService.connect(context) // พยายามเชื่อมต่อใหม่ (ตรวจสอบว่า connect method มีอยู่ในคลาสหรือไม่)
+
+
+        val chunkSize = 4000 // ขนาดชิ้นส่วนที่ส่งได้
+        val totalChunks = (encodedFile.length + chunkSize - 1) / chunkSize
+
+        for (i in 0 until totalChunks) {
+            val start = i * chunkSize
+            val end = minOf(start + chunkSize, encodedFile.length)
+            val chunk = encodedFile.substring(start, end)
+
+            val message = MqttMessage(chunk.toByteArray())
+            message.qos = 2
+
+            try {
+                mqttService.sendMessage(topic, chunk) // ส่งผ่าน MQTT
+                Log.d("MQTT", "ส่งชิ้นที่ $i/$totalChunks ไปที่ topic: $topic")
+            } catch (e: Exception) {
+                Log.e("MQTT", "เกิดข้อผิดพลาดในการส่งชิ้นที่ $i: ${e.message}")
+            }
+        }
+    }
+
+
+
+
 }
