@@ -168,11 +168,6 @@ fun AdminVerificationPage(
                                     ) {
                                         popUpTo("admin_verification/$adminAccountId") { inclusive = true }
                                     }
-                                } else {
-                                    // fixed no more nav to this stage
-                                    navController.navigate("registration_form/$adminAccountId") {
-                                        popUpTo("admin_verification/$adminAccountId") { inclusive = true }
-                                    }
                                 }
                             } else {
                                 Toast.makeText(
