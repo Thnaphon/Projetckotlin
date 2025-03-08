@@ -1,10 +1,13 @@
 package com.example.LockerApp.view
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
+import android.util.Base64
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -57,10 +60,25 @@ fun WelcomePage(
     var showFaceLoginOverlay by remember { mutableStateOf(false) }
     val (modechange, setModechange) = remember { mutableStateOf(false) }
 
-
+    val sharedPreferences = context.getSharedPreferences("LockerAppPrefs", Context.MODE_PRIVATE)
     val (isPasswordVisible, setIsPasswordVisible) = remember { mutableStateOf(false) }
     val (enteredPassword, setEnteredPassword) = remember { mutableStateOf("") }
-    val masterPassword = "Micro_2567" // Example password
+    var masterPassword by remember {
+        mutableStateOf(
+            try {
+                sharedPreferences.getString("encrypted_master_password", null)?.let { encrypted ->
+                    val encryptedData = Base64.decode(encrypted, Base64.DEFAULT)
+                    val iv = sharedPreferences.getString("encryption_iv", null)?.let { ivBase64 ->
+                        Base64.decode(ivBase64, Base64.DEFAULT)
+                    }
+                    if (iv != null) KeystoreManager.decryptData(encryptedData, iv) else null
+                } ?: "Micro_2567" // ถ้าไม่มีค่า ให้ใช้ค่าเริ่มต้น
+            } catch (e: Exception) {
+                Log.e("LockerApp", "Error decrypting password: ${e.message}")
+                "Micro_2567" // ใช้ค่าเริ่มต้นถ้ามีข้อผิดพลาด
+            }
+        )
+    }
     val encryptedData = remember { mutableStateOf<Pair<ByteArray, ByteArray>?>(null) }
     val maskedChars = remember { mutableStateListOf<Boolean>() }
 
@@ -139,8 +157,16 @@ fun WelcomePage(
             onLoginSuccess = { accountId, name, role, phone ->
                 showFaceLoginOverlay = false
                 // calling mainmenu if success login state after loginoverlay
-                navController.navigate("main_menu/$accountId/$role/$phone")
-//                navController.navigate("main_menu/$accountId/$name/$role")
+                val route = when (role) {
+                    "admin" -> "main_menu/$accountId/$name/$role"  // if admin then admin_dashboard
+                    "service" -> "main_menu/$accountId/$name/$role"  // if service ให้ไปหน้า service_dashboard
+                    else -> "main_menu_user/$accountId/$name/$role"  // if user ให้ไปหน้า user_dashboard
+                }
+
+                navController.navigate(route) {   // ใช้ route ที่กำหนด
+                    popUpTo("face_login") { inclusive = true }
+                    Log.d("FaceAcountid", "$accountId")
+                }
             }
         )
     }
@@ -294,97 +320,6 @@ fun WelcomePage(
                             }, modifier = Modifier.padding(top = 16.dp)
                         )
                     }
-                    // แสดงข้อความเล็ก ๆ ข้างใต้ข้อความ Visit our Master Password
-//                    if (isPasswordVisible) {
-//                        Spacer(modifier = Modifier.height(8.dp))
-//                        Text(
-//                            text = "กรอกรหัสผ่านของคุณเพื่อเข้าใช้แอปพลิเคชั่น",
-//                            fontSize = 12.sp,
-//                            color = Color.Gray
-//                        )
-//
-//                        Row {
-//                            OutlinedTextField(
-//                                value = enteredPassword,
-//                                onValueChange = { setEnteredPassword(it) },
-//                                label = {
-//                                    Text(
-//                                        text = "Enter Master Password",
-//                                        style = TextStyle(fontSize = 12.sp) // ปรับขนาดข้อความที่แสดงใน label
-//
-//                                    )
-//                                },
-//                                modifier = Modifier
-//                                    .width(200.dp),
-//                                visualTransformation = PasswordVisualTransformation(),
-//                                singleLine = true,
-//                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-//                            )
-//                            Spacer(modifier = Modifier.width(8.dp))
-//
-//                            Column(
-//                                modifier = Modifier.fillMaxWidth(),
-//                                horizontalAlignment = Alignment.CenterHorizontally,
-//                                verticalArrangement = Arrangement.spacedBy(8.dp) // ระยะห่างระหว่างปุ่ม
-//                            ) {
-//                                Button(
-//                                    onClick = {
-//                                        try {
-//                                            val encrypted = encryptedData.value
-//                                            if (encrypted != null) {
-//                                                val decryptedPassword = KeystoreManager.decryptData(
-//                                                    encrypted.first, encrypted.second
-//                                                )
-//
-//                                                if (enteredPassword == decryptedPassword) {
-//                                                    navController.navigate("main_menu/1")
-//                                                } else {
-//                                                    Toast.makeText(
-//                                                        context,
-//                                                        "Incorrect password",
-//                                                        Toast.LENGTH_SHORT
-//                                                    ).show()
-//                                                }
-//                                            }
-//                                        } catch (e: Exception) {
-//                                            Toast.makeText(
-//                                                context,
-//                                                "Error during decryption",
-//                                                Toast.LENGTH_SHORT
-//                                            ).show()
-//                                        }
-//                                    },
-//                                    shape = RoundedCornerShape(8.dp),
-//                                    modifier = Modifier
-//                                        .fillMaxWidth() // ให้ปุ่มกว้างเท่ากับช่องกรอก Master Password
-//                                        .height(30.dp), // กำหนดความสูงของปุ่มให้เท่ากับช่องกรอก
-//                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3961AA))
-//                                ) {
-//                                    Text(
-//                                        text = "Confirm",
-//                                        style = TextStyle(fontSize = 12.sp) // ปรับขนาดตัวอักษรที่ต้องการ
-//                                    )
-//                                }
-//
-//                                Button(
-//                                    onClick = {
-//                                        setIsPasswordVisible(false) // ยกเลิกการกรอก Master Password
-//                                        setEnteredPassword("") // เคลียร์ช่องกรอก
-//                                    },
-//                                    shape = RoundedCornerShape(8.dp),
-//                                    modifier = Modifier
-//                                        .fillMaxWidth() // ให้ปุ่มกว้างเท่ากับช่องกรอก Master Password
-//                                        .height(30.dp), // กำหนดความสูงของปุ่มให้เท่ากับช่องกรอก
-//                                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red) // สีแดง
-//                                ) {
-//                                    Text(
-//                                        text = "Cancel",
-//                                        style = TextStyle(fontSize = 12.sp) // ปรับขนาดตัวอักษรที่ต้องการ
-//                                    )
-//                                }
-//                            }
-//                        }
-//                    }
                 }
                 Column(
                     horizontalAlignment = Alignment.End,

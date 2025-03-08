@@ -37,6 +37,7 @@ import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Password
 import androidx.compose.material.icons.outlined.PowerSettingsNew
 import androidx.compose.material.icons.outlined.SpaceDashboard
 import androidx.compose.material.icons.outlined.Splitscreen
@@ -95,6 +96,8 @@ fun MainMenuUI(
     var showUsageHistoryScreen by remember { mutableStateOf(false) }
     var showBackupScreen by remember { mutableStateOf(false) }
     var showUploadpicture by remember { mutableStateOf(false) }
+    var showEditpassword by remember { mutableStateOf(false) }
+    var selectshowLockerUI by remember { mutableStateOf(false) }
 
 
 
@@ -162,6 +165,7 @@ fun MainMenuUI(
                 iconSize = 25.dp, // ขนาดของไอคอน
                 selected = showBorrowUI,
                 onClick = {
+                    selectshowLockerUI=false
                     showBorrowUI = true
                     showLockerUI = false
                     showAddLockerUI = false
@@ -170,12 +174,9 @@ fun MainMenuUI(
                     showParticipantUI = false
                     showBackupScreen = false
                     showUsageHistoryScreen = false
-                    showUploadpicture = false
+                    showEditpassword = false
                 }
             )
-
-
-
 
             MenuItem(icon = Icons.Outlined.FileDownload,
                 label = "Return",
@@ -183,6 +184,7 @@ fun MainMenuUI(
                 iconSize = 25.dp, // ขนาดของไอคอน
                 selected = showReturnUI,
                 onClick = {
+                    selectshowLockerUI=false
                     showBorrowUI = false
                     showLockerUI = false
                     showAddLockerUI = false
@@ -191,7 +193,7 @@ fun MainMenuUI(
                     showParticipantUI = false
                     showBackupScreen = false
                     showUsageHistoryScreen = false
-                    showUploadpicture = false
+                    showEditpassword = false
                 }
             )
             MenuItem(icon = Icons.Outlined.History,
@@ -200,6 +202,7 @@ fun MainMenuUI(
                 iconSize = 25.dp, // ขนาดของไอคอน
                 selected = showUsageHistoryScreen,
                 onClick = {
+                    selectshowLockerUI=false
                     showBorrowUI = false
                     showLockerUI = false
                     showAddLockerUI = false
@@ -208,7 +211,7 @@ fun MainMenuUI(
                     showParticipantUI = false
                     showUsageHistoryScreen = true// เพิ่มสถานะการแสดงหน้า Participant
                     showBackupScreen = false
-                    showUploadpicture = false
+                    showEditpassword = false
                 }
             )
             Spacer(modifier = Modifier.height(15.dp))
@@ -219,9 +222,10 @@ fun MainMenuUI(
                 label = "Locker",
                 backgroundColor = Color(0xFFBE39E7),
                 iconSize = 25.dp, // ขนาดของไอคอน
-                selected = showLockerUI,
+                selected = selectshowLockerUI,
                 onClick = {
                     showLockerUI = true
+                    selectshowLockerUI = true
                     showBorrowUI = false
                     showAddLockerUI = false
                     showCompartmentUI = false
@@ -229,7 +233,7 @@ fun MainMenuUI(
                     showParticipantUI = false
                     showBackupScreen = false
                     showUsageHistoryScreen = false
-                    showUploadpicture = false
+                    showEditpassword = false
                 }
             )
             MenuItem(icon = Icons.Outlined.Group,
@@ -238,6 +242,7 @@ fun MainMenuUI(
                 iconSize = 25.dp, // ขนาดของไอคอน
                 selected = showParticipantUI,
                 onClick = {
+                    selectshowLockerUI=false
                     showBorrowUI = false
                     showLockerUI = false
                     showAddLockerUI = false
@@ -246,7 +251,7 @@ fun MainMenuUI(
                     showParticipantUI = true // เพิ่มสถานะการแสดงหน้า Participant
                     showBackupScreen = false
                     showUsageHistoryScreen = false
-                    showUploadpicture = false
+                    showEditpassword = false
                 }
             )
             MenuItem(icon = Icons.Outlined.CloudUpload,
@@ -255,6 +260,7 @@ fun MainMenuUI(
                 iconSize = 25.dp, // ขนาดของไอคอน
                 selected = showBackupScreen,
                 onClick = {
+                    selectshowLockerUI=false
                     showBorrowUI = false
                     showLockerUI = false
                     showAddLockerUI = false
@@ -263,7 +269,25 @@ fun MainMenuUI(
                     showParticipantUI = false
                     showUsageHistoryScreen = false// เพิ่มสถานะการแสดงหน้า Participant
                     showBackupScreen = true
-                    showUploadpicture = false
+                    showEditpassword = false
+                }
+            )
+            MenuItem(icon = Icons.Outlined.Password,
+                label = "Setpass",
+                backgroundColor = Color(0xFFEE6617),
+                iconSize = 25.dp, // ขนาดของไอคอน
+                selected = showEditpassword,
+                onClick = {
+                    selectshowLockerUI=false
+                    showBorrowUI = false
+                    showLockerUI = false
+                    showAddLockerUI = false
+                    showCompartmentUI = false
+                    showReturnUI = false
+                    showParticipantUI = false
+                    showUsageHistoryScreen = false// เพิ่มสถานะการแสดงหน้า Participant
+                    showBackupScreen = false
+                    showEditpassword = true
                 }
             )
             Spacer(modifier = Modifier.weight(1f)) // ดันให้ปุ่ม Logout ไปอยู่ด้านล่างสุด
@@ -351,6 +375,10 @@ fun MainMenuUI(
 
                 showBackupScreen -> {
                     BackupScreen(viewModel = backupViewModel) // แสดงหน้า Participant ที่นี่
+                }
+
+                showEditpassword -> {
+                    EditPasswordScreen(navController = navController) // แสดงหน้า Participant ที่นี่
                 }
 
 

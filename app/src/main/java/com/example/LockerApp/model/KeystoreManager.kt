@@ -10,7 +10,7 @@ import javax.crypto.spec.GCMParameterSpec
 import java.security.KeyStore
 
 object KeystoreManager {
-    private const val KEY_ALIAS = "Micro_2657"
+    private const val KEY_ALIAS = "KEY_ALIAS"
 
     fun generateKey() {
         val keyStore = KeyStore.getInstance("AndroidKeyStore")

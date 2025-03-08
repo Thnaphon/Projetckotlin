@@ -67,6 +67,7 @@ class LockerViewModel(private val lockerDao: LockerDao,private val compartmentDa
 
     init {
         loadLockers()
+
     }
 
     private val _uploadResult = MutableLiveData<Result<String>>()
@@ -155,6 +156,7 @@ class LockerViewModel(private val lockerDao: LockerDao,private val compartmentDa
                 if (lockerExists) {
                     // ถ้ามี LockerID ในตาราง Locker ให้ทำการอัปเดตสถานะ
                     compartmentDao.updateCompartmentStatus(compartmentID, newStatus, lockerID)
+                    loadCompartments(lockerID)
                 } else {
                     Log.e("LockerViewModel", "LockerID does not exist")
                 }
@@ -163,6 +165,8 @@ class LockerViewModel(private val lockerDao: LockerDao,private val compartmentDa
                 Log.e("LockerViewModel", "Error updating compartment status", e)
             }
         }
+
+
     }
 
 
@@ -239,7 +243,15 @@ class LockerViewModel(private val lockerDao: LockerDao,private val compartmentDa
     fun loadCompartments(lockerId: Int) {
         viewModelScope.launch {
             try {
-                val compartmentsFromDb = compartmentDao.getCompartmentsByLocker(lockerId) // ดึงข้อมูล Compartment ตาม LockerId
+                val compartmentsFromDb = if (lockerId == 0) {
+
+                    compartmentDao.getAllcompartments()
+
+                } else {
+                    // ถ้า lockerId ไม่ใช่ 0 ให้ดึงข้อมูลตาม lockerId
+                    compartmentDao.getCompartmentsByLocker(lockerId)
+                }
+
                 // อัพเดตข้อมูลของ compartments ใน StateFlow
                 _compartments.value = compartmentsFromDb
             } catch (e: Exception) {
@@ -247,6 +259,7 @@ class LockerViewModel(private val lockerDao: LockerDao,private val compartmentDa
             }
         }
     }
+
 
     // เพิ่มฟังก์ชันนี้ใน LockerViewModel
     private val _compartmentIds = mutableStateOf<List<Compartment>>(emptyList())
@@ -339,9 +352,13 @@ class LockerViewModel(private val lockerDao: LockerDao,private val compartmentDa
     fun getCompartmentBycompartmentId(compartmentID: Int): Flow<List<Compartment>> = flow{
 
         val CompartmentById = compartmentDao.getCompartmentsBycompartmentId(compartmentID)
-        Log.d("Database", "Compartments: $CompartmentById")
         emit(CompartmentById)
     }
 
+    fun getLockername(lockerId: Int): Flow<String?> = flow {
+        val mqttTopic = lockerDao.getNamelocker(lockerId)
+        emit(mqttTopic)
+
+    }
 
 }

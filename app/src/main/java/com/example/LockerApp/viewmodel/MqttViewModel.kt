@@ -8,20 +8,28 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
+import com.example.LockerApp.model.Locker
+import com.example.LockerApp.model.LockerDao
+import com.example.LockerApp.model.LockerDatabase
 import com.example.LockerApp.service.MqttService
 import com.example.LockerApp.view.Message
 import com.google.gson.Gson
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.eclipse.paho.client.mqttv3.MqttClient
 
-class MqttViewModel(application: Application) : AndroidViewModel(application) {
+class MqttViewModel( application: Application) : AndroidViewModel(application) {
 
     private val mqttService = MqttService()
 
+    private val lockerDatabase = LockerDatabase.getDatabase(application)
+    private val lockerDao = lockerDatabase.lockerDao()
     // ตัวแปร mqttClient ที่จะใช้งาน
     val mqttClient: MqttClient? = mqttService.getClient()
 
@@ -33,12 +41,29 @@ class MqttViewModel(application: Application) : AndroidViewModel(application) {
     private val _mqttData = MutableStateFlow(Pair("", ""))
     val mqttData: StateFlow<Pair<String, String>> = _mqttData
 
+    private val _lockerList = MutableStateFlow<List<Locker>>(emptyList())
+    val lockerList: StateFlow<List<Locker>> = _lockerList
+
+
+
+
     init {
         // เชื่อมต่อกับ MQTT broker เมื่อเริ่มต้น
+
         viewModelScope.launch {
             mqttService.connect(getApplication<Application>().applicationContext)
             mqttService.subscribeToTopic("respond/locker")
-
+            _lockerList.value = lockerDao.getAllLockers()
+            lockerList.collect { lockers ->
+                lockers.forEach { locker ->
+                    locker.availableCompartment.forEach{ compartment ->
+                        if (compartment != ',') {
+                            mqttService.subscribeToTopic("${locker.TokenTopic}/borrow/$compartment/status")
+                            mqttService.subscribeToTopic("${locker.TokenTopic}/return/$compartment/status")
+                        }
+                    }
+                }
+            }
         }
         observeMqttData()
 
@@ -148,15 +173,18 @@ class MqttViewModel(application: Application) : AndroidViewModel(application) {
 //        }
 //    }
     var job: Job? = null
+
     fun observeMqttData() {
-        job?.cancel()
-        job = viewModelScope.launch {
-            mqttService.mqttData.collect { (topic, message) ->
-                _mqttData.value = Pair(topic, message)
-                Log.d("observeMqttData", "MQTT Topic: $topic, Message: $message")
+        if (job?.isActive != true) { // ตรวจสอบว่า job กำลังทำงานหรือไม่
+            job = viewModelScope.launch {
+                mqttService.mqttData.collect { (topic, message) ->
+                    _mqttData.value = Pair(topic, message)
+                    Log.d("observeMqttData", "MQTT Topic: $topic, Message: $message")
+                }
             }
         }
     }
+
 
 
 }

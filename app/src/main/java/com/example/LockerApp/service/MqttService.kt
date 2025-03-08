@@ -34,6 +34,10 @@ class MqttService() {
     fun onMessageReceived(callback: (String) -> Unit) {
         this.messageCallback = callback
     }
+    private var onMessageReceivedListener: ((String, MqttMessage) -> Unit)? = null
+    fun setOnMessageReceivedListener(listener: (String, MqttMessage) -> Unit) {
+        this.onMessageReceivedListener = listener
+    }
 
     // ฟังก์ชันการเชื่อมต่อ
     fun connect(context: Context) {

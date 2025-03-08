@@ -59,11 +59,48 @@ fun LockerApp() {
     val usageLockerViewModel: UsageLockerViewModel = viewModel()
     val viewModel: BackupViewModel = viewModel()
 
+
     val faceLoginViewModel: FaceLoginViewModel = viewModel(
         factory = ViewModelProvider.AndroidViewModelFactory.getInstance(
             context.applicationContext as Application
         )
     )
+
+
+//    val mqttData by mqttViewModel.mqttData.collectAsState()
+//    var Topic = lockerViewModel.topic
+//    LaunchedEffect(mqttData) {
+//        Log.d("mqttData", "MQTT Topic: ${mqttData.first}, Message: ${mqttData.second}")
+//        Log.d("checkmqttdata","${mqttData.first}  ${Topic.value}")
+//        Log.d("checkmqttdata","${mqttData.second} == CLOSE")
+//        if(mqttData.first == Topic.value && mqttData.second == "CLOSE"){
+//            val splitData = mqttData.first.split("/")
+//            val usageTime = System.currentTimeMillis().toString()
+//            val topicMap = mapOf(
+//                "token" to splitData[0],
+//                "action" to splitData[1]+"ed",
+//                "compartmentId" to splitData[2].toInt(),
+//                "status" to splitData[3]
+//            )
+//            val compartmentId = topicMap["compartmentId"] as? Int ?: 0
+//            val action = topicMap["action"] as? String ?: ""
+//            val status =  topicMap["status"] as? String ?: ""
+//            lockerViewModel.updateCompartmentStatus(
+//                compartmentId,
+//                action,
+//                compartment.LockerID
+//            )
+//            usageLockerViewModel.insertUsageLocker(
+//                compartment.LockerID,
+//                compartmentId,
+//                usageTime,
+//                action,
+//                accountid,
+//                status
+//            )
+//
+//        }
+//    }
 
 
 //    val lastInteractionTime = remember { mutableStateOf(System.currentTimeMillis()) }
@@ -116,14 +153,15 @@ fun LockerApp() {
 //    }
 
 
+
     // ฟังก์ชันที่จัดการการโต้ตอบ
 
 
     NavHost(
         navController = navController,
 
-//        startDestination = "WelcomePage"
-        startDestination = "main_menu/1/service/service"
+        startDestination = "WelcomePage"
+//        startDestination = "main_menu/1/service/service"
 //        startDestination = "face_capture?name=enemyspotted&role=admin&phone=0634215062/2"
     ) {
         composable("WelcomePage") {
@@ -147,6 +185,7 @@ fun LockerApp() {
                 viewModel = lockerViewModel
             )
         }
+
         composable(
             "BorrowUI/{accountid}",
             arguments = listOf(navArgument("accountid") { type = NavType.IntType })
@@ -192,35 +231,7 @@ fun LockerApp() {
 
 
 
-        composable(
-            "main_menu/{accountid}/{name}/{role}",
-            arguments = listOf(
-                navArgument("accountid") { type = NavType.IntType },
-                navArgument("name") { type = NavType.StringType },
-                navArgument("role") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            // ดึง accountid จาก arguments ที่ส่งมาจาก route
-            val accountid = backStackEntry.arguments?.getInt("accountid") ?: 0
-            val name = backStackEntry.arguments?.getString("name") ?: "Unknown"
-            val role = backStackEntry.arguments?.getString("role") ?: "Unknown"
-            MainMenuUI(
-                viewModel = lockerViewModel,
-                onNavigateToMqtt = { navController.navigate("mqtt_screen") },
-                mqttViewModel = mqttViewModel,
-                navController = navController,
-                lockerDao = lockerDao,
-                compartmentDao = compartmentDao,
-                accountViewModel = accountViewModel,
-                usageLockerViewModel = usageLockerViewModel,
-                backupViewModel = viewModel,
-                faceLoginViewModel = faceLoginViewModel,
-                accountid = accountid,  // ส่ง accountid ไปใช้ใน UI
-                context = context,
-                nameUser = name,
-                role = role
-            )
-        }
+
 
         composable(
             "compartment_screen/{lockerId}/{accountid}",
@@ -268,6 +279,35 @@ fun LockerApp() {
             }
         }
 
+        composable(
+            "main_menu/{accountid}/{name}/{role}",
+            arguments = listOf(
+                navArgument("accountid") { type = NavType.IntType },
+                navArgument("name") { type = NavType.StringType },
+                navArgument("role") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            // ดึง accountid จาก arguments ที่ส่งมาจาก route
+            val accountid = backStackEntry.arguments?.getInt("accountid") ?: 0
+            val name = backStackEntry.arguments?.getString("name") ?: "Unknown"
+            val role = backStackEntry.arguments?.getString("role") ?: "Unknown"
+            MainMenuUI(
+                viewModel = lockerViewModel,
+                onNavigateToMqtt = { navController.navigate("mqtt_screen") },
+                mqttViewModel = mqttViewModel,
+                navController = navController,
+                lockerDao = lockerDao,
+                compartmentDao = compartmentDao,
+                accountViewModel = accountViewModel,
+                usageLockerViewModel = usageLockerViewModel,
+                backupViewModel = viewModel,
+                faceLoginViewModel = faceLoginViewModel,
+                accountid = accountid,  // ส่ง accountid ไปใช้ใน UI
+                context = context,
+                nameUser = name,
+                role = role
+            )
+        }
 
         composable(
             route = "face_capture/{accountid}/{adminname}/{adminrole}?name={name}&role={role}&phone={phone}",
@@ -305,6 +345,7 @@ fun LockerApp() {
                 )
             }
         }
+
 
     }
 }
