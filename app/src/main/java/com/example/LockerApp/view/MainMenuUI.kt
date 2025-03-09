@@ -67,6 +67,10 @@ import com.example.LockerApp.viewmodel.FaceLoginViewModel
 import com.example.LockerApp.viewmodel.LockerViewModel
 import com.example.LockerApp.viewmodel.MqttViewModel
 import com.example.LockerApp.viewmodel.UsageLockerViewModel
+import androidx.compose.material.icons.outlined.Face
+import androidx.compose.runtime.rememberCoroutineScope
+import com.example.LockerApp.utils.FaceRegister
+import kotlinx.coroutines.launch
 
 
 @Composable
@@ -98,8 +102,8 @@ fun MainMenuUI(
     var showUploadpicture by remember { mutableStateOf(false) }
     var showEditpassword by remember { mutableStateOf(false) }
     var selectshowLockerUI by remember { mutableStateOf(false) }
-
-
+    var showFaceRegistration by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
 
     Row(modifier = Modifier.fillMaxSize()) {
         // Sidebar
@@ -158,6 +162,63 @@ fun MainMenuUI(
             }
             Spacer(modifier = Modifier.height(10.dp))
             // ปุ่มเมนูต่างๆ
+            MenuItem(
+                icon = Icons.Outlined.Face,  // You may need to import this icon
+                label = "Register Faces",
+                backgroundColor = Color(0xFF4A90E2),  // Use any color that fits your design
+                iconSize = 25.dp,
+                selected = showFaceRegistration,
+                onClick = {
+                    selectshowLockerUI = false
+                    showBorrowUI = false
+                    showLockerUI = false
+                    showAddLockerUI = false
+                    showCompartmentUI = false
+                    showReturnUI = false
+                    showParticipantUI = false
+                    showUsageHistoryScreen = false
+                    showBackupScreen = false
+                    showEditpassword = false
+                    showFaceRegistration = true
+
+                    // Directly call the face registration function
+                    if (role == "admin") {
+                        // Show a toast that registration is starting
+                        android.widget.Toast.makeText(
+                            context,
+                            "Starting face registration...",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+
+                        // Launch face registration in a coroutine
+                        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                            try {
+                                val result = FaceRegister.registerFaces(context)
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Registration complete: ${result.first} faces registered (${result.second} failed)",
+                                    android.widget.Toast.LENGTH_LONG
+                                ).show()
+                            } catch (e: Exception) {
+                                android.util.Log.e("FaceRegistration", "Error registering faces", e)
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Error registering faces: ${e.message}",
+                                    android.widget.Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    } else {
+                        // If not admin, show permission error
+                        android.widget.Toast.makeText(
+                            context,
+                            "Permission denied: Only admins can register faces",
+                            android.widget.Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            )
+            Spacer(modifier = Modifier.height(10.dp))
             MenuItem(
                 icon = Icons.Outlined.FileUpload,
                 label = "Borrow",

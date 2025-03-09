@@ -160,8 +160,8 @@ fun LockerApp() {
     NavHost(
         navController = navController,
 
-//        startDestination = "WelcomePage"
-        startDestination = "main_menu/1/service/service"
+        startDestination = "WelcomePage"
+//        startDestination = "main_menu/1/admin/admin"
 //        startDestination = "face_capture?name=enemyspotted&role=admin&phone=0634215062/2"
     ) {
         composable("WelcomePage") {
@@ -370,6 +370,29 @@ fun LockerApp() {
                     participantPhone = phone
                 )
             }
+        }
+        composable("batch_face_registration") {
+            BatchFaceRegistrationScreen(
+                onComplete = { successCount, failureCount ->
+                    // You can navigate back or to another screen when done
+                    navController.popBackStack()
+                }
+            )
+        }
+
+// Optional: Add a route parameter for admin verification
+        composable(
+            "batch_face_registration/{adminId}",
+            arguments = listOf(navArgument("adminId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val adminId = backStackEntry.arguments?.getInt("adminId") ?: 0
+
+            BatchFaceRegistrationScreen(
+                onComplete = { successCount, failureCount ->
+                    // Navigate back to admin screen when complete
+                    navController.popBackStack()
+                }
+            )
         }
 
 

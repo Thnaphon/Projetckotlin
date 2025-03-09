@@ -165,7 +165,7 @@ dependencies {
 
     // Dream
     implementation("com.airbnb.android:lottie-compose:6.6.2")
-
-
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
 
 }
