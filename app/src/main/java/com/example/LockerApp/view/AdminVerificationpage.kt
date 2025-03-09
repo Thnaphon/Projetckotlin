@@ -241,7 +241,7 @@ fun AdminVerificationPage(
                                             ) {
                                                 // If we have user data, go to face capture page
                                                 navController.navigate(
-                                                    "face_capture/$adminAccountId/$adminname/$adminname?name=$name&role=$role&phone=$phone/"
+                                                    "face_capture/$adminAccountId/$adminname/$adminname?name=$name&role=$role&phone=$phone"
                                                 ) {
                                                     popUpTo("admin_verification/$adminAccountId") {
                                                         inclusive = true

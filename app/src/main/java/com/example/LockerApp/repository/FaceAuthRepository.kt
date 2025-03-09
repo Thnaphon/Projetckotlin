@@ -129,31 +129,19 @@ class FaceAuthRepository(private val context: Context) {
     // Helper method to preprocess bitmap for more consistent results
     private fun preprocessBitmap(original: Bitmap): Bitmap {
         try {
-            // Ensure consistent size and format to avoid memory issues
+            // Ensure consistent size specifically for facenet model
             val targetSize = 160 // Standard size for facenet model
 
-            // If already correct size, just return a copy to ensure consistent format
-            if (original.width == targetSize && original.height == targetSize) {
-                // Create a copy to ensure we're working with a clean bitmap
-                val copy = original.copy(Bitmap.Config.ARGB_8888, true)
-                return copy
-            }
-
-            // Resize bitmap to appropriate dimensions
+            // ALWAYS create a fresh copy with consistent ARGB_8888 format
+            // Don't reuse original bitmap even if same size
             val resized = Bitmap.createScaledBitmap(original, targetSize, targetSize, true)
+            val converted = resized.copy(Bitmap.Config.ARGB_8888, true)
+            resized.recycle() // Clean up the intermediate bitmap
 
-            // Convert to consistent format (ARGB_8888) if needed
-            if (resized.config != Bitmap.Config.ARGB_8888) {
-                val converted = resized.copy(Bitmap.Config.ARGB_8888, true)
-                resized.recycle() // Clean up the intermediate bitmap
-                return converted
-            }
-
-            return resized
+            return converted
         } catch (e: Exception) {
             Log.e("FaceAuthRepository", "Error preprocessing bitmap", e)
-            // If preprocessing fails, return the original to attempt recognition anyway
-            return original
+            throw e // Don't continue with an invalid bitmap
         }
     }
 

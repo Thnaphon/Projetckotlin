@@ -201,6 +201,7 @@ class CameraManager(private val context: Context) {
 
     // Helper method to check if all required landmarks are present with confidence values
     private fun validateRequiredLandmarks(face: com.google.mlkit.vision.face.Face): Boolean {
+        // Get basic landmarks
         val lefteye = face.getLandmark(FaceLandmark.LEFT_EYE)
         val righteye = face.getLandmark(FaceLandmark.RIGHT_EYE)
         val leftear = face.getLandmark(FaceLandmark.LEFT_EAR)
@@ -210,101 +211,126 @@ class CameraManager(private val context: Context) {
         val nose = face.getLandmark(FaceLandmark.NOSE_BASE)
         val mouth = face.getLandmark(FaceLandmark.MOUTH_BOTTOM)
 
-        // Get face contour points for additional validation
-        val faceOval = face.getContour(FaceContour.FACE)?.points
+        // MOUTH VALIDATION
+        var isMouthProperlyVisible = false
+        val upperLipTop = face.getContour(FaceContour.UPPER_LIP_TOP)?.points
+        val lowerLipBottom = face.getContour(FaceContour.LOWER_LIP_BOTTOM)?.points
 
-        // Get eye contours to check if eyes are open
+        if (upperLipTop != null && lowerLipBottom != null && upperLipTop.size >= 3 && lowerLipBottom.size >= 3) {
+            // Calculate vertical distance between upper and lower lip
+            val upperY = upperLipTop.map { it.y }.average()
+            val lowerY = lowerLipBottom.map { it.y }.average()
+            val lipDistance = Math.abs(upperY - lowerY)
+
+            // Based on your logs, set threshold to 13
+            isMouthProperlyVisible = lipDistance > 13.0
+
+            Log.d("CameraManager_mouth", "Mouth validation: Upper-Lower lip distance: $lipDistance")
+            if (!isMouthProperlyVisible) {
+                Log.w("CameraManager_mouth","appears to be covered or distorted (distance: $lipDistance)")
+            }
+        }
+
+        // EYE VALIDATION - Enhanced
+        var areEyesProperlyVisible = false
         val leftEyeContour = face.getContour(FaceContour.LEFT_EYE)?.points
         val rightEyeContour = face.getContour(FaceContour.RIGHT_EYE)?.points
 
-        // Check if eyes are closed based on contours
-        val leftEyeOpen = if (leftEyeContour != null && leftEyeContour.size >= 4) {
-            // Calculate the vertical distance between top and bottom eye points
-            val topPoint = leftEyeContour.maxByOrNull { it.y } ?: leftEyeContour[0]
-            val bottomPoint = leftEyeContour.minByOrNull { it.y } ?: leftEyeContour[2]
-            val eyeHeight = Math.abs(topPoint.y - bottomPoint.y)
+        if (leftEyeContour != null && rightEyeContour != null &&
+            leftEyeContour.size >= 4 && rightEyeContour.size >= 4) {
 
-            // Calculate width for aspect ratio
-            val leftPoint = leftEyeContour.minByOrNull { it.x } ?: leftEyeContour[0]
-            val rightPoint = leftEyeContour.maxByOrNull { it.x } ?: leftEyeContour[3]
-            val eyeWidth = Math.abs(rightPoint.x - leftPoint.x)
+            // Calculate eye height/width ratio for each eye
+            val leftEyeTop = leftEyeContour.maxByOrNull { it.y }?.y ?: 0f
+            val leftEyeBottom = leftEyeContour.minByOrNull { it.y }?.y ?: 0f
+            val leftEyeHeight = Math.abs(leftEyeTop - leftEyeBottom)
 
-            // Eye is considered open if the height to width ratio is above a threshold
-            val aspectRatio = if (eyeWidth > 0) eyeHeight / eyeWidth else 0f
-            aspectRatio > 0.2f  // Threshold for eye openness
-        } else {
-            false
+            val rightEyeTop = rightEyeContour.maxByOrNull { it.y }?.y ?: 0f
+            val rightEyeBottom = rightEyeContour.minByOrNull { it.y }?.y ?: 0f
+            val rightEyeHeight = Math.abs(rightEyeTop - rightEyeBottom)
+
+            // Calculate horizontal width
+            val leftEyeLeft = leftEyeContour.minByOrNull { it.x }?.x ?: 0f
+            val leftEyeRight = leftEyeContour.maxByOrNull { it.x }?.x ?: 0f
+            val leftEyeWidth = Math.abs(leftEyeRight - leftEyeLeft)
+
+            val rightEyeLeft = rightEyeContour.minByOrNull { it.x }?.x ?: 0f
+            val rightEyeRight = rightEyeContour.maxByOrNull { it.x }?.x ?: 0f
+            val rightEyeWidth = Math.abs(rightEyeRight - rightEyeLeft)
+
+            // Calculate aspect ratios
+            val leftEyeRatio = leftEyeHeight / leftEyeWidth
+            val rightEyeRatio = rightEyeHeight / rightEyeWidth
+
+            Log.d("CameraManager_eyes", "eyes Left eye ratio: $leftEyeRatio, Right eye ratio: $rightEyeRatio")
+
+            // Eyes are properly visible if height/width ratio is good
+            areEyesProperlyVisible = leftEyeRatio > 0.25f && rightEyeRatio > 0.25f
+
+            if (!areEyesProperlyVisible) {
+                Log.w("CameraManager", "Eyes appear to be covered or squinted")
+            }
         }
 
-        val rightEyeOpen = if (rightEyeContour != null && rightEyeContour.size >= 4) {
-            // Calculate the vertical distance between top and bottom eye points
-            val topPoint = rightEyeContour.maxByOrNull { it.y } ?: rightEyeContour[0]
-            val bottomPoint = rightEyeContour.minByOrNull { it.y } ?: rightEyeContour[2]
-            val eyeHeight = Math.abs(topPoint.y - bottomPoint.y)
+        // NOSE VALIDATION
+        var isNoseProperlyVisible = true
+        val noseBridge = face.getContour(FaceContour.NOSE_BRIDGE)?.points
+        val noseBottom = face.getContour(FaceContour.NOSE_BOTTOM)?.points
 
-            // Calculate width for aspect ratio
-            val leftPoint = rightEyeContour.minByOrNull { it.x } ?: rightEyeContour[0]
-            val rightPoint = rightEyeContour.maxByOrNull { it.x } ?: rightEyeContour[3]
-            val eyeWidth = Math.abs(rightPoint.x - leftPoint.x)
+        // Check if we have any nose points at all
+        if (noseBridge != null && noseBottom != null) {
+            // We only require at least 1 point in each part of the nose
+            val hasMinimalNosePoints = noseBridge.size >= 1 && noseBottom.size >= 1
 
-            // Eye is considered open if the height to width ratio is above a threshold
-            val aspectRatio = if (eyeWidth > 0) eyeHeight / eyeWidth else 0f
-            aspectRatio > 0.2f  // Threshold for eye openness
+            Log.d("CameraManager_nose", "nose points: Bridge=${noseBridge.size}, Bottom=${noseBottom.size}")
+
+            if (hasMinimalNosePoints) {
+                // If we have any points at all, check if nose base landmark exists
+                val noseBaseLandmark = face.getLandmark(FaceLandmark.NOSE_BASE)
+
+                if (noseBaseLandmark == null) {
+                    isNoseProperlyVisible = false
+                    Log.w("CameraManager", "Nose base landmark missing")
+                }
+            } else {
+                isNoseProperlyVisible = false
+                Log.w("CameraManager", "Insufficient nose points: Bridge=${noseBridge.size}, Bottom=${noseBottom.size}")
+            }
         } else {
-            false
+            // If either nose bridge or bottom is completely missing, consider nose covered
+            isNoseProperlyVisible = false
+            Log.w("CameraManager", "Nose contours not detected")
         }
 
-        // Check if both eyes are open
-        val areEyesOpen = leftEyeOpen && rightEyeOpen
-
-        // Get smile probability
-        val smileProbability = face.smilingProbability ?: 0f
-        val isSmiling = smileProbability > 0.7f  // Threshold for smile detection
-
-        // Check face rotation - reject faces that are rotated too much
-        val rotationX = face.headEulerAngleX // Pitch
-        val rotationY = face.headEulerAngleY // Yaw
-        val rotationZ = face.headEulerAngleZ // Roll
-
-        val isValidRotation = Math.abs(rotationY) < 25 && Math.abs(rotationX) < 25 && Math.abs(rotationZ) < 25
-
-        // Log detailed detection information
-        Log.d("CameraManager", "Landmarks detected: " +
-                "Left Eye: ${lefteye != null}, " +
-                "Right Eye: ${righteye != null}, " +
-                "Left Ear: ${leftear != null}, " +
-                "Right Ear: ${rightear != null}, " +
-                "Left Cheek: ${cheekleft != null}, " +
-                "Right Cheek: ${cheekright != null}, " +
-                "Nose: ${nose != null}, " +
-                "Mouth: ${mouth != null}, " +
-                "Face Contour Points: ${faceOval?.size ?: 0}"
-        )
-
-        Log.d("CameraManager", "Face expressions: " +
-                "Smiling: $isSmiling (${smileProbability * 100}%), " +
-                "Left Eye Open: $leftEyeOpen, " +
-                "Right Eye Open: $rightEyeOpen"
-        )
-
-        Log.d("CameraManager", "Face rotation: X(Pitch): $rotationX, Y(Yaw): $rotationY, Z(Roll): $rotationZ")
-
-        // Check if any required landmark is missing
+        // Basic landmark check
         val hasAllRequiredLandmarks = lefteye != null && righteye != null &&
                 leftear != null && rightear != null &&
                 cheekleft != null && cheekright != null &&
                 nose != null && mouth != null
 
-        // Check if face contour has enough points (for detecting partially covered faces)
+        // Check face contour
+        val faceOval = face.getContour(FaceContour.FACE)?.points
         val hasEnoughContourPoints = faceOval != null && faceOval.size >= 15
+
+        // Check rotation
+        val rotationX = face.headEulerAngleX // Pitch
+        val rotationY = face.headEulerAngleY // Yaw
+        val rotationZ = face.headEulerAngleZ // Roll
+        val isValidRotation = Math.abs(rotationY) < 25 && Math.abs(rotationX) < 25 && Math.abs(rotationZ) < 25
+
+        // Check smile
+        val smileProbability = face.smilingProbability ?: 0f
+        val isSmiling = smileProbability > 0.7f  // Threshold for smile detection
 
         // Final validation combines all checks
         val isValid = hasAllRequiredLandmarks &&
                 hasEnoughContourPoints &&
                 isValidRotation &&
-                !isSmiling &&  // Must NOT be smiling
-                areEyesOpen    // Eyes must be open
+                !isSmiling &&
+                isMouthProperlyVisible &&
+                areEyesProperlyVisible &&
+                isNoseProperlyVisible
 
+        // Log failure reasons
         if (!isValid) {
             if (!hasAllRequiredLandmarks) {
                 Log.w("CameraManager", "Missing required facial landmarks")
@@ -318,8 +344,14 @@ class CameraManager(private val context: Context) {
             if (isSmiling) {
                 Log.w("CameraManager", "User is smiling (${smileProbability * 100}%). Neutral expression required.")
             }
-            if (!areEyesOpen) {
-                Log.w("CameraManager", "Eyes are not fully open. Both eyes must be open.")
+            if (!isMouthProperlyVisible) {
+                Log.w("CameraManager", "Mouth validation failed")
+            }
+            if (!areEyesProperlyVisible) {
+                Log.w("CameraManager", "Eye validation failed")
+            }
+            if (!isNoseProperlyVisible) {
+                Log.w("CameraManager", "Nose validation failed")
             }
         }
 

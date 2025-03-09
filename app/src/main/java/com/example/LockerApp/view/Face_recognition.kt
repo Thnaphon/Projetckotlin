@@ -107,7 +107,7 @@ interface FaceClassifier {
 class TFLiteFaceRecognition private constructor(context: Context) : FaceClassifier {
     // Use application context to prevent activity/fragment context leaks
     private val appContext = context.applicationContext
-
+    private val interpreterLock = Object()
     private var isModelQuantized = false
     private val THRESHOLD = 1.12f
 
@@ -217,74 +217,82 @@ class TFLiteFaceRecognition private constructor(context: Context) : FaceClassifi
         }
 
         try {
-            // Use cached buffer when possible, or create a new one
-            val bufferSize = 4 * bitmap.width * bitmap.height * 3
-            if (imgData == null || imgData?.capacity() != bufferSize) {
-                imgData = ByteBuffer.allocateDirect(bufferSize)
-                imgData?.order(ByteOrder.nativeOrder())
-            }
 
-            imgData?.clear() // Reset position
-
-            // Make sure intValues array is properly sized
-            if (!::intValues.isInitialized || intValues.size != bitmap.width * bitmap.height) {
-                intValues = IntArray(bitmap.width * bitmap.height)
-            }
-
-            bitmap.getPixels(intValues, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
-            var pixel = 0
-            for (i in 0 until bitmap.width) {
-                for (j in 0 until bitmap.height) {
-                    val input = intValues[pixel++]
-                    imgData?.putFloat((((input.shr(16) and 0xFF) - IMAGE_MEAN) / IMAGE_STD))
-                    imgData?.putFloat((((input.shr(8) and 0xFF) - IMAGE_MEAN) / IMAGE_STD))
-                    imgData?.putFloat((((input and 0xFF) - IMAGE_MEAN) / IMAGE_STD))
+            synchronized(interpreterLock) {
+                // Use cached buffer when possible, or create a new one
+                val bufferSize = 4 * bitmap.width * bitmap.height * 3
+                if (imgData == null || imgData?.capacity() != bufferSize) {
+                    imgData = ByteBuffer.allocateDirect(bufferSize)
+                    imgData?.order(ByteOrder.nativeOrder())
                 }
-            }
 
-            val inputArray = arrayOf<Any>(imgData!!)
-            val outputMap: MutableMap<Int, Any> = HashMap()
-            embeedings = Array(1) { FloatArray(OUTPUT_SIZE) }
-            outputMap[0] = embeedings
-            tfLite?.runForMultipleInputsOutputs(inputArray, outputMap)
+                imgData?.clear() // Reset position
 
-            var distance = Float.MAX_VALUE
-            var label: String? = "Unknown"
+                // Make sure intValues array is properly sized
+                if (!::intValues.isInitialized || intValues.size != bitmap.width * bitmap.height) {
+                    intValues = IntArray(bitmap.width * bitmap.height)
+                }
 
-            if (registered.isNotEmpty()) {
-                val nearest = findNearest(embeedings[0])
-                if (nearest != null) {
-                    val name = nearest.first
-                    val dist = nearest.second
-                    if (dist < THRESHOLD) {
-                        label = name
-                        distance = dist
-                    } else {
-                        label = "Unknown"
-                        distance = dist
+                bitmap.getPixels(intValues, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+                var pixel = 0
+                for (i in 0 until bitmap.width) {
+                    for (j in 0 until bitmap.height) {
+                        val input = intValues[pixel++]
+                        imgData?.putFloat((((input.shr(16) and 0xFF) - IMAGE_MEAN) / IMAGE_STD))
+                        imgData?.putFloat((((input.shr(8) and 0xFF) - IMAGE_MEAN) / IMAGE_STD))
+                        imgData?.putFloat((((input and 0xFF) - IMAGE_MEAN) / IMAGE_STD))
                     }
                 }
+                if (tfLite == null) {
+                    Log.e("FaceRec", "TFLite interpreter is null")
+                    return null
+                }
+
+                val inputArray = arrayOf<Any>(imgData!!)
+                val outputMap: MutableMap<Int, Any> = HashMap()
+                embeedings = Array(1) { FloatArray(OUTPUT_SIZE) }
+                outputMap[0] = embeedings
+                tfLite?.runForMultipleInputsOutputs(inputArray, outputMap)
+
+                var distance = Float.MAX_VALUE
+                var label: String? = "Unknown"
+
+                if (registered.isNotEmpty()) {
+                    val nearest = findNearest(embeedings[0])
+                    if (nearest != null) {
+                        val name = nearest.first
+                        val dist = nearest.second
+                        if (dist < THRESHOLD) {
+                            label = name
+                            distance = dist
+                        } else {
+                            label = "Unknown"
+                            distance = dist
+                        }
+                    }
+                }
+
+                val rec = FaceClassifier.Recognition(
+                    "0",
+                    label,
+                    distance,
+                    RectF()
+                )
+
+
+                if (getExtra) {
+                    // Create a copy to prevent modifying the original
+                    val embeddingsCopy = Array(1) { embeedings[0].clone() }
+                    rec.embeeding = embeddingsCopy
+                }
+
+                // Only set crop if requested and create a copy to manage independently
+                if (getExtra && bitmap != null) {
+                    rec.crop = bitmap.copy(bitmap.config, true)
+                }
+
+                return rec
             }
-
-            val rec = FaceClassifier.Recognition(
-                "0",
-                label,
-                distance,
-                RectF()
-            )
-
-            if (getExtra) {
-                // Create a copy to prevent modifying the original
-                val embeddingsCopy = Array(1) { embeedings[0].clone() }
-                rec.embeeding = embeddingsCopy
-            }
-
-            // Only set crop if requested and create a copy to manage independently
-            if (getExtra && bitmap != null) {
-                rec.crop = bitmap.copy(bitmap.config, true)
-            }
-
-            return rec
         } catch (e: Exception) {
             Log.e("TFLiteFaceRecognition", "Error during recognition", e)
             return null

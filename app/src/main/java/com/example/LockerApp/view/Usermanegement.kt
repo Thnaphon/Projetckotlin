@@ -643,7 +643,7 @@ fun PdpDialog(onConfirm: () -> Unit, onCancel: () -> Unit) {
 
                         item { BulletPoint("Name: Used for identification purposes") }
                         item { BulletPoint("Phone number: Used for contact and identity verification") }
-                        item { BulletPoint("Facial data: Used for facial recognition and identity verification features") }
+                        item { BulletPoint("Biometric data: Used for Biometric recognition and identity verification features") }
 
                         item { Spacer(modifier = Modifier.height(8.dp)) }
 
@@ -872,7 +872,7 @@ fun AddUserDialog(
                             .background(Color.Transparent),
                         colors = TextFieldDefaults.textFieldColors(
                             backgroundColor = Color.Transparent,
-                            focusedIndicatorColor = Color.White,
+                            focusedIndicatorColor = if (validationAttempted && isNameEmpty) Color.Red else Color.White,
                             unfocusedIndicatorColor = if (validationAttempted && isNameEmpty) Color.Red else Color.White
                         )
                     )
@@ -896,7 +896,7 @@ fun AddUserDialog(
                         modifier = Modifier.weight(1f),
                         colors = TextFieldDefaults.textFieldColors(
                             backgroundColor = Color.Transparent,
-                            focusedIndicatorColor = Color.White,
+                            focusedIndicatorColor = if (validationAttempted && (!isPhoneValid || isPhoneEmpty)) Color.Red else Color.White,
                             unfocusedIndicatorColor = if (validationAttempted && (!isPhoneValid || isPhoneEmpty)) Color.Red else Color.White
                         )
                     )
@@ -913,7 +913,7 @@ fun AddUserDialog(
                     TextButton(
                         onClick = {
                             validationAttempted = true
-                            if (isFormNull) {
+                            if (isFormNull && isPhoneValid) {
                                 onStartFaceRecognition()
                             }
                         },
@@ -946,6 +946,7 @@ fun EditAccountDialog(
     val isNameEmpty = name.isEmpty()
     val isRoleEmpty = role.isEmpty()
     val isPhoneEmpty = phone.isEmpty()
+    val isPhoneValid = isValidPhoneNumber(phone)
     val isFormNull = !isNameEmpty && !isRoleEmpty && !isPhoneEmpty
     if (isVisible) {
         Card(
@@ -968,7 +969,7 @@ fun EditAccountDialog(
                         modifier = Modifier.weight(1f),
                         colors = TextFieldDefaults.textFieldColors(
                             backgroundColor = Color.Transparent,
-                            focusedIndicatorColor = Color.White,
+                            focusedIndicatorColor = if (validationAttempted && isNameEmpty) Color.Red else Color.White,
                             unfocusedIndicatorColor = if (validationAttempted && isNameEmpty) Color.Red else Color.White
                         )
                     )
@@ -988,8 +989,8 @@ fun EditAccountDialog(
                         modifier = Modifier.weight(1f),
                         colors = TextFieldDefaults.textFieldColors(
                             backgroundColor = Color.Transparent,
-                            focusedIndicatorColor = Color.White,
-                            unfocusedIndicatorColor = if (validationAttempted && isPhoneEmpty) Color.Red else Color.White
+                            focusedIndicatorColor = if (validationAttempted && (!isPhoneValid || isPhoneEmpty)) Color.Red else Color.White,
+                            unfocusedIndicatorColor = if (validationAttempted && (!isPhoneValid || isPhoneEmpty)) Color.Red else Color.White
                         )
                     )
                 }
@@ -1006,7 +1007,7 @@ fun EditAccountDialog(
                 TextButton(
                     onClick = {
                         validationAttempted = true
-                        if (isFormNull) {
+                        if (isFormNull && isPhoneValid) {
                             onApply()
                         }
                     },

@@ -156,7 +156,7 @@ fun FaceCapturePage(
     }
 
     // main logic of faceboundary and face in frame
-    LaunchedEffect(isFaceWithinBoundary, recognizedName, faceDetected) {
+    LaunchedEffect(isFaceWithinBoundary, recognizedName, faceDetected, insufficientLandmarks) {
 
         /*
 
@@ -228,7 +228,6 @@ fun FaceCapturePage(
             isCameraActive = false
 
             // Auto-register after a short delay (to show the captured face)
-            delay(2000) //delay to show the captured image
 
             capturedFace?.let { bitmap ->
 
@@ -244,6 +243,9 @@ fun FaceCapturePage(
                 )
 
                 // Navigate back to main menu after capture and preview
+
+                delay(100) //delay to show the captured image
+
                 navController.navigate("main_menu/$accountid/$adminname/$adminrole") {
                     popUpTo("face_capture") { inclusive = true }
                 }
@@ -258,11 +260,17 @@ fun FaceCapturePage(
     LaunchedEffect(Unit) {
         while (true) {
 
-            delay(250) // Check every 1/4 second
+            delay(750) // Check every 3/4 second
             val currentTime = System.currentTimeMillis()
 
-            // If no face detected for more than half second and a face was previously detected
-            if (currentTime - lastFaceDetectionTime > 500 && faceDetected) {
+            //reset counting when insufficent landmark
+            if (insufficientLandmarks && isCountingDown) {
+                isCountingDown = false
+                countdownSeconds = 5
+            }
+
+            // If no face detected for more than one second and a face was previously detected
+            if (currentTime - lastFaceDetectionTime > 1000 && faceDetected) {
                 faceDetected = false
                 isFaceWithinBoundary = false
 
@@ -272,6 +280,9 @@ fun FaceCapturePage(
                     countdownSeconds = 5
                 }
             }
+
+
+
         }
     }
 
@@ -313,6 +324,25 @@ fun FaceCapturePage(
                                         rect.height().coerceAtMost(bitmap.height - rect.top)
                                     )
 
+                                    val faceWidth = rect.width()
+                                    val faceHeight = rect.height()
+                                    val screenWidth = bitmap.width
+                                    val screenHeight = bitmap.height
+
+                                    // Calculate face size as percentage of screen
+                                    val faceWidthPercentage = (faceWidth.toFloat() / screenWidth) * 100
+                                    val faceHeightPercentage = (faceHeight.toFloat() / screenHeight) * 100
+
+                                    // Set thresholds
+                                    val tooCloseThreshold = 70f  // Face takes up more than 70% of frame height
+                                    val tooFarThreshold = 30f    // Face takes up less than 30% of frame height
+
+                                    // Determine position state
+                                    var faceTooClose = faceHeightPercentage > tooCloseThreshold
+                                    var faceTooFar = faceHeightPercentage < tooFarThreshold
+
+                                    Log.d("FaceCapturePage", "Face height percentage: $faceHeightPercentage% , Face width percentage: $faceWidthPercentage%")
+
                                     // Set the detected dimensions
                                     imageWidth = bitmap.width
                                     imageHeight = bitmap.height
@@ -347,7 +377,7 @@ fun FaceCapturePage(
 
                                     // perform recognition all time
                                     viewModel.recognizeFace(faceBitmap)
-
+                                    insufficientLandmarks = false
                                     // If capture is requested, save the face
                                     if (capturingFace) {
                                         val scaledBitmap =
@@ -361,7 +391,7 @@ fun FaceCapturePage(
                                     insufficientLandmarks = true
 
                                     scope.launch {
-                                        delay(1500)
+                                        delay(3000)
                                         insufficientLandmarks = false
                                     }
                                 }
@@ -515,6 +545,7 @@ fun FaceCapturePage(
                                         ) {
                                             val overlayResId = when {
                                                 recognizedName.isNotEmpty() && isFaceWithinBoundary -> R.drawable.rectangleerror
+                                                insufficientLandmarks && isFaceWithinBoundary -> R.drawable.rectangleerror
                                                 isFaceWithinBoundary -> R.drawable.rectangleok
                                                 else -> R.drawable.rectangle
                                             }
@@ -572,7 +603,9 @@ fun FaceCapturePage(
                                         .padding(16.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    if (isCountingDown || !cameraInitialized || (faceDetected && !isFaceWithinBoundary && recognizedName.isEmpty()) || capturedFace != null) {
+                                    if (insufficientLandmarks || isCountingDown || !cameraInitialized ||
+                                        (faceDetected && !isFaceWithinBoundary && recognizedName.isEmpty()) ||
+                                        capturedFace != null) {
                                         Card(
                                             modifier = Modifier.padding(
                                                 horizontal = 16.dp,
@@ -588,6 +621,7 @@ fun FaceCapturePage(
                                                 horizontalAlignment = Alignment.CenterHorizontally
                                             ) {
                                                 when {
+                                                    // Prioritize captured face
                                                     capturedFace != null -> {
                                                         Text(
                                                             text = "จัดเก็บใบหน้าของ!",
@@ -603,21 +637,39 @@ fun FaceCapturePage(
                                                         )
                                                     }
 
-                                                    insufficientLandmarks -> {
+                                                    // Then face not in boundary
+                                                    (faceDetected && !isFaceWithinBoundary) -> {
                                                         Text(
-                                                            text = "ไม่สามารถตรวจจับใบหน้าได้ครบถ้วน",
+                                                            text = "ใบหน้าไม่อยู่ในกรอบ",
                                                             fontSize = 22.sp,
                                                             fontWeight = FontWeight.Bold,
-                                                            color = Color.Red
+                                                            color = Color(0xFFA15600)
                                                         )
                                                         Text(
-                                                            text = "โปรดตรวจสอบให้แน่ใจว่าใบหน้าของคุณอยู่ในกรอบและมองตรงไปที่กล้อง",
+                                                            text = "โปรดจัดตำแหน่งใบหน้าของท่านให้อยู่ในกรอบ",
                                                             fontSize = 18.sp,
                                                             color = Color.Black,
                                                             textAlign = TextAlign.Center
                                                         )
                                                     }
 
+                                                    // Then check insufficient landmarks
+                                                    (insufficientLandmarks && isFaceWithinBoundary) -> {
+                                                        Text(
+                                                            text = "มาร์คตำแหน่งใบหน้าไม่ครบถ้วน",
+                                                            fontSize = 22.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = Color.Red // Changed to red for warning
+                                                        )
+                                                        Text(
+                                                            text = "กรุณาถอดสิ่งที่บดบังใบหน้า มองตรงที่กล้อง และห้ามยิ้ม",
+                                                            fontSize = 18.sp,
+                                                            color = Color.Black,
+                                                            textAlign = TextAlign.Center
+                                                        )
+                                                    }
+
+                                                    // Then countdown
                                                     isCountingDown -> {
                                                         Text(
                                                             text = "กำลังจะบันทึกข้อมูล",
@@ -633,21 +685,7 @@ fun FaceCapturePage(
                                                         )
                                                     }
 
-                                                    faceDetected && !isFaceWithinBoundary -> {
-                                                        Text(
-                                                            text = "ใบหน้าไม่อยู่ในกรอบ",
-                                                            fontSize = 22.sp,
-                                                            fontWeight = FontWeight.Bold,
-                                                            color = Color(0xFFA15600)
-                                                        )
-                                                        Text(
-                                                            text = "โปรดจัดตำแหน่งใบหน้าของท่านให้อยู่ในกรอบ",
-                                                            fontSize = 18.sp,
-                                                            color = Color.Black,
-                                                            textAlign = TextAlign.Center
-                                                        )
-                                                    }
-
+                                                    // Then camera initializing
                                                     !cameraInitialized && isCameraActive -> {
                                                         Text(
                                                             text = "กำลังรอกล้องใช้งาน...",
@@ -662,7 +700,7 @@ fun FaceCapturePage(
                                     }
 
                                     if (capturedFace == null) {
-                                        if ((recognizedName.isNotEmpty() && isFaceWithinBoundary) || (recognizedName.isNotEmpty() && !isFaceWithinBoundary)) {
+                                        if ((recognizedName.isNotEmpty() && isFaceWithinBoundary)) {
                                             Card(
                                                 modifier = Modifier.padding(
                                                     horizontal = 16.dp,
@@ -692,6 +730,7 @@ fun FaceCapturePage(
                                                                 textAlign = TextAlign.Center
                                                             )
                                                         }
+
                                                     }
                                                 }
                                             }
