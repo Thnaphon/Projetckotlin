@@ -104,14 +104,14 @@ class FaceAuthRepository(private val context: Context) {
                                 )
                             )
                         } else {
-                            RecognitionResult.Failure("ไม่พบข้อมูล")
+                            RecognitionResult.Failure("Timeout")
                         }
                     } catch (e: Exception) {
                         Log.e("FaceAuthRepository", "Database error", e)
                         RecognitionResult.Failure("Database error: ${e.message}")
                     }
                 } else {
-                    RecognitionResult.Failure("ไม่พบข้อมูลผู้ใช้งาน")
+                    RecognitionResult.Failure("Access Deny")
                 }
             }
         } catch (e: TimeoutCancellationException) {

@@ -2,6 +2,7 @@ package com.example.LockerApp.view
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -46,6 +47,7 @@ fun FaceVerificationOverlay(
     onVerificationSuccess: () -> Unit,
     onVerificationFailed: () -> Unit
 ) {
+    Log.d("value", "$adminname , $adminrole , $name , $role , $phone")
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val coroutineScope = rememberCoroutineScope()

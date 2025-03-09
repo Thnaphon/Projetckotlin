@@ -54,6 +54,7 @@ fun FaceCapturePage(
     accountid: Int
 ) {
     //camera variable setup
+    Log.d("value", "$adminname , $adminrole , $participantName , $participantRole , $participantPhone")
     val context = LocalContext.current
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
@@ -244,7 +245,7 @@ fun FaceCapturePage(
 
                 // Navigate back to main menu after capture and preview
                 navController.navigate("main_menu/$accountid/$adminname/$adminrole") {
-                    popUpTo("face_register") { inclusive = true }
+                    popUpTo("face_capture") { inclusive = true }
                 }
             }
         }

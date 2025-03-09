@@ -79,7 +79,7 @@ fun BackupScreen(viewModel: BackupViewModel) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(horizontal = 32.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top
     ) {
@@ -87,67 +87,107 @@ fun BackupScreen(viewModel: BackupViewModel) {
         Spacer(modifier = Modifier.height(10.dp))
 
         // Scheduled Backup Section
-        BackupSectionTitle(title = "Scheduled")
-        BackupSectionHeader(title = "Scheduled")
-        ScheduledBackupCard(scheduledBackup, backupTime, description)
+        BackupSectionTitle(title = "Scheduled", showButton = true)
+        BackupSection(title = "Scheduled")
         Spacer(modifier = Modifier.height(20.dp))
 
         // Recent Backup Section
-        BackupSectionTitle(title = "Recent")
-        RecentBackupHeader(title = "Recent")
-        RecentBackupCard(lastBackupDate, description)
+        BackupSectionTitle(title = "Recent", showButton = false )
+        RecentBackup(title = "Recent")
     }
 }
 
 @Composable
-fun BackupSectionTitle(title: String) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Icon(imageVector = Icons.Outlined.Backup, contentDescription = "$title Icon", modifier = Modifier.size(32.dp))
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(title, style = MaterialTheme.typography.h6.copy(fontWeight = FontWeight.SemiBold))
-    }
-}
-
-@Composable
-fun BackupSectionHeader(title: String) {
-    Card(
-        elevation = 8.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(46.dp)
-                .background(Color(0xFF1E293B))
-                .padding(vertical = 10.dp)
-                .padding(horizontal = 15.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier
-                .width(150.dp)) {
-                Text("Operation", color = Color.White)
+fun BackupSectionTitle(title: String, showButton:Boolean) {
+    Row(modifier = Modifier
+        .fillMaxWidth()
+        .padding(bottom = 15.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Outlined.Backup,
+                    contentDescription = "$title Icon",
+                    modifier = Modifier.size(32.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    title,
+                    style = MaterialTheme.typography.h6.copy(fontWeight = FontWeight.SemiBold)
+                )
             }
-            Column(modifier = Modifier
-                .width(150.dp)) {
-                Text("Date/Time", color = Color.White)
-            }
-            Column(modifier = Modifier
-                .width(150.dp)) {
-                Text("Scheduled", color = Color.White)
-            }
-            Column(modifier = Modifier
-                .width(350.dp)) {
-                Text("Description", color = Color.White)
+        }
+        if (showButton) {
+            Column {
+                Row() {
+                    Column {
+                        Button(onClick = { /* Restore Action */ }) {
+                            Text("Backup")
+                        }
+                    }
+                    Column(modifier = Modifier.padding(start = 8.dp)) {
+                        Button(onClick = { /* Restore Action */ }) {
+                            Text("Restore")
+                        }
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-fun ScheduledBackupCard(schedule: String, time: String, description: String) {
+fun BackupSection(title: String) {
+    Card(
+        elevation = 8.dp
+    ) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(46.dp)
+                    .background(Color(0xFFEEEEEE))
+                    .padding(vertical = 10.dp)
+                    .padding(horizontal = 15.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    modifier = Modifier
+                        .width(150.dp)
+                ) {
+                    Text("Operation", color = Color.Black)
+                }
+                Column(
+                    modifier = Modifier
+                        .width(150.dp)
+                ) {
+                    Text("Date/Time", color = Color.Black)
+                }
+                Column(
+                    modifier = Modifier
+                        .width(150.dp)
+                ) {
+                    Text("Scheduled", color = Color.Black)
+                }
+                Column(
+                    modifier = Modifier
+                        .width(350.dp)
+                ) {
+                    Text("Description", color = Color.Black)
+                }
+            }
+            Row() {
+                ScheduledBackupCard()
+            }
+        }
+    }
+}
+
+@Composable
+fun ScheduledBackupCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = 8.dp,
+
     ) {
         Column() {
             Row(
@@ -217,47 +257,60 @@ fun ScheduledBackupCard(schedule: String, time: String, description: String) {
 }
 
 @Composable
-fun RecentBackupHeader(title: String) {
+fun RecentBackup(title: String) {
     Card(
         elevation = 8.dp
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(46.dp)
-                .background(Color(0xFF1E293B))
-                .padding(vertical = 10.dp)
-                .padding(horizontal = 15.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier
-                .width(150.dp)) {
-                Text("Operation", color = Color.White)
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(46.dp)
+                    .background(Color(0xFFEEEEEE))
+                    .padding(vertical = 10.dp)
+                    .padding(horizontal = 15.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    modifier = Modifier
+                        .width(150.dp)
+                ) {
+                    Text("Operation", color = Color.Black)
+
+                }
+                Column(
+                    modifier = Modifier
+                        .width(150.dp)
+                ) {
+                    Text("Date/Time", color = Color.Black)
+                }
+                Column(
+                    modifier = Modifier
+                        .width(150.dp)
+                ) {
+                    Text("Status", color = Color.Black)
+                }
+                Column(
+                    modifier = Modifier
+                        .width(350.dp)
+                ) {
+                    Text("Description", color = Color.Black)
+                }
 
             }
-            Column(modifier = Modifier
-                .width(150.dp)) {
-                Text("Date/Time", color = Color.White)
+            Row{
+                RecentBackupCard()
             }
-            Column(modifier = Modifier
-                .width(150.dp)) {
-                Text("Status", color = Color.White)
-            }
-            Column(modifier = Modifier
-                .width(350.dp)) {
-                Text("Description", color = Color.White)
-            }
-
         }
     }
 }
 
 @Composable
-fun RecentBackupCard(date: String, description: String) {
+fun RecentBackupCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = 8.dp
+
     ) {
         Column {
             Row(

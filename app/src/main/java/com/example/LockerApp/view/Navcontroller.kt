@@ -159,8 +159,8 @@ fun LockerApp() {
 
     NavHost(
         navController = navController,
-        startDestination = "admin_verification/1/1/1?name=2&role=2&phone=33"
-//        startDestination = "WelcomePage"
+
+        startDestination = "WelcomePage"
 //        startDestination = "main_menu/1/service/service"
 //        startDestination = "face_capture?name=enemyspotted&role=admin&phone=0634215062/2"
     ) {

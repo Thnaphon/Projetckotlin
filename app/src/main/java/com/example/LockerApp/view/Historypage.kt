@@ -612,7 +612,7 @@ fun DropdownHistory(viewModel: LockerViewModel) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = if (selectedLocker == 0) "All Lockers" else "Locker $selectedLocker",
+                    text = if (selectedLocker == 0) "All History" else "Locker $selectedLocker",
                     style = MaterialTheme.typography.body1
                 )
                 Icon(

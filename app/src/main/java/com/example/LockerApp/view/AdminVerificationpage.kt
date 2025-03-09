@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.LockerApp.model.KeystoreManager
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.text.KeyboardOptions
@@ -63,146 +64,216 @@ fun AdminVerificationPage(
         encryptedData.value = KeystoreManager.encryptData(masterPassword)
     }
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(vertical = 96.dp)
-                .padding(horizontal = 406.dp)
-                .border(1.dp, Color.Red, shape = MaterialTheme.shapes.medium) // ขอบมุมโค้ง
-                .background(Color.White)
-                .clip(MaterialTheme.shapes.medium), // ขอบมุมโค้ง /
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp), // เพิ่มเงา
+            modifier = Modifier.padding(16.dp).padding(vertical = 96.dp).padding(horizontal = 406.dp)
         ) {
-            Text(
-                text = "Admin Verification",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 24.dp)
-            )
-
-            Text(
-                text = "Please enter the master password to verify your admin identity",
-                fontSize = 16.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(bottom = 32.dp)
-            )
-
-            if (name != null && name.isNotEmpty()) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 24.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Text(
-                            text = "Adding new user:",
-                            fontSize = 16.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = name,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(vertical = 4.dp)
-                        )
-                        if (role != null && role.isNotEmpty()) {
-                            Text(
-                                text = "Role: $role",
-                                fontSize = 16.sp
-                            )
-                        }
-                        if (phone != null && phone.isNotEmpty()) {
-                            Text(
-                                text = "Phone: $phone",
-                                fontSize = 16.sp
-                            )
-                        }
-                    }
-                }
-            }
-
-            OutlinedTextField(
-                value = enteredPassword,
-                onValueChange = { setEnteredPassword(it) },
-                label = { Text("Master Password") },
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
-                visualTransformation = PasswordVisualTransformation(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .fillMaxSize()
+                    .background(Color.White)
+                    .clip(MaterialTheme.shapes.medium), // ขอบมุมโค้ง /
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Button(
-                    onClick = { navController.popBackStack() },
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Cancel")
-                }
+                    Row() {
+                        Text(
+                            text = "Admin Verification",
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF151227),
+                            modifier = Modifier.padding(bottom = 24.dp)
+                        )
+                    }
+                    Row() {
+                        Text(
+                            text = "Please enter the master password to verify your admin identity",
+                            fontSize = 16.sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(bottom = 32.dp)
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.height(1.5.dp).fillMaxWidth()
+                            .background(Color(0xFFE8E8E8)),
+                    ) {}
 
-                Spacer(modifier = Modifier.width(16.dp))
-
-                Button(
-                    onClick = {
-                        try {
-                            val encrypted = encryptedData.value
-                            if (encrypted != null) {
-                                val decryptedPassword = KeystoreManager.decryptData(
-                                    encrypted.first, encrypted.second
-                                )
-
-                                if (enteredPassword == decryptedPassword) {
-                                    // Password verified, proceed to registration or face registration
-                                    if (name != null && role != null && phone != null &&
-                                        name.isNotEmpty() && role.isNotEmpty() && phone.isNotEmpty()
+                    if (name != null && name.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().background(Color.White),
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp).background(Color.White),
+                            ) {
+                                Row() {
+                                    Column(
+                                        modifier = Modifier
+                                            .padding(vertical = 8.dp)
+                                            .width(150.dp)
                                     ) {
-                                        // If we have user data, go to face capture page
-                                        navController.navigate(
-                                            "face_capture/$adminAccountId/$adminname/$adminname?name=$name&role=$role&phone=$phone/"
+                                        Text(
+                                            text = "Adding new user:",
+                                            fontSize = 16.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    Column(
+                                        modifier = Modifier.padding(vertical = 8.dp)
+                                    ) {
+                                        Text(
+                                            text = name,
+                                            fontSize = 18.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                                Row() {
+                                    if (role != null && role.isNotEmpty()) {
+                                        Column(
+                                            modifier = Modifier
+                                                .padding(vertical = 8.dp)
+                                                .width(150.dp)
                                         ) {
-                                            popUpTo("admin_verification/$adminAccountId") {
-                                                inclusive = true
-                                            }
+                                            Text(
+                                                text = "Role:",
+                                                fontSize = 16.sp
+                                            )
+                                        }
+                                        Column(
+                                            modifier = Modifier.padding(vertical = 8.dp)
+                                        ) {
+                                            Text(
+                                                text = role,
+                                                fontSize = 18.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
                                         }
                                     }
-                                } else {
+                                }
+                                Row() {
+                                    if (phone != null && phone.isNotEmpty()) {
+                                        Column(
+                                            modifier = Modifier
+                                                .padding(vertical = 8.dp)
+                                                .width(150.dp)
+                                        ) {
+                                            Text(
+                                                text = "Phone:",
+                                                fontSize = 16.sp
+                                            )
+                                        }
+                                        Column(
+                                            modifier = Modifier.padding(vertical = 8.dp)
+                                        ) {
+                                            Text(
+                                                text = phone,
+                                                fontSize = 18.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Row(
+                            modifier = Modifier.height(1.5.dp).fillMaxWidth()
+                                .background(Color(0xFFE8E8E8)),
+                        ) {}
+                        Row(
+                            modifier = Modifier.height(24.dp)
+                        ) {}
+                    }
+
+                    OutlinedTextField(
+                        value = enteredPassword,
+                        onValueChange = { setEnteredPassword(it) },
+                        label = { Text("Master Password") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 24.dp),
+                        visualTransformation = PasswordVisualTransformation(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Button(
+                            onClick = { navController.popBackStack() },
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.White, // กำหนดสีพื้นหลังปุ่ม
+                                contentColor = Color.Black // กำหนดสีข้อความในปุ่ม
+                            ),
+                            border = BorderStroke(1.dp, Color.Black),
+                        ) {
+                            Text("Cancel")
+                        }
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Button(
+                            onClick = {
+                                try {
+                                    val encrypted = encryptedData.value
+                                    if (encrypted != null) {
+                                        val decryptedPassword = KeystoreManager.decryptData(
+                                            encrypted.first, encrypted.second
+                                        )
+
+                                        if (enteredPassword == decryptedPassword) {
+                                            // Password verified, proceed to registration or face registration
+                                            if (name != null && role != null && phone != null &&
+                                                name.isNotEmpty() && role.isNotEmpty() && phone.isNotEmpty()
+                                            ) {
+                                                // If we have user data, go to face capture page
+                                                navController.navigate(
+                                                    "face_capture/$adminAccountId/$adminname/$adminname?name=$name&role=$role&phone=$phone/"
+                                                ) {
+                                                    popUpTo("admin_verification/$adminAccountId") {
+                                                        inclusive = true
+                                                    }
+                                                }
+                                            }
+                                        } else {
+                                            Toast.makeText(
+                                                context,
+                                                "Incorrect password",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                    }
+                                } catch (e: Exception) {
                                     Toast.makeText(
                                         context,
-                                        "Incorrect password",
+                                        "Error during verification: ${e.message}",
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 }
-                            }
-                        } catch (e: Exception) {
-                            Toast.makeText(
-                                context,
-                                "Error during verification: ${e.message}",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF3961AA), // กำหนดสีพื้นหลังปุ่ม
+                                contentColor = Color.White // กำหนดสีข้อความในปุ่ม
+                            ),
+                        ) {
+                            Text("Verify")
                         }
-                    },
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Text("Verify")
+                    }
                 }
             }
         }

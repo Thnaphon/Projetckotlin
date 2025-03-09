@@ -1,6 +1,7 @@
 package com.example.LockerApp.view
 
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -75,11 +76,12 @@ fun ParticipantScreen(
     adminrole: String,
     viewModel: LockerViewModel
 ) {
+    Log.d("value","$adminname , $adminrole")
     var isAddDialogVisible by remember { mutableStateOf(false) }
     var isEditDialogVisible by remember { mutableStateOf(false) }
     var isEditMode by remember { mutableStateOf(false) }
     var isPdpDialogVisible by remember { mutableStateOf(false) }
-
+    var isAdminVerificationDialogVisible by remember { mutableStateOf(false) }
 
     var name by remember { mutableStateOf("") }
     var role by remember { mutableStateOf("") }
@@ -103,6 +105,24 @@ fun ParticipantScreen(
     LaunchedEffect(Unit) {
         faceLoginViewModel.refreshFaceData()
         faceLoginViewModel.resetToScanning()
+    }
+
+    if (isAdminVerificationDialogVisible) {
+        Dialog(
+            onDismissRequest = { isAdminVerificationDialogVisible = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            AdminVerificationPage(
+                navController = navController,
+                adminAccountId = accountid,
+                adminname = adminname,
+                adminrole = adminrole,
+                name = name,
+                role = role,
+                phone = phone
+            )
+        }
+
     }
 
 
@@ -197,8 +217,8 @@ fun ParticipantScreen(
                     ),
                     modifier = Modifier
                         .width(270.dp)
-                        .padding(8.dp)
-                        .border(1.dp, Color.Black, RoundedCornerShape(25))
+                        .height(56.dp)
+                        .border(2.dp, Color(0xFF8D8B8B), RoundedCornerShape(25))
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 DropdownUser(viewModel)
@@ -270,7 +290,6 @@ fun ParticipantScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Start,
                         ) {
-
 
                             Box(
                                 modifier = Modifier
@@ -445,7 +464,7 @@ fun ParticipantScreen(
                     isPdpDialogVisible = false
                     if (accountid == 1) {
                         // Master Password admin account - use password verification
-                        navController.navigate("admin_verification/$accountid/$adminname/$adminrole?name=${name}&role=${role}&phone=${phone}")
+                        isAdminVerificationDialogVisible = true
                     } else {
                         // Normal user account - show face verification overlay
                         showFaceVerification = true
@@ -564,20 +583,22 @@ fun PdpDialog(onConfirm: () -> Unit, onCancel: () -> Unit) {
             shape = RoundedCornerShape(8.dp),
             color = Color.White,
             modifier = Modifier
-                .width(600.dp)
-                .height(400.dp)
+                .padding(vertical = 115.dp)
+                .padding(horizontal = 416.dp)
+//                .width(600.dp)
+//                .height(400.dp)
         ) {
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
                 // Fixed title area
                 Text(
-                    text = "นโยบายความเป็นส่วนตัว",
+                    text = "Privacy Policy",
                     color = Color.Black,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
+                    fontSize = 22.sp,
                     modifier = Modifier
-                        .padding(16.dp)
+                        .padding(horizontal = 20.dp, vertical = 25.dp)
                         .fillMaxWidth()
                 )
 
@@ -592,11 +613,12 @@ fun PdpDialog(onConfirm: () -> Unit, onCancel: () -> Unit) {
                         state = lazyListState,
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(horizontal = 16.dp)
+                            .padding(horizontal = 20.dp)
+                            .background(Color(0xFFEEEEEE))
                     ) {
                         item {
                             Text(
-                                text = "แอปพลิเคชัน Face Authentication Locker for Equipment Borrowing ให้ความสำคัญกับความเป็นส่วนตัวของผู้ใช้ตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)",
+                                text = "The Face Authentication Locker for Equipment Borrowing application prioritizes user privacy in accordance with the Personal Data Protection Act B.E. 2562 (PDPA).",
                                 color = Color.Black,
                                 modifier = Modifier.padding(vertical = 8.dp)
                             )
@@ -606,7 +628,7 @@ fun PdpDialog(onConfirm: () -> Unit, onCancel: () -> Unit) {
 
                         item {
                             Text(
-                                text = "1. ข้อมูลที่เราเก็บรวบรวม",
+                                text = "1. Data We Collect",
                                 color = Color.Black,
                                 fontWeight = FontWeight.Bold
                             )
@@ -614,20 +636,20 @@ fun PdpDialog(onConfirm: () -> Unit, onCancel: () -> Unit) {
 
                         item {
                             Text(
-                                text = "เมื่อคุณใช้แอปพลิเคชันของเรา เราอาจเก็บรวบรวมข้อมูลส่วนบุคคลของคุณ ได้แก่:",
+                                text = "When you use our application, we may collect your personal data, including:",
                                 color = Color.Black
                             )
                         }
 
-                        item { BulletPoint("ชื่อ: เพื่อใช้ในการระบุตัวตน") }
-                        item { BulletPoint("เบอร์โทรศัพท์: เพื่อการติดต่อและยืนยันตัวตน") }
-                        item { BulletPoint("ข้อมูลใบหน้า: เพื่อใช้ในฟีเจอร์ระบุตัวตนหรือการตรวจสอบใบหน้า") }
+                        item { BulletPoint("Name: Used for identification purposes") }
+                        item { BulletPoint("Phone number: Used for contact and identity verification") }
+                        item { BulletPoint("Facial data: Used for facial recognition and identity verification features") }
 
                         item { Spacer(modifier = Modifier.height(8.dp)) }
 
                         item {
                             Text(
-                                text = "2. วัตถุประสงค์ในการใช้ข้อมูล",
+                                text = "2. Purpose of Data Usage",
                                 color = Color.Black,
                                 fontWeight = FontWeight.Bold
                             )
@@ -635,20 +657,20 @@ fun PdpDialog(onConfirm: () -> Unit, onCancel: () -> Unit) {
 
                         item {
                             Text(
-                                text = "เราจะใช้ข้อมูลของคุณเพื่อวัตถุประสงค์ดังต่อไปนี้:",
+                                text = "We will use your data for the following purposes:",
                                 color = Color.Black
                             )
                         }
 
-                        item { BulletPoint("การให้บริการตามฟังก์ชันของแอปพลิเคชัน") }
-                        item { BulletPoint("การยืนยันตัวตนและความปลอดภัยของบัญชี") }
-                        item { BulletPoint("การติดต่อผู้ใช้เกี่ยวกับการใช้งานแอปพลิเคชัน") }
+                        item { BulletPoint("Providing application functionalities") }
+                        item { BulletPoint("Identity verification and account security") }
+                        item { BulletPoint("Contacting users regarding application usage") }
 
                         item { Spacer(modifier = Modifier.height(8.dp)) }
 
                         item {
                             Text(
-                                text = "3. การเก็บรักษาข้อมูล",
+                                text = "3. Data Retention",
                                 color = Color.Black,
                                 fontWeight = FontWeight.Bold
                             )
@@ -656,7 +678,7 @@ fun PdpDialog(onConfirm: () -> Unit, onCancel: () -> Unit) {
 
                         item {
                             Text(
-                                text = "ข้อมูลของคุณจะถูกเก็บรักษาอย่างปลอดภัยและจะถูกลบเมื่อไม่มีความจำเป็นในการใช้งานอีกต่อไป",
+                                text = "Your data will be securely stored and deleted when it is no longer necessary.",
                                 color = Color.Black
                             )
                         }
@@ -665,7 +687,7 @@ fun PdpDialog(onConfirm: () -> Unit, onCancel: () -> Unit) {
 
                         item {
                             Text(
-                                text = "4. สิทธิของเจ้าของข้อมูล",
+                                text = "4. User Rights",
                                 color = Color.Black,
                                 fontWeight = FontWeight.Bold
                             )
@@ -673,18 +695,18 @@ fun PdpDialog(onConfirm: () -> Unit, onCancel: () -> Unit) {
 
                         item {
                             Text(
-                                text = "คุณมีสิทธิ์ในการ",
+                                text = "You have the right to:",
                                 color = Color.Black
                             )
                         }
 
-                        item { BulletPoint("ขอเข้าถึง แก้ไข หรือลบข้อมูลส่วนบุคคลของคุณ") }
-                        item { BulletPoint("ขอให้ระงับหรือคัดค้านการประมวลผลข้อมูลของคุณ") }
-                        item { BulletPoint("เพิกถอนความยินยอมในการเก็บและใช้ข้อมูล") }
+                        item { BulletPoint("Request access, modification, or deletion of your personal data") }
+                        item { BulletPoint("Request to suspend or object to the processing of your data") }
+                        item { BulletPoint("Withdraw consent for data collection and usage") }
 
                         item {
                             Text(
-                                text = "หากคุณต้องการใช้สิทธิ์ของคุณ หรือมีข้อสงสัยเกี่ยวกับนโยบายนี้ กรุณาติดต่อ ผู้ให้บริการแอปพลิเคชัน",
+                                text = "If you wish to exercise your rights or have any questions about this policy, please contact the application provider.",
                                 color = Color.Black,
                                 modifier = Modifier.padding(top = 8.dp)
                             )
@@ -724,31 +746,51 @@ fun PdpDialog(onConfirm: () -> Unit, onCancel: () -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(Color.White)
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.End,
+                        .padding(horizontal = 20.dp, vertical = 25.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TextButton(
                         onClick = onCancel,
-                        modifier = Modifier.padding(end = 8.dp)
-                    ) {
-                        Text("ยกเลิก", color = Color.Black)
-                    }
-
-                    TextButton(
-                        onClick = onConfirm,
-                        enabled = canAccept,
                         modifier = Modifier
+                            .weight(1f)
                             .background(
-                                color = if (canAccept) Color(0xFF3A4750) else Color.Gray,
+                                color = Color(0xFFFFFFFF),
                                 shape = RoundedCornerShape(8.dp)
                             )
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .border(
+                                width = 1.dp, // ความหนาของขอบ
+                                color = Color.Black, // สีของขอบ
+                                shape = RoundedCornerShape(8.dp) // รูปร่างขอบให้โค้งมน
+                            )
                     ) {
-                        Text("ยอมรับ", color = Color.White)
+                        Text("Cancel", color = Color.Black)
+                    }
+
+                    Spacer(modifier = Modifier.width(10.dp))
+                    TextButton(
+                        onClick = {
+                            onConfirm()
+                            onCancel()
+                        },
+                        enabled = canAccept,
+                        modifier = Modifier
+                            .weight(1f)
+                            .background(
+                                color = if (canAccept) Color(0xFF3961AA) else Color.Gray,
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .border(
+                                width = 1.dp, // ความหนาของขอบ
+                                color = Color(0xFF3961AA), // สีของขอบ
+                                shape = RoundedCornerShape(8.dp) // รูปร่างขอบให้โค้งมน
+                            )
+                    ){
+                        Text("Accept", color = Color.White)
                     }
                 }
             }
+
         }
     }
 }
@@ -993,8 +1035,8 @@ fun DropdownUser(viewModel: LockerViewModel) {
         Box(
             modifier = Modifier
                 .wrapContentWidth()
-                .height(48.dp) // ตั้งค่าความสูงให้เหมือนปุ่ม
-                .border(2.dp, Color.Black, RoundedCornerShape(15.dp)) // เพิ่มขอบมน
+                .height(56.dp) // ตั้งค่าความสูงให้เหมือนปุ่ม
+                .border(2.dp, Color(0xFF8D8B8B), RoundedCornerShape(15.dp)) // เพิ่มขอบมน
                 .clickable { expanded = true }
                 .padding(horizontal = 16.dp, vertical = 12.dp), // จัดการ padding
             contentAlignment = Alignment.CenterStart

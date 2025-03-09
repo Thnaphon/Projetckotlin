@@ -359,7 +359,7 @@ fun MainMenuUI(
                         faceLoginViewModel = faceLoginViewModel,
                         accountid = accountid,
                         adminname = nameUser,
-                        adminrole = nameUser,
+                        adminrole = role,
                         viewModel = viewModel
                     ) // แสดงหน้า Participant ที่นี่
                 }

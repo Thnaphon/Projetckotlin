@@ -86,7 +86,7 @@ fun FaceLoginOverlay(
                 isSuccessVisible = false
                 isFailedVisible = true
                 isLoginSuccessful = false
-                delay(3000) // Show error animation briefly
+                delay(1500) // Show error animation briefly
                 // Reset to scanning state after showing error
                 viewModel.resetToScanning()
             }
@@ -165,7 +165,7 @@ fun FaceLoginOverlay(
                     Box(
                         modifier = Modifier
                             .width(width = 220.dp)
-                            .clip(RoundedCornerShape(topStart = 25.dp, topEnd = 25.dp))
+                            .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
                             .background(Color.White),
                         contentAlignment = Alignment.Center
                     ) {
@@ -203,38 +203,42 @@ fun FaceLoginOverlay(
                     Card(
                         shape = RoundedCornerShape(0.dp),
                         modifier = Modifier
-                            .width(width = 220.dp)
-                            .wrapContentHeight(),
+                            .width(220.dp)
+                            .wrapContentHeight(), // เอา background ออกจาก Modifier
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f)
+                            containerColor = Color.White // กำหนดสีพื้นหลังของ Card ที่นี่
                         )
-                    ) {
+                    )
+                    {
                         Column(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                            modifier = Modifier.padding(top = 2.dp, bottom = 25.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Top
                         ) {
                             when (loginState) {
                                 is FaceLoginViewModel.LoginState.Scanning -> {
                                     Text(
-                                        text = "กำลังค้นหา...",
-                                        fontSize = 20.sp,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        text = "Scanning...",
+                                        fontSize = 16.sp,
                                         textAlign = TextAlign.Center
                                     )
                                 }
                                 is FaceLoginViewModel.LoginState.Success -> {
                                     val state = loginState as FaceLoginViewModel.LoginState.Success
                                     Text(
-                                        text = "กำลังยืนยันตัวตน",
-                                        fontSize = 20.sp,
+                                        text = "Verifing...",
+                                        fontSize = 16.sp,
                                         textAlign = TextAlign.Center,
-                                        modifier = Modifier.padding(bottom = 8.dp)
+                                        modifier = Modifier.padding(bottom = 8.dp).fillMaxWidth(),
                                     )
                                 }
                                 is FaceLoginViewModel.LoginState.Error -> {
                                     val state = loginState as FaceLoginViewModel.LoginState.Error
                                     Text(
+                                        modifier = Modifier.fillMaxWidth(),
                                         text = state.message,
-                                        fontSize = 20.sp,
+                                        fontSize = 16.sp,
                                         color = Color.Red,
                                         textAlign = TextAlign.Center
                                     )
@@ -248,8 +252,8 @@ fun FaceLoginOverlay(
                 Row(
                     modifier = Modifier
                         .width(width = 220.dp)
-                        .clip(RoundedCornerShape(bottomStart = 25.dp, bottomEnd = 25.dp))
-                        .background(MaterialTheme.colorScheme.primary),
+                        .clip(RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp))
+                        .background(Color(0xFF3961AA)),
                     horizontalArrangement = Arrangement.Center,
                 ) {
                     TextButton(
@@ -259,7 +263,7 @@ fun FaceLoginOverlay(
                             contentColor = Color.White
                         )
                     ) {
-                        Text("Cancel")
+                        Text("Cancel", color = Color.White)
                     }
                 }
             }

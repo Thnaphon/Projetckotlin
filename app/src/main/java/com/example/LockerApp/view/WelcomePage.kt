@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,6 +37,7 @@ import com.example.LockerApp.viewmodel.FaceLoginViewModel
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import coil.compose.rememberImagePainter
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.AnnotatedString
@@ -293,17 +296,20 @@ fun WelcomePage(
                                         },
                                         shape = RoundedCornerShape(8.dp),
                                         modifier = Modifier
-                                            .fillMaxWidth() // ให้ปุ่มกว้างเท่ากับช่องกรอก Master Password
-                                            .height(30.dp), // กำหนดความสูงของปุ่มให้เท่ากับช่องกรอก
+                                            .padding(top = 7.dp)
+                                            .width(61.dp) // ให้ปุ่มกว้างเท่ากับช่องกรอก Master Password
+                                            .height(61.dp), // กำหนดความสูงของปุ่มให้เท่ากับช่องกรอก
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = Color(
                                                 0xFF3961AA
                                             )
                                         )
                                     ) {
-                                        Text(
-                                            text = "Confirm",
-                                            style = TextStyle(fontSize = 12.sp) // ปรับขนาดตัวอักษรที่ต้องการ
+                                        Icon(
+                                            Icons.Filled.Check,
+                                            contentDescription = "Add Locker",
+                                            tint = Color(0xFFFFFFFF),
+                                            modifier = Modifier.scale(2f)
                                         )
                                     }
                                 }
