@@ -87,18 +87,19 @@ fun BackupScreen(viewModel: BackupViewModel) {
         Spacer(modifier = Modifier.height(10.dp))
 
         // Scheduled Backup Section
-        BackupSectionTitle(title = "Scheduled", showButton = true)
+        BackupSectionTitle(title = "Scheduled", showButton = true,viewModel=viewModel)
         BackupSection(title = "Scheduled")
         Spacer(modifier = Modifier.height(20.dp))
 
         // Recent Backup Section
-        BackupSectionTitle(title = "Recent", showButton = false )
+        BackupSectionTitle(title = "Recent", showButton = false ,viewModel=viewModel)
         RecentBackup(title = "Recent")
     }
 }
 
 @Composable
-fun BackupSectionTitle(title: String, showButton:Boolean) {
+fun BackupSectionTitle(viewModel: BackupViewModel,title: String, showButton:Boolean) {
+    val context = LocalContext.current
     Row(modifier = Modifier
         .fillMaxWidth()
         .padding(bottom = 15.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
@@ -120,12 +121,12 @@ fun BackupSectionTitle(title: String, showButton:Boolean) {
             Column {
                 Row() {
                     Column {
-                        Button(onClick = { /* Restore Action */ }) {
+                        Button(onClick = { viewModel.performBackup(context) }) {
                             Text("Backup")
                         }
                     }
                     Column(modifier = Modifier.padding(start = 8.dp)) {
-                        Button(onClick = { /* Restore Action */ }) {
+                        Button(onClick = { viewModel.performRestore(context) }) {
                             Text("Restore")
                         }
                     }

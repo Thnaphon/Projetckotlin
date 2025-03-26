@@ -161,7 +161,7 @@ fun WelcomePage(
                 showFaceLoginOverlay = false
                 // calling mainmenu if success login state after loginoverlay
                 val route = when (role) {
-                    "admin" -> "main_menu/$accountId/$name/$role"  // if admin then admin_dashboard
+                    "Owner" -> "main_menu/$accountId/$name/$role"  // if Owner then admin_dashboard
                     "service" -> "main_menu/$accountId/$name/$role"  // if service ให้ไปหน้า service_dashboard
                     else -> "main_menu_user/$accountId/$name/$role"  // if user ให้ไปหน้า user_dashboard
                 }

@@ -61,32 +61,6 @@ data class Account(
 )
 
 
-
-
-
-
-// Entity สำหรับ UsageLocker
-@Entity(tableName = "usage_locker",
-    foreignKeys = [
-        ForeignKey(
-            entity = Locker::class,
-            parentColumns = ["LockerID"],
-            childColumns = ["LockerID"],
-            onDelete = ForeignKey.CASCADE),
-        ForeignKey(
-            entity = Account::class,
-            parentColumns = ["AccountID"],
-            childColumns = ["AccountID"],
-            onDelete = ForeignKey.CASCADE
-        ),
-        ForeignKey(
-            entity = Compartment::class,
-            parentColumns = ["CompartmentID"],
-            childColumns = ["CompartmentID"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ]
-)
 data class UsageLocker(
     @PrimaryKey(autoGenerate = true) val UsageLockerID: Int = 0,
     val LockerID: Int,
@@ -98,23 +72,7 @@ data class UsageLocker(
 
 )
 
-// Entity สำหรับ UsageLocker
-@Entity(tableName = "manage_locker",
-    foreignKeys = [
-        ForeignKey(
-            entity = Locker::class,
-            parentColumns = ["LockerID"],
-            childColumns = ["LockerID"],
-            onDelete = ForeignKey.CASCADE),
-        ForeignKey(
-            entity = Account::class,
-            parentColumns = ["AccountID"],
-            childColumns = ["AccountID"],
-            onDelete = ForeignKey.CASCADE
-        )
 
-    ]
-)
 data class ManageLocker(
     @PrimaryKey(autoGenerate = true) val ManageLockerID: Int = 0,
     val LockerID: Int,
@@ -125,31 +83,13 @@ data class ManageLocker(
 
 )
 
-// Entity สำหรับ UsageLocker
-@Entity(tableName = "manage_account",
-    foreignKeys = [
-        ForeignKey(
-            entity = Account::class,
-            parentColumns = ["AccountID"],
-            childColumns = ["AccountID"],
-            onDelete = ForeignKey.CASCADE
-        ),
-        ForeignKey(
-            entity = Account::class,
-            parentColumns = ["AccountID"],
-            childColumns = ["ByAccountID"],
-            onDelete = ForeignKey.CASCADE
-        )
 
-    ]
-)
 data class ManageAccount(
     @PrimaryKey(autoGenerate = true) val ManageAccount: Int = 0,
     val AccountID : Int,
     val ByAccountID : Int,
     val UsageTime: String,
     val Usage : String
-
 )
 
 
@@ -157,10 +97,18 @@ data class ManageAccount(
 // Entity สำหรับ Backup
 @Entity(tableName = "backup_settings")
 data class BackupSettings(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    @PrimaryKey(autoGenerate = true) val set_backup_id: Int = 0,
     val frequency: String, // เช่น "Daily", "Weekly"
-    val backupTime: String, // เวลา backup เช่น "02:00 AM"
-    val lastBackupDate: String? = null // เก็บวันที่ backup ล่าสุด
+    val backupTime: String
+)
+
+@Entity(tableName = "backup_log")
+data class BackupLog(
+    @PrimaryKey(autoGenerate = true) val backup_log_id : Int = 0,
+    val date_time: String, // เช่น "Daily", "Weekly"
+    val description: String, // เวลา backup เช่น "02:00 AM"
+    val status: Int,
+    val AccountID: Int
 )
 
 
@@ -173,8 +121,7 @@ interface BackupDao {
     @Query("SELECT * FROM backup_settings LIMIT 1")
     suspend fun getBackupSettings(): BackupSettings?
 
-    @Query("UPDATE backup_settings SET lastBackupDate = :date WHERE id = :id")
-    suspend fun updateLastBackupDate(id: Int, date: String)
+
 }
 
 // DAO สำหรับ Locker

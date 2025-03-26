@@ -34,10 +34,13 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.camera.view.PreviewView
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.LockerApp.R
+import com.example.LockerApp.model.ManageAccount
 import com.example.LockerApp.utils.CameraManager
 import com.example.LockerApp.viewmodel.FaceRegisterViewModel
+import com.example.LockerApp.viewmodel.ManageAccountViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
@@ -85,7 +88,7 @@ fun FaceCapturePage(
     var faceRect by remember { mutableStateOf<RectF?>(null) }
     var imageWidth by remember { mutableStateOf(0) }
     var imageHeight by remember { mutableStateOf(0) }
-
+    val manageAccountViewModel: ManageAccountViewModel = viewModel()
     // Clear any previous face capture and prepare camera with proper delay
     LaunchedEffect(Unit) {
 
@@ -242,7 +245,9 @@ fun FaceCapturePage(
                     participantPhone,
                     bitmap
                 )
-
+                val usageTime = System.currentTimeMillis().toString()
+//                val ManageAccount = ManageAccount(AccountID = it,ByAccountID = accountid,UsageTime=usageTime,Usage = "Inser Account" )
+//                manageAccountViewModel.insertManageAccount(ManageAccount)
                 // Navigate back to main menu after capture and preview
                 navController.navigate("main_menu/$accountid/$adminname/$adminrole") {
                     popUpTo("face_capture") { inclusive = true }

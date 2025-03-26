@@ -58,12 +58,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.LockerApp.model.Account
+import com.example.LockerApp.model.ManageAccount
 import com.example.LockerApp.viewmodel.AccountViewModel
 import com.example.LockerApp.viewmodel.FaceLoginViewModel
 import com.example.LockerApp.viewmodel.LockerViewModel
+import com.example.LockerApp.viewmodel.ManageAccountViewModel
+import com.example.LockerApp.viewmodel.MqttViewModel
+import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.Date
+import java.util.Locale
 
 
 @Composable
@@ -83,6 +91,7 @@ fun ParticipantScreen(
     var isPdpDialogVisible by remember { mutableStateOf(false) }
     var isAdminVerificationDialogVisible by remember { mutableStateOf(false) }
 
+    val manageAccountViewModel: ManageAccountViewModel = viewModel()
     var name by remember { mutableStateOf("") }
     var role by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
@@ -90,13 +99,15 @@ fun ParticipantScreen(
     var searchQuery by remember { mutableStateOf("") }
 
     var showFaceVerification by remember { mutableStateOf(false) } // Add this state variable
+    var selectedRole by remember { mutableStateOf("All Users") }
 
     val currentDate = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
     val userDetails by accountViewModel.userDetails.observeAsState(emptyList())
     val filteredUsers = userDetails.filter {
-        it.Name.contains(searchQuery, ignoreCase = true) ||
-                it.Role.contains(searchQuery, ignoreCase = true) ||
-                it.Phone.contains(searchQuery, ignoreCase = true)
+        (selectedRole == "All Users" || it.Role == selectedRole) && // ฟิลเตอร์ Role
+                (it.Name.contains(searchQuery, ignoreCase = true) ||
+                        it.Role.contains(searchQuery, ignoreCase = true) ||
+                        it.Phone.contains(searchQuery, ignoreCase = true))
     }
     val userCount = filteredUsers.size
 
@@ -221,11 +232,12 @@ fun ParticipantScreen(
                         .border(2.dp, Color(0xFF8D8B8B), RoundedCornerShape(25))
                 )
                 Spacer(modifier = Modifier.width(10.dp))
-                DropdownUser(viewModel)
+                DropdownUser(selectedRole = selectedRole, onRoleChange = { selectedRole = it })
                 Spacer(modifier = Modifier.width(10.dp))
                 androidx.compose.material.Card(
                     modifier = Modifier
-                        .size(47.dp)
+                        .width(56.dp)
+                        .height(56.dp)
                         .clip(RoundedCornerShape(15.dp))
                         .border(
                             2.dp,
@@ -305,18 +317,19 @@ fun ParticipantScreen(
                                     tint = Color.Transparent
                                 )
                             }
-                            Spacer(modifier = Modifier.weight(0.36f))
+                            Spacer(modifier = Modifier.weight(0.33f))
                             Text(
                                 "Name",
                                 Modifier
-                                    .weight(0.9f)
-                                    .padding(start = 16.dp),
+                                    .weight(1.13f)
+                                    .padding(start = 16.dp)
+                                    ,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp
                             )
                             Text(
                                 "Role",
-                                Modifier.weight(1f),
+                                Modifier.weight(0.8f),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp
                             )
@@ -328,7 +341,7 @@ fun ParticipantScreen(
                             )
                             Text(
                                 "Created Date",
-                                Modifier.weight(1f),
+                                Modifier.weight(0.9f),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp
                             )
@@ -360,6 +373,9 @@ fun ParticipantScreen(
                                 val usageTime = System.currentTimeMillis().toString()
                                 accountIdToEdit?.let {
                                     accountViewModel.updateAccountFields(it, name, phone, role)
+                                    val ManageAccount = ManageAccount(AccountID = it,ByAccountID = accountid,UsageTime=usageTime,Usage = "Edit Account" )
+                                    manageAccountViewModel.insertManageAccount(ManageAccount)
+
                                 }
                                 isEditDialogVisible = false
                             }
@@ -382,7 +398,7 @@ fun ParticipantScreen(
                                     .padding(top = 8.dp)
 
                             ) {
-                                Spacer(modifier = Modifier.weight(0.15f))
+                                Spacer(modifier = Modifier.weight(0.16f))
                                 Box(
                                     modifier = Modifier
                                         .size(40.dp)
@@ -397,16 +413,20 @@ fun ParticipantScreen(
                                         modifier = Modifier.size(50.dp)
                                     )
                                 }
-                                Spacer(modifier = Modifier.weight(0.15f))
+                                Spacer(modifier = Modifier.weight(0.17f))
                                 Text(
                                     user.Name,
                                     Modifier
-                                        .weight(1f)
+                                        .weight(1.1f)
                                         .padding(start = 16.dp)
                                 )
-                                Text(user.Role, Modifier.weight(1f))
-                                Text(user.Phone, Modifier.weight(1f))
-                                Text(user.CreatedDate, Modifier.weight(1f))
+                                Spacer(modifier = Modifier.weight(0.1f))
+                                Text(user.Role, Modifier.weight(0.8f))
+                                Spacer(modifier = Modifier.weight(0.1f))
+                                Text(user.Phone, Modifier.weight(0.9f))
+                                Spacer(modifier = Modifier.weight(0.1f))
+                                Text(formatDate(user.CreatedDate), Modifier.weight(1f))
+
 
                                 IconButton(
                                     onClick = {
@@ -494,7 +514,7 @@ fun RoleDropdown(
     isError: Boolean = false
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val roles = listOf("admin", "user")
+    val roles = listOf("Owner", "User")
 
     ExposedDropdownMenuBox(
         expanded = expanded,
@@ -1023,58 +1043,73 @@ fun EditAccountDialog(
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun DropdownUser(viewModel: LockerViewModel) {
-
-    val lockers by viewModel.lockers.collectAsState()
-    var selectedLocker by remember { mutableStateOf(0) }
+fun DropdownUser(
+    selectedRole: String,
+    onRoleChange: (String) -> Unit
+) {
     var expanded by remember { mutableStateOf(false) }
-
-    androidx.compose.material.ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = !expanded }) {
-        Box(
-            modifier = Modifier
-                .wrapContentWidth()
-                .height(56.dp) // ตั้งค่าความสูงให้เหมือนปุ่ม
-                .border(2.dp, Color(0xFF8D8B8B), RoundedCornerShape(15.dp)) // เพิ่มขอบมน
-                .clickable { expanded = true }
-                .padding(horizontal = 16.dp, vertical = 12.dp), // จัดการ padding
-            contentAlignment = Alignment.CenterStart
-        ) {
-            Row(
-                modifier = Modifier.wrapContentWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = if (selectedLocker == 0) "All Lockers" else "Locker $selectedLocker",
-                    style = MaterialTheme.typography.body1
-                )
-                Icon(
-                    imageVector = Icons.Filled.KeyboardArrowDown, // เปลี่ยนไอคอนเป็นลูกศรลง
-                    contentDescription = "Dropdown Icon"
-                )
-            }
-        }
-        ExposedDropdownMenu(
+    val roles = listOf("All Users", "User", "Owner")
+    Box( modifier = Modifier.width(130.dp),contentAlignment = Alignment.Center ) {
+        androidx.compose.material.ExposedDropdownMenuBox(
             expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.wrapContentSize()
-        ) {
-            lockers.forEach { locker ->
-                androidx.compose.material.DropdownMenuItem(onClick = {
-                    selectedLocker = locker.LockerID
-                    expanded = false
-                }) {
-                    Text("Locker ${locker.LockerID}")
+            onExpandedChange = { expanded = !expanded }) {
+            Box(
+                modifier = Modifier
+                    .width(130.dp)
+                    .height(56.dp)
+                    .border(2.dp, Color(0xFF8D8B8B), RoundedCornerShape(15.dp))
+                    .clickable { expanded = true }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    modifier = Modifier.wrapContentWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = selectedRole,
+                        style = MaterialTheme.typography.body1
+                    )
+                    Icon(
+                        imageVector = Icons.Filled.KeyboardArrowDown,
+                        contentDescription = "Dropdown Icon"
+                    )
                 }
             }
-            androidx.compose.material.DropdownMenuItem(onClick = {
-                selectedLocker = 0 // เลือก All Lockers
-                expanded = false
-            }) {
-                Text("All User")
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.width(130.dp)
+            ) {
+                roles.forEach { role ->
+                    androidx.compose.material.DropdownMenuItem(onClick = {
+                        onRoleChange(role)
+                        expanded = false
+                    }) {
+                        Text(role)
+                    }
+                }
             }
         }
     }
+}
+
+fun formatDate(dateString: String): String {
+    val possibleFormats = listOf(
+        "yyyy-MM-dd" // ถ้าไม่มีเวลา
+    )
+
+    val outputFormat = SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH) // ใช้ Locale.ENGLISH
+
+    for (format in possibleFormats) {
+        try {
+            val inputFormat = SimpleDateFormat(format, Locale.getDefault())
+            val date = inputFormat.parse(dateString)
+            if (date != null) return outputFormat.format(date)
+        } catch (_: Exception) {
+        }
+    }
+
+    return dateString // คืนค่าเดิมถ้าแปลงไม่ได้
 }

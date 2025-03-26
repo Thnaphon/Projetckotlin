@@ -65,6 +65,7 @@ class FaceRegisterViewModel(application: Application) : AndroidViewModel(applica
                             repository.registerFace(name, role, phone, it)
                             _registrationState.value = RegistrationState.Success("Face registered for $name")
                             _similarityCheck.value = SimilarityCheckResult.Unique
+
                         }
                     }
                 } ?: run {

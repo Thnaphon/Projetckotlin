@@ -61,10 +61,13 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -75,14 +78,24 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberImagePainter
+import com.example.LockerApp.model.Compartment
 import com.example.LockerApp.viewmodel.AccountViewModel
 import com.example.LockerApp.viewmodel.LockerViewModel
 import com.example.LockerApp.viewmodel.ManageAccountViewModel
 import com.example.LockerApp.viewmodel.UsageLockerViewModel
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.stateIn
 import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
 import kotlin.math.log
@@ -96,19 +109,21 @@ fun UsageHistoryScreen(accountViewModel: AccountViewModel, usageLockerViewModel:
     val usageLockers by usageLockerViewModel.allUsageLockers.observeAsState(emptyList())
     val manageLockers by usageLockerViewModel.allManageLockers.observeAsState(emptyList())
     val manageAccounts by manageAccountViewModel.manageAccounts.observeAsState(emptyList())
-    var filterShowcolumn by remember { mutableStateOf("Showlocker") }
-
+    var filterShowcolumn by remember { mutableStateOf("All History") }
+    var selectedlocker by remember { mutableStateOf("all locker") }
     val filteredUsageLockers = usageLockers.filter {
-        it.Usage.contains(searchQuery, ignoreCase = true) ||
+        (selectedlocker == "all locker" || it.LockerID.toString() == selectedlocker) &&
+                (it.Usage.contains(searchQuery, ignoreCase = true) ||
                 it.LockerID.toString().contains(searchQuery, ignoreCase = true) ||
-                it.CompartmentID.toString().contains(searchQuery, ignoreCase = true)
+                it.CompartmentID.toString().contains(searchQuery, ignoreCase = true))
 
     }
 
-    val usageLockerCount = filteredUsageLockers.size
+    var usageLockerCount by remember { mutableStateOf(0) }
     LaunchedEffect(Unit) {
         manageAccountViewModel.getAllManageAccounts()
     }
+
 
     Box(
         modifier = Modifier
@@ -119,12 +134,12 @@ fun UsageHistoryScreen(accountViewModel: AccountViewModel, usageLockerViewModel:
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 16.dp,start = 16.dp, end = 16.dp)
+                .padding(bottom = 16.dp, start = 16.dp, end = 16.dp)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start=10.dp, end = 10.dp, bottom = 10.dp),
+                    .padding(start = 10.dp, end = 10.dp, bottom = 10.dp),
                 horizontalArrangement = Arrangement.Center
             ) {
                 Text(text = "History", style = MaterialTheme.typography.h5.copy(fontWeight = FontWeight.Bold), color = Color.Black)
@@ -178,19 +193,14 @@ fun UsageHistoryScreen(accountViewModel: AccountViewModel, usageLockerViewModel:
                 )
                 Spacer(modifier = Modifier.width(10.dp))
 
-                DropdownLocker(viewModel=viewModel,OnshowLocker={filterShowcolumn= "Showlocker"},OnshowUser={filterShowcolumn= "Showuser"})
+                DropdownLocker(viewModel=viewModel,selectedlocker = selectedlocker, onRoleChange = { selectedlocker = it })
                 Spacer(modifier = Modifier.width(10.dp))
 
-                DropdownHistory(viewModel)
+                DropdownHistory(selectedhistory = filterShowcolumn , onslectChange = { filterShowcolumn = it })
 
 
             }
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-            ) {
                 Card(
                     modifier = Modifier
                         .fillMaxSize()
@@ -200,322 +210,192 @@ fun UsageHistoryScreen(accountViewModel: AccountViewModel, usageLockerViewModel:
                     elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                     shape = RoundedCornerShape(16.dp)
                 ) {
-                    if (filterShowcolumn=="Showlocker"){
-                        Column(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
 
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(Color(0xFFEEEEEE))
-                                    .padding(vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                        Column() {
+                            HeaderRow()
+                                Row (horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically)
+                                {
+                                    val filteredUsageLockersTransformed = filteredUsageLockers.map {
+                                        combine(it.AccountID, it.LockerID,it.CompartmentID,it.UsageTime,it.Status,it.Usage,it.AccountID,"UsageLockers") // ไม่มี Status สำหรับ filteredUsageLockers
+                                    }
 
-                            ) {
+                                    val manageLockersTransformed = manageLockers.map {
+                                        combine(it.AccountID, it.LockerID,null,it.UsageTime, it.Status,it.Usage,it.AccountID,"manageLockers") // มี Status สำหรับ manageLockers
+                                    }
+                                    val manageAccountsTransformed = manageAccounts.map {
+                                        combine(it.ByAccountID, null,null,it.UsageTime, "Success",it.Usage,it.AccountID,"manageAccounts") // มี Status สำหรับ manageLockers
+                                    }
 
-                                Text(
-                                    "Name",
-                                    Modifier.weight(0.8f),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
-                                    textAlign = TextAlign.Center
-                                )
-                                Text(
-                                    "Locker",
-                                    Modifier
-                                        .weight(0.8f)
-                                        .padding(start = 16.dp),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
-                                    textAlign = TextAlign.Center
-                                )
-                                Text(
-                                    "Com.",
-                                    Modifier
-                                        .weight(0.5f)
-                                        .padding(start = 16.dp),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
-                                    textAlign = TextAlign.Center
-                                )
-                                Text(
-                                    "Equipment",
-                                    Modifier
-                                        .weight(0.8f)
-                                        .padding(start = 16.dp),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
-                                    textAlign = TextAlign.Center
-                                )
-                                Text(
-                                    "Usage Time",
-                                    Modifier.weight(1.4f),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
-                                    textAlign = TextAlign.Center
-                                )
-                                Text(
-                                    "Usage",
-                                    Modifier.weight(1f),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
-                                    textAlign = TextAlign.Center
-                                )
-                                Text(
-                                    "Status",
-                                    Modifier.weight(1f),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
-                                    textAlign = TextAlign.Center
-                                )
-                            }
+                                    val combinedLockers = (filteredUsageLockersTransformed + manageLockersTransformed+manageAccountsTransformed)
+                                        .sortedByDescending  {
+                                            val timestamp = it.UsageTime.toLong() // UsageTime เป็น String จึงแปลงเป็น Long
+                                            val instant = Instant.ofEpochMilli(timestamp) // แปลงเป็น Instant
+                                            val dateTime = LocalDateTime.ofInstant(instant, ZoneId.systemDefault()) // แปลงเป็น LocalDateTime
+                                            dateTime
+                                        }
+                                    val filteredCombinedLockers = when (filterShowcolumn) {
+                                        "All History" -> {
+                                            combinedLockers
 
-                        }
-                        LazyColumn (modifier = Modifier
-                            .fillMaxWidth().padding(start = 8.dp, end = 8.dp))
-                        {
-                            items(filteredUsageLockers) { usageLocker ->
-                                val accountNameUsageLocker by accountViewModel.getAccountNameById(usageLocker.AccountID).observeAsState("Unknown")
-                                val compartmentList by viewModel.getCompartmentBycompartmentId(usageLocker.CompartmentID).collectAsState(initial = emptyList())
-                                Log.d("compartmentList","$compartmentList")
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = 17.dp, bottom = 12.dp)
-                                ) {
-                                    Text(
-                                        text = accountNameUsageLocker,
-                                        modifier = Modifier.weight(0.8f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Text(
-                                        text = "Locker ${usageLocker.LockerID.toString()}",
+                                        }
+                                        "Manage Locker" -> manageLockersTransformed
+                                        "Manage User" -> manageAccountsTransformed
+                                        "Manage Compartment" ->filteredUsageLockersTransformed.filter { usageLocker ->
+                                            usageLocker.Usage == "Edit Compartment" || usageLocker.Usage == "Create Compartment"}
+                                        "Usage Locker" -> filteredUsageLockersTransformed.filter { usageLocker ->
+                                            usageLocker.Usage == "borrowed" || usageLocker.Usage == "return"}
+                                        else -> combinedLockers // กรองข้อมูลตามค่าที่ไม่รู้จัก
+                                    }
+
+                                    LazyColumn(
                                         modifier = Modifier
-                                            .weight(0.8f)
-                                            .padding(start = 16.dp),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Text(
-                                        text = compartmentList.firstOrNull()?.number_compartment?.toString() ?: "N/A",
-                                        modifier = Modifier
-                                            .weight(0.5f)
-                                            .padding(start = 16.dp),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Text(
-                                        text = compartmentList.firstOrNull()?.Name_Item?.toString() ?: "N/A",
-                                        modifier = Modifier
-                                            .weight(0.8f)
-                                            .padding(start = 16.dp),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Text(
-                                        text = formatTimestamp(usageLocker.UsageTime),
-                                        modifier = Modifier.weight(1.4f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Text(
-                                        text = usageLocker.Usage,
-                                        modifier = Modifier.weight(1f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Text(
-                                        text = usageLocker.Status,
-                                        modifier = Modifier.weight(1f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center
-                                    )
+                                            .fillMaxWidth()
+                                            .padding(start = 26.dp, end = 10.dp)
+                                    ) {
+                                        items(filteredCombinedLockers) { usageLocker ->
+                                            // Get account names outside of Composable using observeAsState()
+                                            val accountNameUsageLocker by accountViewModel.getAccountNameById(usageLocker.AccountID)
+                                                .observeAsState("")
+
+                                            val ByaccountNameUsageLocker by accountViewModel.getAccountNameById(usageLocker.EditedAccountID)
+                                                .observeAsState("")
+
+                                            // Use rememberUpdatedState to retain the value of locker name
+                                            val namelockerState = rememberUpdatedState(
+                                                usageLocker.LockerID?.let {
+                                                    viewModel.getLockername(it)
+                                                }
+                                            )
+
+                                            // Use rememberUpdatedState to update the namelocker state only when LockerID changes
+                                            val namelocker by rememberUpdatedState(
+                                                if (usageLocker.LockerID != null) {
+                                                    namelockerState.value?.collectAsState(initial = null)?.value
+                                                } else {
+                                                    null
+                                                }
+                                            )
+
+                                            // Handle compartment list updates using LaunchedEffect
+                                            var compartmentList by remember { mutableStateOf(emptyList<Compartment>()) }
+                                            LaunchedEffect(usageLocker.CompartmentID) {
+                                                usageLocker.CompartmentID?.let { id ->
+                                                    viewModel.getCompartmentBycompartmentId(id).collect { list ->
+                                                        compartmentList = list
+                                                    }
+                                                } ?: run {
+                                                    compartmentList = emptyList()
+                                                }
+                                            }
+
+                                            // Format date
+                                            val splitDateTime = formatTimestamp(usageLocker.UsageTime).split(" ")
+
+                                            // Row with various columns
+                                            Row(
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(vertical = 8.dp)
+                                            ) {
+                                                // Column for account name
+                                                Column(modifier = Modifier.width(100.dp)) {
+                                                    Text(
+                                                        text = accountNameUsageLocker,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                        textAlign = TextAlign.Center
+                                                    )
+                                                }
+
+                                                // Column for locker name or edited account name
+                                                Column(modifier = Modifier.width(100.dp)) {
+                                                    Text(
+                                                        text = if (usageLocker.LockerID != null) {
+                                                            namelocker ?: ""  // Display "Unknown Locker" if namelocker is null
+                                                        } else {
+                                                            ByaccountNameUsageLocker  // Display ByaccountNameUsageLocker if LockerID is null
+                                                        },
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                        textAlign = TextAlign.Center
+                                                    )
+                                                }
+
+                                                // Column for compartment number
+                                                Column(modifier = Modifier.width(50.dp)) {
+                                                    Text(
+                                                        text = compartmentList.firstOrNull()?.number_compartment?.toString() ?: "_",
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                        textAlign = TextAlign.Center
+                                                    )
+                                                }
+
+                                                // Column for item name
+                                                Column(modifier = Modifier.width(130.dp)) {
+                                                    Text(
+                                                        text = compartmentList.firstOrNull()?.Name_Item?.toString() ?: "_",
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                        textAlign = TextAlign.Center
+                                                    )
+                                                }
+
+                                                // Column for formatted usage date and time
+                                                Column(modifier = Modifier.width(100.dp)) {
+                                                    Row {
+                                                        Text(
+                                                            text = formatDateHistory(splitDateTime[1]),
+                                                            maxLines = 1,
+                                                            overflow = TextOverflow.Ellipsis,
+                                                            textAlign = TextAlign.Center
+                                                        )
+                                                    }
+                                                    Row {
+                                                        Text(
+                                                            text = "At ${splitDateTime[0]}",
+                                                            maxLines = 1,
+                                                            fontSize = 12.sp,
+                                                            overflow = TextOverflow.Ellipsis,
+                                                            textAlign = TextAlign.Center
+                                                        )
+                                                    }
+                                                }
+
+                                                // Column for usage status
+                                                Column(modifier = Modifier.width(130.dp)) {
+                                                    Text(
+                                                        text = usageLocker.Usage,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                        textAlign = TextAlign.Center,
+                                                        color = when (usageLocker.Status.lowercase()) {
+                                                            "fail" -> Color.Red
+                                                            else -> Color.Black // Default color if not "fail"
+                                                        },
+                                                        fontWeight = when (usageLocker.Status.lowercase()) {
+                                                            "fail" -> FontWeight.Bold
+                                                            else -> FontWeight.Normal // Default font weight
+                                                        }
+                                                    )
+                                                }
+                                            }
+
+                                            // Divider between items
+                                            Divider(color = Color(0xFFE8E8E8), thickness = 1.dp)
+                                        }
+                                    }
+
                                 }
-                                Divider(color = Color(0xFFE8E8E8), thickness = 1.dp)
+
                             }
-
-                            items(manageLockers) { manageLocker ->
-                                val accountNameUsageLocker by accountViewModel.getAccountNameById(manageLocker.AccountID).observeAsState("Unknown")
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = 17.dp, bottom = 12.dp)
-                                ) {
-                                    Text(
-                                        text = accountNameUsageLocker,
-                                        modifier = Modifier.weight(0.8f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Text(
-                                        text = "Locker ${manageLocker.LockerID.toString()}",
-                                        modifier = Modifier
-                                            .weight(0.8f)
-                                            .padding(start = 16.dp),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Text(
-                                        text = "N/A",
-                                        modifier = Modifier
-                                            .weight(0.5f)
-                                            .padding(start = 16.dp),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Text(
-                                        text = "N/A",
-                                        modifier = Modifier
-                                            .weight(0.8f)
-                                            .padding(start = 16.dp),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Text(
-                                        text = formatTimestamp(manageLocker.UsageTime),
-                                        modifier = Modifier.weight(1.4f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Text(
-                                        text = manageLocker.Usage,
-                                        modifier = Modifier.weight(1f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Text(
-                                        text = manageLocker.Status,
-                                        modifier = Modifier.weight(1f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center
-                                    )
-                                }
-                                Divider(color = Color(0xFFE8E8E8), thickness = 1.dp)
-                            }
-
-                        }
-                    }
-                    else{
-                        Column(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(Color(0xFFEEEEEE))
-                                    .padding(vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-
-                            ) {
-                                Text(
-                                    "AccountID",
-                                    Modifier.weight(0.8f),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
-                                    textAlign = TextAlign.Center
-                                )
-                                Text(
-                                    "Name",
-                                    Modifier.weight(0.8f),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
-                                    textAlign = TextAlign.Center
-                                )
-                                Text(
-                                    "Time",
-                                    Modifier.weight(0.8f),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
-                                    textAlign = TextAlign.Center
-                                )
-                                Text(
-                                    "Action",
-                                    Modifier.weight(0.8f),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
-                                    textAlign = TextAlign.Center
-                                )
-                                Text(
-                                    "AcountID_Action",
-                                    Modifier.weight(0.8f),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                        }
-
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxWidth().padding(start = 8.dp, end = 8.dp)
-                        )
-                        {
-                            items(manageAccounts) { manageAccount ->
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = 17.dp, bottom = 12.dp)
-                                ) {
-                                    Text(
-                                        text = manageAccount.AccountID.toString(),
-                                        modifier = Modifier.weight(1f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Text(
-                                        text = manageAccount.ByAccountID.toString(),
-                                        modifier = Modifier.weight(1f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Text(
-                                        text = formatTimestamp(manageAccount.UsageTime),
-                                        modifier = Modifier.weight(1.4f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Text(
-                                        text = manageAccount.Usage,
-                                        modifier = Modifier.weight(1.4f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center
-                                    )
-                                }
-                                Divider(color = Color(0xFFE8E8E8), thickness = 1.dp)
-                            }
-                        }
-
-
-
-                    }
 
 
                 }
-            }
+
         }
     }
 }
@@ -532,7 +412,7 @@ fun formatTimestamp(timestamp: String): String {
 }
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun DropdownLocker(viewModel: LockerViewModel,OnshowLocker: () -> Unit,OnshowUser: () -> Unit) {
+fun DropdownLocker(viewModel: LockerViewModel,selectedlocker: String, onRoleChange: (String) -> Unit) {
 
     val lockers by viewModel.lockers.collectAsState()
     var selectedLocker by remember { mutableStateOf(0) }
@@ -567,22 +447,25 @@ fun DropdownLocker(viewModel: LockerViewModel,OnshowLocker: () -> Unit,OnshowUse
             onDismissRequest = { expanded = false },
             modifier = Modifier.wrapContentSize()
         ) {
+            lockers.forEach { locker ->
+                DropdownMenuItem(onClick = {
+                    onRoleChange(locker.LockerID.toString())
+                    expanded = false
+                }
+
+                ) {
+                    Text("Locker ${locker.LockerID}")
+                }
+            }
             DropdownMenuItem(onClick = {
-                selectedLocker = 0 // เลือก All Lockers
-                OnshowLocker()
+                onRoleChange("all locker")
                 expanded = false
 
             }) {
                 Text("All Lockers")
             }
 
-            DropdownMenuItem(onClick = {
-                selectedLocker = 1
-                OnshowUser()
-                expanded = false
-            }) {
-                Text("All Users")
-            }
+
 
 
         }
@@ -591,56 +474,144 @@ fun DropdownLocker(viewModel: LockerViewModel,OnshowLocker: () -> Unit,OnshowUse
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun DropdownHistory(viewModel: LockerViewModel) {
+fun DropdownHistory(onslectChange: (String) -> Unit,selectedhistory: String,) {
 
-    val lockers by viewModel.lockers.collectAsState()
-    var selectedLocker by remember { mutableStateOf(0) }
     var expanded by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
-        Box(
-            modifier = Modifier
-                .wrapContentWidth()
-                .height(56.dp) // ตั้งค่าความสูงให้เหมือนปุ่ม
-                .border(2.dp, Color(0xFF8D8B8B), RoundedCornerShape(15.dp)) // เพิ่มขอบมน
-                .clickable { expanded = true }
-                .padding(horizontal = 16.dp, vertical = 12.dp), // จัดการ padding
-            contentAlignment = Alignment.CenterStart
-        ) {
-            Row(
-                modifier = Modifier.wrapContentWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = if (selectedLocker == 0) "All History" else "Locker $selectedLocker",
-                    style = MaterialTheme.typography.body1
-                )
-                Icon(
-                    imageVector = Icons.Filled.KeyboardArrowDown, // เปลี่ยนไอคอนเป็นลูกศรลง
-                    contentDescription = "Dropdown Icon"
-                )
-            }
-        }
-        ExposedDropdownMenu(
+    val TypeOfHistory = listOf("All History", "Usage Locker", "Manage Locker","Manage User","Manage Compartment" )
+    Box( modifier = Modifier.width(240.dp),contentAlignment = Alignment.Center ) {
+        ExposedDropdownMenuBox(
             expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.wrapContentSize()
-        ) {
-            lockers.forEach { locker ->
-                DropdownMenuItem(onClick = {
-                    selectedLocker = locker.LockerID
-                    expanded = false
-                }) {
-                    Text("Locker ${locker.LockerID}")
+            onExpandedChange = { expanded = !expanded }) {
+            Box(
+                modifier = Modifier
+                    .width(240.dp)
+                    .height(56.dp)
+                    .border(2.dp, Color(0xFF8D8B8B), RoundedCornerShape(15.dp))
+                    .clickable { expanded = true }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    modifier = Modifier.wrapContentWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = selectedhistory,
+                        style = MaterialTheme.typography.body1
+                    )
+                    Icon(
+                        imageVector = Icons.Filled.KeyboardArrowDown,
+                        contentDescription = "Dropdown Icon"
+                    )
                 }
             }
-            DropdownMenuItem(onClick = {
-                selectedLocker = 0 // เลือก All Lockers
-                expanded = false
-            }) {
-                Text("All History")
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.width(240.dp)
+            ) {
+                TypeOfHistory.forEach { TypeOfHistory ->
+                    DropdownMenuItem(onClick = {
+                        onslectChange(TypeOfHistory)
+                        expanded = false
+                    }) {
+                        Text(TypeOfHistory)
+                    }
+                }
             }
         }
     }
 }
 
+@Composable
+fun HeaderRow() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(50.dp)
+            .background(Color(0xFFEEEEEE))
+            .padding(start = 26.dp, end = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.width(100.dp)) {
+            Text(
+                "Name",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                textAlign = TextAlign.Center
+            )
+        }
+        Column(modifier = Modifier.width(100.dp)) {
+            Text(
+                "Locker",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                textAlign = TextAlign.Center
+            )
+        }
+        Column(modifier = Modifier.width(45.dp)) {
+            Text(
+                "Com.",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                textAlign = TextAlign.Center
+            )
+        }
+        Column(modifier = Modifier.width(130.dp)) {
+            Text(
+                "Equipment",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                textAlign = TextAlign.Center
+            )
+        }
+        Column(modifier = Modifier.width(100.dp)) {
+            Text(
+                "Date/Time",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                textAlign = TextAlign.Center
+            )
+        }
+        Column(modifier = Modifier.width(130.dp)) {
+            Text(
+                "Usage",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+
+}
+fun formatDateHistory(dateString: String): String {
+    val possibleFormats = listOf(
+        "dd/MM/yyyy" // ถ้าไม่มีเวลา
+    )
+
+    val outputFormat = SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH) // ใช้ Locale.ENGLISH
+
+    for (format in possibleFormats) {
+        try {
+            val inputFormat = SimpleDateFormat(format, Locale.getDefault())
+            val date = inputFormat.parse(dateString)
+            if (date != null) return outputFormat.format(date)
+        } catch (_: Exception) {
+        }
+    }
+
+    return dateString // คืนค่าเดิมถ้าแปลงไม่ได้
+}
+
+data class combine(
+    val AccountID: Int,      // รหัสบัญชีผู้ใช้
+    val LockerID: Int? = null,
+    val CompartmentID : Int? = null,
+    val UsageTime: String,   // เวลาใช้งาน (ในรูปแบบ String หรือ Timestamp)
+    val Status: String, // สถานะ (อาจจะมีหรือไม่มีก็ได้)
+    val Usage: String,
+    val EditedAccountID: Int,
+    val DataForm : String,
+)

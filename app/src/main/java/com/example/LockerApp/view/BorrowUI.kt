@@ -76,6 +76,7 @@ import com.example.LockerApp.viewmodel.LockerViewModel
 import com.example.LockerApp.viewmodel.MqttViewModel
 import com.example.LockerApp.viewmodel.UsageLockerViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -225,11 +226,12 @@ fun CompartmentCard(
     val lockerName by viewModel.getLockername(compartment.LockerID).collectAsState(initial = "Loading...")
     val safeLockerName = lockerName ?: "Unknown"
     var Topic = remember { mutableStateOf(" ") }
-
+    var IsClick by remember { mutableStateOf(false) }
 
     LaunchedEffect(mqttData) {
         Log.d("mqttData", "MQTT Topic: ${mqttData.first}, Message: ${mqttData.second}")
         if (mqttData.first == Topic.value && mqttData.second == "OPEN") {
+            IsClick = false
             val splitData = mqttData.first.split("/")
             val usageTime = System.currentTimeMillis().toString()
             val topicMap = mapOf(
@@ -262,13 +264,44 @@ fun CompartmentCard(
                     usageTime,
                     action,
                     accountid,
-                    status
+                    "Success"
                 )
             }
         }
     }
+    LaunchedEffect(IsClick) {
+        while (IsClick == true){
+            Log.d("Loop", "กำลังทำงานในลูป...")
+
+            // รอ 1 วินาทีก่อนทำซ้ำ (ป้องกันลูปเร็วเกินไป)
+            delay(8000)
+
+            val splitData = Topic.value.split("/")
+            val usageTime = System.currentTimeMillis().toString()
+            val topicMap = mapOf(
+                "token" to splitData[0],
+                "action" to splitData[1] + "ed",
+                "compartmentId" to splitData[2].toInt(),
+                "status" to splitData[3]
+            )
+            val compartmentId = topicMap["compartmentId"] as? Int ?: 0
+            val action = topicMap["action"] as? String ?: ""
 
 
+            val compartment_Id = viewModel.getCompartmentId(compartment.LockerID, compartmentId).first()
+            usageLockerViewModel.insertUsageLocker(
+                compartment.LockerID,
+                compartment_Id,
+                usageTime,
+                action,
+                accountid,
+                "Fail"
+            )
+            IsClick = false
+        }
+
+
+    }
 
 
 
@@ -384,13 +417,13 @@ fun CompartmentCard(
 
                                 TextButton(
                                     onClick = {
+                                        IsClick = true
                                         coroutineScope.launch {
                                             viewModel.getMqttTopicFromDatabase(compartment.LockerID)
                                                 .collect { topicMqtt -> // เปลี่ยนจาก onEach เป็น collect ตรงๆ
                                                     Log.d("borrow", "$topicMqtt")
                                                     topicMqtt?.let { mqttTopic ->
-                                                        Topic.value =
-                                                            "$mqttTopic/borrow/${compartment.number_compartment}/status"
+                                                        Topic.value = "$mqttTopic/borrow/${compartment.number_compartment}/status"
                                                         mqttViewModel.sendMessage(
                                                             "$mqttTopic/borrow/${compartment.number_compartment}/open",
                                                             " "

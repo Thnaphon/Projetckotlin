@@ -97,13 +97,14 @@ fun UsageHistoryScreenUser(accountViewModel: AccountViewModel, usageLockerViewMo
     val usageLockers by usageLockerViewModel.allUsageLockers.observeAsState(emptyList())
     val manageLockers by usageLockerViewModel.allManageLockers.observeAsState(emptyList())
     val manageAccounts by manageAccountViewModel.manageAccounts.observeAsState(emptyList())
-    var filterShowcolumn by remember { mutableStateOf("Showlocker") }
 
+    var selectedlocker by remember { mutableStateOf("all locker") }
     val filteredUsageLockers = usageLockers.filter {
-        (it.Usage.contains(searchQuery, ignoreCase = true) ||
-                it.LockerID.toString().contains(searchQuery, ignoreCase = true) ||
-                it.CompartmentID.toString().contains(searchQuery, ignoreCase = true)) &&
-                it.AccountID == accountid
+        (selectedlocker == "all locker" || it.LockerID.toString() == selectedlocker) &&
+                (it.Usage.contains(searchQuery, ignoreCase = true) ||
+                        it.LockerID.toString().contains(searchQuery, ignoreCase = true) ||
+                        it.CompartmentID.toString().contains(searchQuery, ignoreCase = true))&&(it.AccountID == accountid)
+
     }
 
     val usageLockerCount = filteredUsageLockers.size
@@ -180,7 +181,7 @@ fun UsageHistoryScreenUser(accountViewModel: AccountViewModel, usageLockerViewMo
 
                 Spacer(modifier = Modifier.width(10.dp))
 
-                DropdownHistory(viewModel)
+                DropdownLocker(viewModel=viewModel,selectedlocker = selectedlocker, onRoleChange = { selectedlocker = it })
 
 
             }
@@ -199,7 +200,7 @@ fun UsageHistoryScreenUser(accountViewModel: AccountViewModel, usageLockerViewMo
                     elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                     shape = RoundedCornerShape(16.dp)
                 ) {
-                    if (filterShowcolumn=="Showlocker"){
+                    if (selectedlocker=="all locker"){
                         Column(
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -337,7 +338,13 @@ fun UsageHistoryScreenUser(accountViewModel: AccountViewModel, usageLockerViewMo
                                         modifier = Modifier.weight(1f),
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center
+                                        textAlign = TextAlign.Center,
+                                        color = when (usageLocker.Status.lowercase()) {
+                                            "success" -> Color.Green
+                                            "fail" -> Color.Red
+                                            else -> Color.Black // สีเริ่มต้น ถ้าไม่ใช่ success หรือ fail
+                                        }
+
                                     )
                                 }
                                 Divider(color = Color(0xFFE8E8E8), thickness = 1.dp)
