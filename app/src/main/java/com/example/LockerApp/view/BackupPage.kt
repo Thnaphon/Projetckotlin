@@ -5,11 +5,13 @@ import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
@@ -33,13 +36,22 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedButton
 import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
+import androidx.compose.material.TextField
+import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.RestorePage
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.outlined.Backup
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -53,11 +65,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.LockerApp.model.BackupLog
 import com.example.LockerApp.model.BackupSettings
 import com.example.LockerApp.model.LockerDatabase
 import com.example.LockerApp.service.MqttService
@@ -67,14 +83,9 @@ import java.util.Date
 import java.util.Locale
 
 @Composable
-fun BackupScreen(viewModel: BackupViewModel) {
-    val context = LocalContext.current
-    val mqttService = MqttService()
-    var isBackupInProgress by remember { mutableStateOf(false) }
-    var lastBackupDate by remember { mutableStateOf("21 March 2024 At 8:45 AM") }
-    var scheduledBackup by remember { mutableStateOf("Daily") }
-    var backupTime by remember { mutableStateOf("0:00 O’Clock") }
-    var description by remember { mutableStateOf("Full Backup") }
+fun BackupScreen(viewModel: BackupViewModel,accountname: String) {
+
+
 
     Column(
         modifier = Modifier
@@ -87,18 +98,19 @@ fun BackupScreen(viewModel: BackupViewModel) {
         Spacer(modifier = Modifier.height(10.dp))
 
         // Scheduled Backup Section
-        BackupSectionTitle(title = "Scheduled", showButton = true,viewModel=viewModel)
-        BackupSection(title = "Scheduled")
+        BackupSectionTitle(title = "Scheduled", showButton = true,viewModel=viewModel,accountname=accountname)
+        BackupSection(title = "Scheduled",viewModel=viewModel)
         Spacer(modifier = Modifier.height(20.dp))
 
         // Recent Backup Section
-        BackupSectionTitle(title = "Recent", showButton = false ,viewModel=viewModel)
+        BackupSectionTitle(title = "Recent", showButton = false ,viewModel=viewModel,accountname=accountname)
         RecentBackup(title = "Recent")
     }
 }
 
 @Composable
-fun BackupSectionTitle(viewModel: BackupViewModel,title: String, showButton:Boolean) {
+fun BackupSectionTitle(viewModel: BackupViewModel,title: String, showButton:Boolean,accountname: String) {
+    val settings by viewModel.backupSettings.collectAsState()
     val context = LocalContext.current
     Row(modifier = Modifier
         .fillMaxWidth()
@@ -121,13 +133,39 @@ fun BackupSectionTitle(viewModel: BackupViewModel,title: String, showButton:Bool
             Column {
                 Row() {
                     Column {
-                        Button(onClick = { viewModel.performBackup(context) }) {
-                            Text("Backup")
+                        Button(onClick = {
+                            val Time = System.currentTimeMillis().toString()
+                            viewModel.insertBackupLog(
+                                BackupLog(date_time = Time, description = settings?.description ?: "Full Backup", status = "Success", actoin_username = accountname, operation = "Backup")
+                            )
+                            viewModel.performBackup(context)
+
                         }
+
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Backup,
+                                contentDescription = "Backup Icon"
+                            )
+                        }
+
+
                     }
                     Column(modifier = Modifier.padding(start = 8.dp)) {
-                        Button(onClick = { viewModel.performRestore(context) }) {
-                            Text("Restore")
+                        Button(onClick = {
+                            val Time = System.currentTimeMillis().toString()
+                            viewModel.performRestore(context)
+                            viewModel.insertBackupLog(
+                                BackupLog(date_time = Time, description = settings?.description ?: "Full Backup", status = "Success", actoin_username = accountname, operation = "Restore")
+                            )
+
+                        }
+
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.RestorePage,
+                                contentDescription = "Restore Icon"
+                            )
                         }
                     }
                 }
@@ -137,7 +175,7 @@ fun BackupSectionTitle(viewModel: BackupViewModel,title: String, showButton:Bool
 }
 
 @Composable
-fun BackupSection(title: String) {
+fun BackupSection(title: String,viewModel:BackupViewModel) {
     Card(
         elevation = 8.dp
     ) {
@@ -162,7 +200,7 @@ fun BackupSection(title: String) {
                     modifier = Modifier
                         .width(150.dp)
                 ) {
-                    Text("Date/Time", color = Color.Black)
+                    Text("Time", color = Color.Black)
                 }
                 Column(
                     modifier = Modifier
@@ -172,90 +210,149 @@ fun BackupSection(title: String) {
                 }
                 Column(
                     modifier = Modifier
-                        .width(350.dp)
+                        .width(200.dp)
                 ) {
                     Text("Description", color = Color.Black)
                 }
+                Column(modifier = Modifier
+                    .width(150.dp)) {
+
+                }
+
             }
             Row() {
-                ScheduledBackupCard()
+                ScheduledBackupCard(viewModel=viewModel)
             }
         }
     }
 }
 
 @Composable
-fun ScheduledBackupCard() {
+fun ScheduledBackupCard(viewModel: BackupViewModel) {
+    var isEditing by remember { mutableStateOf(false) }
+    val settings by viewModel.backupSettings.collectAsState()
+
+    var backupTime by remember { mutableStateOf(settings?.backupTime ?: "None") }
+    var frequency by remember { mutableStateOf(settings?.frequency ?: "None") }
+
+    var backupText by remember { mutableStateOf(settings?.description ?:"Full Backup") }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
-
+        backgroundColor = if (isEditing) Color(0xFF2A3D4F) else Color.White // สีพื้นหลังเฉพาะตอนแก้ไข
     ) {
-        Column() {
+        Column {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(65.dp)
-                    .background(Color.White)
+                    .height(100.dp)
                     .padding(15.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier
-                    .width(150.dp)) {
-                    Text("Backup", color = Color.Black, fontWeight = FontWeight.Bold)
+                    .width(150.dp)
+                    ) {
 
+                    Text("Backup", color = if (isEditing) Color.White else Color.Black, fontWeight = FontWeight.Bold)
                 }
                 Column(modifier = Modifier
                     .width(150.dp)) {
-                    Row(){
-                        Text("21 March 2024", color = Color.Black, fontWeight = FontWeight.Bold)
-                    }
-                    Row(){
-                        Text("At 8:45 AM", color = Color.Black)
-                    }
-                }
-                Column(modifier = Modifier
-                    .width(150.dp)) {
-                    Row(){
-                        Text("0:00 O'Clock", color = Color.Black, fontWeight = FontWeight.Bold)
-                    }
-                    Row(){
-                        Text("Daily", color = Color.Black)
+                    if (isEditing) {
+                        TimeDropdownMenu(
+                            selectedTime = backupTime,
+                            onTimeSelected = { backupTime = it }
+                        )
+
+                    } else {
+                        Text(backupTime, color = Color.Black, fontWeight = FontWeight.Bold) // ปกติเป็นสีดำ
                     }
                 }
                 Column(modifier = Modifier
-                    .width(350.dp)) {
-                    Text("Full Backup", color = Color.Black)
+                    .width(150.dp)
+                    ) {
+                    if (isEditing) {
+                        SecheduledDropdownMenu(
+                            selectedFrequency = frequency,
+                            onTimeSelected = { frequency = it }
+                        )
+                    } else {
+                        Text(frequency, color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+                }
+                Column(modifier = Modifier
+                    .width(200.dp)
+                    ) {
+                    if (isEditing) {
+                        // แสดง TextField สำหรับแก้ไข "Full Backup"
+                        TextField(
+                            value = backupText,  // หรือใส่ค่าที่ต้องการให้แก้ไข
+                            onValueChange = { backupText = it } ,
+                            colors = TextFieldDefaults.textFieldColors(
+                                backgroundColor = Color.Transparent,
+                                focusedIndicatorColor = Color.White,  // สีเส้นขอบเมื่อมีการโฟกัส
+                                unfocusedIndicatorColor = Color.White // สีเส้นขอบเมื่อไม่ได้โฟกัส
+                            ),
+                            textStyle = TextStyle(color = Color.White)
+
+                        )
+                    } else {
+                        // แสดงข้อความปกติ "Full Backup"
+                        Text(backupText, color = if (isEditing) Color.White else Color.Black)
+                    }
+                }
+                Column(modifier = Modifier
+                    .width(120.dp)
+                    ) {
+                    if (isEditing) {
+                        Row (
+                            verticalAlignment = Alignment.CenterVertically,horizontalArrangement = Arrangement.SpaceBetween,modifier = Modifier.fillMaxWidth()){
+
+                            IconButton(
+                                onClick = {
+                                    viewModel.updateBackupSettings(frequency, backupTime, backupText)
+                                    isEditing = false
+                                },
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(7.dp))
+                                    .background(Color.White),
+                            ) {
+                                Icon(
+                                    Icons.Filled.Check,
+                                    contentDescription = "",
+                                    tint = Color(0xFF2A3D4F)
+                                )
+                            }
+
+                            IconButton(
+                                onClick = {
+                                    isEditing = false
+                                },
+                                modifier = Modifier
+                                    .background(Color(0xFF2A3D4F)) // ใส่สีพื้นหลังของปุ่ม
+                                    .padding(4.dp) // เพิ่ม padding ภายในเพื่อล้อมรอบขอบ
+                                    .border(2.dp, Color.White, RoundedCornerShape(7.dp))
+
+                            ) {
+                                Icon(Icons.Filled.Close, contentDescription = "Cancel", tint = Color.White)
+                            }
+                        }
+
+                    } else {
+                        IconButton(
+                            onClick = { isEditing = true }
+                        ) {
+                            Icon(Icons.Outlined.Edit, contentDescription = "Edit", tint = Color.Black)
+                        }
+                    }
                 }
             }
         }
-//        Row() {
-//            Column(modifier = Modifier.padding(16.dp)) {
-//                Row(
-//                    modifier = Modifier.fillMaxWidth(),
-//                    horizontalArrangement = Arrangement.SpaceBetween
-//                ) {
-//                    Text("Scheduled", color = Color.White)
-//                    Text(schedule, color = Color.White)
-//                }
-//                Row(
-//                    modifier = Modifier.fillMaxWidth(),
-//                    horizontalArrangement = Arrangement.SpaceBetween
-//                ) {
-//                    Text("Time", color = Color.White)
-//                    Text(time, color = Color.White)
-//                }
-//                Row(
-//                    modifier = Modifier.fillMaxWidth(),
-//                    horizontalArrangement = Arrangement.SpaceBetween
-//                ) {
-//                    Text("Description", color = Color.White)
-//                    Text(description, color = Color.White)
-//                }
-//            }
-//        }
     }
 }
+
+
+
 
 @Composable
 fun RecentBackup(title: String) {
@@ -309,68 +406,148 @@ fun RecentBackup(title: String) {
 
 @Composable
 fun RecentBackupCard() {
+    val viewModel : BackupViewModel = viewModel()
+    val backupLogs by viewModel.allBackupLogs.collectAsState()
+
     Card(
         modifier = Modifier.fillMaxWidth(),
 
     ) {
-        Column {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(65.dp)
-                    .background(Color.White)
-                    .padding(15.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier
-                    .width(150.dp)) {
-                    Text("Backup", color = Color.Black, fontWeight = FontWeight.Bold)
+        LazyColumn {
+            items(backupLogs) { backupLogs ->
+                val splitDateTime = formatTimestamp(backupLogs.date_time).split(" ")
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(65.dp)
+                        .background(Color.White)
+                        .padding(15.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .width(150.dp)
+                    ) {
+                        Text(backupLogs.operation, color = Color.Black, fontWeight = FontWeight.Bold)
+
+                    }
+                    Column(
+                        modifier = Modifier
+                            .width(150.dp)
+                    ) {
+                        Row() {
+                            Text(formatDateHistory(splitDateTime[1]), color = Color.Black, fontWeight = FontWeight.Bold)
+                        }
+                        Row() {
+                            Text("At ${splitDateTime[0]}", color = Color.Black)
+                        }
+                    }
+                    Column(
+                        modifier = Modifier
+                            .width(150.dp)
+                    ) {
+                        Text(backupLogs.status, color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+                    Column(
+                        modifier = Modifier
+                            .width(350.dp)
+                    ) {
+                        Text(backupLogs.description, color = Color.Black)
+                    }
 
                 }
-                Column(modifier = Modifier
-                    .width(150.dp)) {
-                    Row(){
-                        Text("21 March 2024", color = Color.Black, fontWeight = FontWeight.Bold)
-                    }
-                    Row(){
-                        Text("At 8:45 AM", color = Color.Black)
-                    }
-                }
-                Column(modifier = Modifier
-                    .width(150.dp)) {
-                    Text("Completed", color = Color.Black, fontWeight = FontWeight.Bold)
-                }
-                Column(modifier = Modifier
-                    .width(350.dp)) {
-                    Text("Full Backup", color = Color.Black)
-                }
-
             }
-//            Row(
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//                    .padding(16.dp),
-//                horizontalArrangement = Arrangement.SpaceBetween,
-//                verticalAlignment = Alignment.CenterVertically
-//            ) {
-//                Column {
-//                    Text("Backup", fontWeight = FontWeight.Bold)
-//                    Text(date, color = Color.Gray)
-//                }
-//                Text("Completed", color = Color(0xFF16A34A), fontWeight = FontWeight.Bold)
-//                Text(description)
-//                Button(onClick = { /* Restore Action */ }) {
-//                    Text("Restore")
-//                }
-//            }
         }
     }
 }
-
-@Preview(showBackground = true)
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun PreviewBackupScreen() {
-    val mockViewModel = BackupViewModel()
-    BackupScreen(viewModel = mockViewModel)
+fun TimeDropdownMenu(
+    selectedTime: String,
+    onTimeSelected: (String) -> Unit
+) {
+    val timeOptions = listOf("08:00", "12:00", "16:00", "20:00","24:00") // รายการเวลา
+    var expanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it }
+    ) {
+        TextField(
+            value = selectedTime,
+            onValueChange = { }, // Read-Only
+            readOnly = true,
+            textStyle = TextStyle(color = Color.White, fontSize = 16.sp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = true }, // แทนที่ menuAnchor()
+            colors = TextFieldDefaults.textFieldColors(
+                backgroundColor = Color.Transparent,
+                focusedIndicatorColor = Color.White,
+                unfocusedIndicatorColor = Color.White,
+                textColor = Color.White
+            )
+        )
+
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            timeOptions.forEach { time ->
+                DropdownMenuItem(
+                    content = { Text(time, color = Color.Black) },
+                    onClick = {
+                        onTimeSelected(time)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+fun SecheduledDropdownMenu(
+    selectedFrequency: String,
+    onTimeSelected: (String) -> Unit
+) {
+    val timeOptions = listOf("1 Day", "1 Week", "2 Week", "1 Month","3 Month","6 Month","1 Year") // รายการเวลา
+    var expanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it }
+    ) {
+        TextField(
+            value = selectedFrequency,
+            onValueChange = { }, // Read-Only
+            readOnly = true,
+            textStyle = TextStyle(color = Color.White, fontSize = 16.sp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = true }, // แทนที่ menuAnchor()
+            colors = TextFieldDefaults.textFieldColors(
+                backgroundColor = Color.Transparent,
+                focusedIndicatorColor = Color.White,
+                unfocusedIndicatorColor = Color.White,
+                textColor = Color.White
+            )
+        )
+
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            timeOptions.forEach { time ->
+                DropdownMenuItem(
+                    content = { Text(time, color = Color.Black) },
+                    onClick = {
+                        onTimeSelected(time)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
 }

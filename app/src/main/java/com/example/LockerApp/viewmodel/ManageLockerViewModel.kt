@@ -23,10 +23,10 @@ class ManageLockerViewModel(application: Application) : AndroidViewModel(applica
 
 
     // ฟังก์ชันในการเพิ่มข้อมูล
-    fun insertManageLocker(lockerId: Int, usageTime: String, usage: String, AccountID: Int,Status: String) {
+    fun insertManageLocker(locker_name: String, usageTime: String, usage: String, name_user: String,Status: String) {
         val manageLocker =ManageLocker(
-            LockerID = lockerId,
-            AccountID = AccountID,
+            locker_name = locker_name,
+            name_user = name_user,
             UsageTime = usageTime,
             Usage = usage,
             Status = Status

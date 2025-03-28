@@ -57,6 +57,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Switch
 import androidx.compose.material.SwitchDefaults
+import androidx.compose.material.TextButton
 import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -87,7 +88,7 @@ data class Message(
     )
 
 @Composable
-fun LockerUI(navController: NavController, lockerDao: LockerDao, accountid: Int, compartmentDao: CompartmentDao, onLockerClick: (String) -> Unit) {
+fun LockerUI(navController: NavController, lockerDao: LockerDao, accountid: Int,accountname:String, compartmentDao: CompartmentDao, onLockerClick: (String) -> Unit) {
     val viewModel: LockerViewModel = viewModel(factory = LockerViewModelFactory(lockerDao, compartmentDao))
     val mqttViewModel: MqttViewModel = viewModel()
     val lockers by viewModel.lockers.collectAsState()
@@ -174,7 +175,8 @@ fun LockerUI(navController: NavController, lockerDao: LockerDao, accountid: Int,
                     locker = locker,
                     onClick = { onLockerClick(locker.LockerID.toString()) },
                     onUpdateStatus = { lockerID, newStatus -> viewModel.updateLockerStatus(lockerID, newStatus) },
-                    accountid = accountid
+                    accountid = accountid,
+                    accountname=accountname
                 )
             }
 
@@ -187,6 +189,7 @@ fun LockerUI(navController: NavController, lockerDao: LockerDao, accountid: Int,
                         navController = navController,
                         lockerDao = lockerDao,
                         accountid = accountid,
+                        accountname=accountname,
                         ManageLockerViewModel = ManageLockerViewModel,
                         showAddLockerCard = { showAddLockerCard = false }
                     )
@@ -198,7 +201,7 @@ fun LockerUI(navController: NavController, lockerDao: LockerDao, accountid: Int,
 
 
 @Composable
-fun LockerCard(locker: Locker, onClick: () -> Unit, onUpdateStatus: (Int, String) -> Unit,accountid: Int) {
+fun LockerCard(locker: Locker, onClick: () -> Unit, onUpdateStatus: (Int, String) -> Unit,accountid: Int,accountname:String) {
     val viewModel: LockerViewModel = viewModel()
     var showDeleteOptions by remember { mutableStateOf(false) }
     var deleteCompartmentTrigger by remember { mutableStateOf(false) }
@@ -207,16 +210,17 @@ fun LockerCard(locker: Locker, onClick: () -> Unit, onUpdateStatus: (Int, String
 
     LaunchedEffect(deleteCompartmentTrigger) {
         if (deleteCompartmentTrigger) {
+            val usageTime = System.currentTimeMillis().toString()
+            ManageLockerViewModel.insertManageLocker(
+                locker_name = locker.Lockername,
+                usageTime = usageTime,
+                usage = "Delete Locker",
+                name_user = accountname,
+                Status = "Success"
+            )
             viewModel.deleteLocker(locker.LockerID)
             deleteCompartmentTrigger = false // รีเซ็ต trigger หลังจากทำงานเสร็จ
-//            val usageTime = System.currentTimeMillis().toString()
-//            ManageLockerViewModel.insertManageLocker(
-//                lockerId = locker.LockerID,
-//                usageTime = usageTime,
-//                usage = "Delete Locker",
-//                AccountID = accountid,
-//                Status = "Success"
-//            )
+
         }
     }
 
@@ -330,6 +334,7 @@ fun LockerCard(locker: Locker, onClick: () -> Unit, onUpdateStatus: (Int, String
                 showEditOptions = showEditOptions,
                 locker = locker,
                 accountid=accountid,
+                accountname=accountname,
                 onConfirmEdit = {
                     // Handle Locker Edit Confirmation logic
                     showEditOptions = false
@@ -366,26 +371,22 @@ fun DeleteConfirmation(
                     style = MaterialTheme.typography.body1
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                Button(
+                    onClick = {
+                        onConfirmDelete()
+                    },
+                    colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
+                    modifier = Modifier.fillMaxWidth().height(40.dp)
                 ) {
-                    Button(
-                        onClick = {
-                            onConfirmDelete()
-                        },
-                        colors = ButtonDefaults.buttonColors(backgroundColor = Color.White)
-                    ) {
-                        Text(text = "Confirm", color = Color.Red)
-                    }
-
-                    Button(
-                        onClick = { onCancelDelete() },
-                        colors = ButtonDefaults.buttonColors(backgroundColor = Color.White)
-                    ) {
-                        Text(text = "Cancel", color = Color.Black)
-                    }
+                    Text(text = "Confirm", color = Color.Red)
                 }
+
+                TextButton(onClick = {onCancelDelete()  }) {
+                    Text("Cancel", color = Color.White)
+                }
+
+
+
             }
         }
     }
@@ -400,6 +401,7 @@ fun AddLockerCard(
     navController: NavController,
     lockerDao: LockerDao,
     accountid: Int,
+    accountname:String,
     ManageLockerViewModel: ManageLockerViewModel,
     showAddLockerCard: () -> Unit
 ) {
@@ -550,10 +552,10 @@ fun AddLockerCard(
                                                 LokcerId?.let {
                                                     Log.d("Usage","${it.LockerID} /$accountid")
                                                     ManageLockerViewModel.insertManageLocker(
-                                                        lockerId = it.LockerID,
+                                                        locker_name = it.Lockername,
                                                         usageTime = usageTime,
                                                         usage = "Create Locker",
-                                                        AccountID = accountid,
+                                                        name_user = accountname,
                                                         Status = "Success"
                                                     )
                                                 }
@@ -636,7 +638,9 @@ fun Editlocker(
     onConfirmEdit: () -> Unit,
     onCancelEdit: () -> Unit,
     locker: Locker,
-    accountid:Int
+    accountid:Int,
+    accountname:String
+
 ) {
     val ManageLockerViewModel: ManageLockerViewModel = viewModel()
     var updatedLocker by remember { mutableStateOf(locker.copy()) }
@@ -730,10 +734,10 @@ fun Editlocker(
                             viewModel.updateLocker(updatedLocker.LockerID,updatedLocker.status,updatedLocker.Lockername,updatedLocker.detail)
                             val usageTime = System.currentTimeMillis().toString()
                             ManageLockerViewModel.insertManageLocker(
-                                lockerId = updatedLocker.LockerID,
+                                locker_name = updatedLocker.Lockername,
                                 usageTime = usageTime,
                                 usage = "Edit Locker",
-                                AccountID = accountid,
+                                name_user = accountname,
                                 Status = "Success"
                             )
                             Log.d("EditLocker","Test")

@@ -112,17 +112,39 @@ fun UsageHistoryScreen(accountViewModel: AccountViewModel, usageLockerViewModel:
     var filterShowcolumn by remember { mutableStateOf("All History") }
     var selectedlocker by remember { mutableStateOf("all locker") }
     val filteredUsageLockers = usageLockers.filter {
-        (selectedlocker == "all locker" || it.LockerID.toString() == selectedlocker) &&
+        (selectedlocker == "all locker" || it.locker_name == selectedlocker) &&
                 (it.Usage.contains(searchQuery, ignoreCase = true) ||
-                it.LockerID.toString().contains(searchQuery, ignoreCase = true) ||
-                it.CompartmentID.toString().contains(searchQuery, ignoreCase = true))
+                it.locker_name.contains(searchQuery, ignoreCase = true) )
 
     }
+    val filteredUsageLockersTransformed = filteredUsageLockers.map {
+        combine(it.name_user, it.locker_name,it.number_compartment,it.UsageTime,it.Status,it.Usage,it.name_equipment,null) // ไม่มี Status สำหรับ filteredUsageLockers
+    }
+
+    val manageLockersTransformed = manageLockers.map {
+        combine(it.name_user, it.locker_name,null,it.UsageTime, it.Status,it.Usage,null,null) // มี Status สำหรับ manageLockers
+    }
+    val manageAccountsTransformed = manageAccounts.map {
+        combine(it.actoin_username, null,null,it.UsageTime, "Success",it.Usage,null,it.name_user) // มี Status สำหรับ manageLockers
+    }
+
+    val combinedLockers = (filteredUsageLockersTransformed + manageLockersTransformed+manageAccountsTransformed)
+        .sortedByDescending  {
+            val timestamp = it.UsageTime.toLong() // UsageTime เป็น String จึงแปลงเป็น Long
+            val instant = Instant.ofEpochMilli(timestamp) // แปลงเป็น Instant
+            val dateTime = LocalDateTime.ofInstant(instant, ZoneId.systemDefault()) // แปลงเป็น LocalDateTime
+            dateTime
+        }
 
     var usageLockerCount by remember { mutableStateOf(0) }
+    if (filterShowcolumn =="All History")
+    {
+    usageLockerCount = combinedLockers.size
+        }
     LaunchedEffect(Unit) {
         manageAccountViewModel.getAllManageAccounts()
     }
+
 
 
     Box(
@@ -216,35 +238,34 @@ fun UsageHistoryScreen(accountViewModel: AccountViewModel, usageLockerViewModel:
                                 Row (horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically)
                                 {
-                                    val filteredUsageLockersTransformed = filteredUsageLockers.map {
-                                        combine(it.AccountID, it.LockerID,it.CompartmentID,it.UsageTime,it.Status,it.Usage,it.AccountID,"UsageLockers") // ไม่มี Status สำหรับ filteredUsageLockers
-                                    }
 
-                                    val manageLockersTransformed = manageLockers.map {
-                                        combine(it.AccountID, it.LockerID,null,it.UsageTime, it.Status,it.Usage,it.AccountID,"manageLockers") // มี Status สำหรับ manageLockers
-                                    }
-                                    val manageAccountsTransformed = manageAccounts.map {
-                                        combine(it.ByAccountID, null,null,it.UsageTime, "Success",it.Usage,it.AccountID,"manageAccounts") // มี Status สำหรับ manageLockers
-                                    }
 
-                                    val combinedLockers = (filteredUsageLockersTransformed + manageLockersTransformed+manageAccountsTransformed)
-                                        .sortedByDescending  {
-                                            val timestamp = it.UsageTime.toLong() // UsageTime เป็น String จึงแปลงเป็น Long
-                                            val instant = Instant.ofEpochMilli(timestamp) // แปลงเป็น Instant
-                                            val dateTime = LocalDateTime.ofInstant(instant, ZoneId.systemDefault()) // แปลงเป็น LocalDateTime
-                                            dateTime
-                                        }
+
                                     val filteredCombinedLockers = when (filterShowcolumn) {
                                         "All History" -> {
+                                            usageLockerCount = combinedLockers.size
                                             combinedLockers
-
                                         }
-                                        "Manage Locker" -> manageLockersTransformed
-                                        "Manage User" -> manageAccountsTransformed
-                                        "Manage Compartment" ->filteredUsageLockersTransformed.filter { usageLocker ->
-                                            usageLocker.Usage == "Edit Compartment" || usageLocker.Usage == "Create Compartment"}
-                                        "Usage Locker" -> filteredUsageLockersTransformed.filter { usageLocker ->
-                                            usageLocker.Usage == "borrowed" || usageLocker.Usage == "return"}
+                                        "Manage Locker" -> {
+                                            val filteredCompartmentLockers = filteredUsageLockersTransformed.filter { usageLocker ->
+                                                usageLocker.Usage == "Edit Compartment" || usageLocker.Usage == "Create Compartment"
+                                            }
+                                            usageLockerCount = manageAccountsTransformed.size + filteredCompartmentLockers.size
+                                            manageAccountsTransformed + filteredCompartmentLockers
+                                        }
+                                        "Manage User" -> {
+                                            usageLockerCount = manageAccountsTransformed.size
+                                            manageAccountsTransformed
+                                        }
+
+                                        "Usage Locker" -> {
+                                            usageLockerCount = filteredUsageLockersTransformed.filter { usageLocker ->
+                                                usageLocker.Usage == "borrow" || usageLocker.Usage == "return"
+                                            }.size
+                                            filteredUsageLockersTransformed.filter { usageLocker ->
+                                                usageLocker.Usage == "borrow" || usageLocker.Usage == "return"
+                                            }
+                                        }
                                         else -> combinedLockers // กรองข้อมูลตามค่าที่ไม่รู้จัก
                                     }
 
@@ -253,44 +274,19 @@ fun UsageHistoryScreen(accountViewModel: AccountViewModel, usageLockerViewModel:
                                             .fillMaxWidth()
                                             .padding(start = 26.dp, end = 10.dp)
                                     ) {
-                                        items(filteredCombinedLockers) { usageLocker ->
+                                        items(filteredCombinedLockers) { filteredCombinedLockers ->
                                             // Get account names outside of Composable using observeAsState()
-                                            val accountNameUsageLocker by accountViewModel.getAccountNameById(usageLocker.AccountID)
-                                                .observeAsState("")
 
-                                            val ByaccountNameUsageLocker by accountViewModel.getAccountNameById(usageLocker.EditedAccountID)
-                                                .observeAsState("")
 
-                                            // Use rememberUpdatedState to retain the value of locker name
-                                            val namelockerState = rememberUpdatedState(
-                                                usageLocker.LockerID?.let {
-                                                    viewModel.getLockername(it)
-                                                }
-                                            )
 
                                             // Use rememberUpdatedState to update the namelocker state only when LockerID changes
-                                            val namelocker by rememberUpdatedState(
-                                                if (usageLocker.LockerID != null) {
-                                                    namelockerState.value?.collectAsState(initial = null)?.value
-                                                } else {
-                                                    null
-                                                }
-                                            )
 
-                                            // Handle compartment list updates using LaunchedEffect
-                                            var compartmentList by remember { mutableStateOf(emptyList<Compartment>()) }
-                                            LaunchedEffect(usageLocker.CompartmentID) {
-                                                usageLocker.CompartmentID?.let { id ->
-                                                    viewModel.getCompartmentBycompartmentId(id).collect { list ->
-                                                        compartmentList = list
-                                                    }
-                                                } ?: run {
-                                                    compartmentList = emptyList()
-                                                }
-                                            }
+
+
+
 
                                             // Format date
-                                            val splitDateTime = formatTimestamp(usageLocker.UsageTime).split(" ")
+                                            val splitDateTime = formatTimestamp(filteredCombinedLockers.UsageTime).split(" ")
 
                                             // Row with various columns
                                             Row(
@@ -303,7 +299,7 @@ fun UsageHistoryScreen(accountViewModel: AccountViewModel, usageLockerViewModel:
                                                 // Column for account name
                                                 Column(modifier = Modifier.width(100.dp)) {
                                                     Text(
-                                                        text = accountNameUsageLocker,
+                                                        text = filteredCombinedLockers.Username,
                                                         maxLines = 1,
                                                         overflow = TextOverflow.Ellipsis,
                                                         textAlign = TextAlign.Center
@@ -313,10 +309,10 @@ fun UsageHistoryScreen(accountViewModel: AccountViewModel, usageLockerViewModel:
                                                 // Column for locker name or edited account name
                                                 Column(modifier = Modifier.width(100.dp)) {
                                                     Text(
-                                                        text = if (usageLocker.LockerID != null) {
-                                                            namelocker ?: ""  // Display "Unknown Locker" if namelocker is null
+                                                        text = if (filteredCombinedLockers.Lockername != null) {
+                                                            filteredCombinedLockers.Lockername ?: ""  // Display "Unknown Locker" if namelocker is null
                                                         } else {
-                                                            ByaccountNameUsageLocker  // Display ByaccountNameUsageLocker if LockerID is null
+                                                            filteredCombinedLockers.User_Edited?:""  // Display ByaccountNameUsageLocker if LockerID is null
                                                         },
                                                         maxLines = 1,
                                                         overflow = TextOverflow.Ellipsis,
@@ -327,7 +323,7 @@ fun UsageHistoryScreen(accountViewModel: AccountViewModel, usageLockerViewModel:
                                                 // Column for compartment number
                                                 Column(modifier = Modifier.width(50.dp)) {
                                                     Text(
-                                                        text = compartmentList.firstOrNull()?.number_compartment?.toString() ?: "_",
+                                                        text = filteredCombinedLockers.Compartmentnumber?.toString() ?: "  _",
                                                         maxLines = 1,
                                                         overflow = TextOverflow.Ellipsis,
                                                         textAlign = TextAlign.Center
@@ -337,7 +333,7 @@ fun UsageHistoryScreen(accountViewModel: AccountViewModel, usageLockerViewModel:
                                                 // Column for item name
                                                 Column(modifier = Modifier.width(130.dp)) {
                                                     Text(
-                                                        text = compartmentList.firstOrNull()?.Name_Item?.toString() ?: "_",
+                                                        text = filteredCombinedLockers.Equipment ?: "  _",
                                                         maxLines = 1,
                                                         overflow = TextOverflow.Ellipsis,
                                                         textAlign = TextAlign.Center
@@ -368,15 +364,15 @@ fun UsageHistoryScreen(accountViewModel: AccountViewModel, usageLockerViewModel:
                                                 // Column for usage status
                                                 Column(modifier = Modifier.width(130.dp)) {
                                                     Text(
-                                                        text = usageLocker.Usage,
+                                                        text = filteredCombinedLockers.Usage,
                                                         maxLines = 1,
                                                         overflow = TextOverflow.Ellipsis,
                                                         textAlign = TextAlign.Center,
-                                                        color = when (usageLocker.Status.lowercase()) {
+                                                        color = when (filteredCombinedLockers.Status.lowercase()) {
                                                             "fail" -> Color.Red
                                                             else -> Color.Black // Default color if not "fail"
                                                         },
-                                                        fontWeight = when (usageLocker.Status.lowercase()) {
+                                                        fontWeight = when (filteredCombinedLockers.Status.lowercase()) {
                                                             "fail" -> FontWeight.Bold
                                                             else -> FontWeight.Normal // Default font weight
                                                         }
@@ -477,14 +473,14 @@ fun DropdownLocker(viewModel: LockerViewModel,selectedlocker: String, onRoleChan
 fun DropdownHistory(onslectChange: (String) -> Unit,selectedhistory: String,) {
 
     var expanded by remember { mutableStateOf(false) }
-    val TypeOfHistory = listOf("All History", "Usage Locker", "Manage Locker","Manage User","Manage Compartment" )
-    Box( modifier = Modifier.width(240.dp),contentAlignment = Alignment.Center ) {
+    val TypeOfHistory = listOf("All History", "Usage Locker", "Manage Locker","Manage User" )
+    Box( modifier = Modifier.width(200.dp),contentAlignment = Alignment.Center ) {
         ExposedDropdownMenuBox(
             expanded = expanded,
             onExpandedChange = { expanded = !expanded }) {
             Box(
                 modifier = Modifier
-                    .width(240.dp)
+                    .width(200.dp)
                     .height(56.dp)
                     .border(2.dp, Color(0xFF8D8B8B), RoundedCornerShape(15.dp))
                     .clickable { expanded = true }
@@ -509,7 +505,7 @@ fun DropdownHistory(onslectChange: (String) -> Unit,selectedhistory: String,) {
             ExposedDropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
-                modifier = Modifier.width(240.dp)
+                modifier = Modifier.width(200.dp)
             ) {
                 TypeOfHistory.forEach { TypeOfHistory ->
                     DropdownMenuItem(onClick = {
@@ -606,12 +602,13 @@ fun formatDateHistory(dateString: String): String {
 }
 
 data class combine(
-    val AccountID: Int,      // รหัสบัญชีผู้ใช้
-    val LockerID: Int? = null,
-    val CompartmentID : Int? = null,
+    val Username: String,      // รหัสบัญชีผู้ใช้
+    val Lockername: String? = null,
+    val Compartmentnumber : Int? = null,
     val UsageTime: String,   // เวลาใช้งาน (ในรูปแบบ String หรือ Timestamp)
     val Status: String, // สถานะ (อาจจะมีหรือไม่มีก็ได้)
     val Usage: String,
-    val EditedAccountID: Int,
-    val DataForm : String,
+    val Equipment : String? = null,
+    val User_Edited:String?= null,
+
 )

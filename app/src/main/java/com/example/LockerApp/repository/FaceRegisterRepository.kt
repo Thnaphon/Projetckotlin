@@ -40,8 +40,8 @@ class FaceRegisterRepository(private val context: Context) {
         role: String,
         phone: String,
         recognition: FaceClassifier.Recognition
-    ) {
-        faceClassifier.register(name, role, phone, recognition)
+    ): Int {
+        return faceClassifier.register(name, role, phone, recognition)
     }
 
     suspend fun getFaceRecognition(bitmap: Bitmap): FaceClassifier.Recognition? {

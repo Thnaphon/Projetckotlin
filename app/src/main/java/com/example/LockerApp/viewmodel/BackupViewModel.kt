@@ -1,6 +1,7 @@
 package com.example.LockerApp.viewmodel
 
 
+import android.app.Application
 import android.content.Context
 import android.os.Environment
 import android.util.Log
@@ -27,16 +28,49 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import android.util.Base64
+import androidx.lifecycle.AndroidViewModel
+import com.example.LockerApp.model.BackupDao
+import com.example.LockerApp.model.BackupLog
+import com.example.LockerApp.model.BackupLogDao
+import com.example.LockerApp.model.ManageAccountDao
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
 import org.eclipse.paho.client.mqttv3.MqttCallback
 import org.eclipse.paho.client.mqttv3.MqttMessage
 import java.io.FileOutputStream
 
-class BackupViewModel : ViewModel() {
+class BackupViewModel(application: Application) : AndroidViewModel(application) {
     // ใช้ mutableStateOf สำหรับเก็บชื่อไฟล์สำรองและที่อยู่ไฟล์
     var backupFileName = mutableStateOf("")
     var backupFilePath = mutableStateOf("")
+    private val BackupDao: BackupDao =
+        LockerDatabase.getDatabase(application).backupDao()
+
+    private val backupLogDao: BackupLogDao =
+        LockerDatabase.getDatabase(application).BackupLogDao()
+
+    private val _backupSettings = MutableStateFlow<BackupSettings?>(null)
+    val backupSettings: StateFlow<BackupSettings?> = _backupSettings.asStateFlow()
+
+    private val _allBackupLogs = MutableStateFlow<List<BackupLog>>(emptyList())
+    val allBackupLogs: StateFlow<List<BackupLog>> get() = _allBackupLogs
+
+    init {
+        viewModelScope.launch {
+            _backupSettings.value = BackupDao.getBackupSettings()
+            backupLogDao.getAllBackupLogs()
+                .collect { backupLogs ->
+                    // อัพเดทข้อมูลใน StateFlow เมื่อได้ผลลัพธ์ใหม่
+                    _allBackupLogs.value = backupLogs
+                }
+        }
+    }
+
 
     // ฟังก์ชันสำหรับการแบ็คอัพ
     fun performBackup(context: Context) {
@@ -82,22 +116,9 @@ class BackupViewModel : ViewModel() {
 
                     Log.d("Backup", "Backup completed successfully")
 
-                    // อัพเดตวันที่สำรองล่าสุด
-                    val currentDate =
-                        SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
-                    val backupDao = LockerDatabase.getDatabase(context).backupDao()
-                    val backupSettings = backupDao.getBackupSettings()
 
-                    if (backupSettings != null) {
-                        backupDao.updateLastBackupDate(backupSettings.id, currentDate)
-                    } else {
-                        val newBackupSettings = BackupSettings(
-                            frequency = "Daily",
-                            backupTime = "02:00 AM",
-                            lastBackupDate = currentDate
-                        )
-                        backupDao.insertOrUpdateBackupSettings(newBackupSettings)
-                    }
+
+
 
                 } catch (e: IOException) {
                     Log.e("Backup", "Backup failed", e)
@@ -148,21 +169,11 @@ class BackupViewModel : ViewModel() {
 
                     Log.d("Restore", "Restore completed successfully")
 
-                    // อัปเดตวันที่การคืนค่าล่าสุดในฐานข้อมูล
-                    val currentDate = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
-                    val backupDao = LockerDatabase.getDatabase(context).backupDao()
-                    val backupSettings = backupDao.getBackupSettings()
 
-                    if (backupSettings != null) {
-                        backupDao.updateLastBackupDate(backupSettings.id, currentDate)
-                    } else {
-                        val newBackupSettings = BackupSettings(
-                            frequency = "Daily",
-                            backupTime = "02:00 AM",
-                            lastBackupDate = currentDate
-                        )
-                        backupDao.insertOrUpdateBackupSettings(newBackupSettings)
-                    }
+                    val backupDao = LockerDatabase.getDatabase(context).backupDao()
+
+
+
                 } catch (e: IOException) {
                     Log.e("Restore", "Restore failed", e)
                 }
@@ -195,22 +206,9 @@ class BackupViewModel : ViewModel() {
                 // บันทึกชื่อไฟล์และที่อยู่ของไฟล์สำรองที่ส่งไป
                 Log.d("Backup", "Backup data sent successfully to Pi")
 
-                // อัพเดตวันที่สำรองล่าสุด
-                val currentDate =
-                    SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
-                val backupDao = LockerDatabase.getDatabase(context).backupDao()
-                val backupSettings = backupDao.getBackupSettings()
 
-                if (backupSettings != null) {
-                    backupDao.updateLastBackupDate(backupSettings.id, currentDate)
-                } else {
-                    val newBackupSettings = BackupSettings(
-                        frequency = "Daily",
-                        backupTime = "02:00 AM",
-                        lastBackupDate = currentDate
-                    )
-                    backupDao.insertOrUpdateBackupSettings(newBackupSettings)
-                }
+
+
 
             } catch (e: IOException) {
                 Log.e("Backup", "Backup failed", e)
@@ -299,6 +297,35 @@ class BackupViewModel : ViewModel() {
             } catch (e: Exception) {
                 Log.e("Restore", "การ restore ข้อมูลล้มเหลว", e)
             }
+        }
+    }
+    fun updateBackupSettings(frequency: String, backupTime: String,description:String) {
+        viewModelScope.launch {
+            val newSettings = BackupSettings(
+                frequency = frequency,
+                backupTime = backupTime,
+                description =description
+            )
+            BackupDao.insertOrUpdateBackupSettings(newSettings)
+            _backupSettings.value = newSettings
+        }
+    }
+
+    fun insertBackupLog(backupLog: BackupLog) {
+        viewModelScope.launch {
+            backupLogDao.insertBackupLog(backupLog)
+        }
+    }
+
+    fun deleteBackupLog(backupLog: BackupLog) {
+        viewModelScope.launch {
+            backupLogDao.deleteBackupLog(backupLog)
+        }
+    }
+
+    fun clearBackupLogs() {
+        viewModelScope.launch {
+            backupLogDao.clearBackupLogs()
         }
     }
 }

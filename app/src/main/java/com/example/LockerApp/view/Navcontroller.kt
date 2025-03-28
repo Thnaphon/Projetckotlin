@@ -171,9 +171,17 @@ fun LockerApp() {
                 faceLoginViewModel = faceLoginViewModel
             )
         }
-        composable("BackupScreen") {
+
+        composable(
+            "BackupScreen/{name}",
+            arguments = listOf(
+                navArgument("name") { type = NavType.StringType }
+
+            )
+        ) { backStackEntry ->
+            val name = backStackEntry.arguments?.getString("name") ?: "Unknown"
             BackupScreen(
-                viewModel = viewModel
+                viewModel = viewModel, accountname = name
             )
         }
 
@@ -187,45 +195,60 @@ fun LockerApp() {
         }
 
         composable(
-            "BorrowUI/{accountid}",
-            arguments = listOf(navArgument("accountid") { type = NavType.IntType })
+            "BorrowUI/{accountid}/{name}",
+            arguments = listOf(
+                navArgument("accountid") { type = NavType.IntType },
+                navArgument("name") { type = NavType.StringType }
+
+            )
         ) { backStackEntry ->
             val accountid = backStackEntry.arguments?.getInt("accountid") ?: 0
-
+            val name = backStackEntry.arguments?.getString("name") ?: "Unknown"
             BorrowUI(
                 viewModel = lockerViewModel,
                 mqttViewModel = mqttViewModel,
                 usageLockerViewModel = usageLockerViewModel,
-                accountid = accountid // ส่งค่าไปใช้งานใน UI
+                accountid = accountid, // ส่งค่าไปใช้งานใน UI
+                accountname=name
             )
         }
         composable(
-            "ReturnUI/{accountid}",
-            arguments = listOf(navArgument("accountid") { type = NavType.IntType })
+            "ReturnUI/{accountid}/{name}",
+            arguments = listOf(
+                navArgument("accountid") { type = NavType.IntType },
+                navArgument("name") { type = NavType.StringType }
+            )
         ) { backStackEntry ->
             val accountid = backStackEntry.arguments?.getInt("accountid") ?: 0
-
+            val name = backStackEntry.arguments?.getString("name") ?: "Unknown"
             ReturnUI(
                 viewModel = lockerViewModel,
                 mqttViewModel = mqttViewModel,
                 usageLockerViewModel = usageLockerViewModel,
-                accountid = accountid // ส่งค่าไปใช้งานใน UI
+                accountid = accountid, // ส่งค่าไปใช้งานใน UI
+                accountname= name
             )
         }
         composable(
-            "LockerUI/{accountid}",
-            arguments = listOf(navArgument("accountid") { type = NavType.IntType })
+            "LockerUI/{accountid}/{name}",
+            arguments = listOf(
+                navArgument("accountid") { type = NavType.IntType },
+                navArgument("name") { type = NavType.StringType }
+
+            )
         ) { backStackEntry ->
             val accountid = backStackEntry.arguments?.getInt("accountid") ?: 0
-
+            val name = backStackEntry.arguments?.getString("name") ?: "Unknown"
             LockerUI(
                 lockerDao = lockerDao,
                 navController = navController,
                 compartmentDao = compartmentDao,
                 accountid = accountid, // ส่งค่า accountid ไป
+                accountname= name,
                 onLockerClick = {
                     // ใส่โค้ดที่ต้องการให้ทำเมื่อมีการคลิกที่ Locker
                 }
+
             )
         }
 
@@ -234,16 +257,22 @@ fun LockerApp() {
 
 
         composable(
-            "compartment_screen/{lockerId}/{accountid}",
-            arguments = listOf(navArgument("accountid") { type = NavType.IntType })
+            "compartment_screen/{lockerId}/{accountid}/{name}",
+            arguments = listOf(
+                navArgument("accountid") { type = NavType.IntType },
+                navArgument("name") { type = NavType.StringType }
+
+            )
         ) { backStackEntry ->
             val lockerId = backStackEntry.arguments?.getString("lockerId")?.toIntOrNull()
             val accountid = backStackEntry.arguments?.getInt("accountid") ?: 0
+            val name = backStackEntry.arguments?.getString("name") ?: "Unknown"
             if (lockerId != null) {
                 CompartmentUI(
                     lockerId = lockerId,
                     viewModel = lockerViewModel,
-                    accountid = accountid
+                    accountid = accountid,
+                    accountname=name
                 ) // ส่ง LockerViewModel
             }
         }
@@ -303,6 +332,7 @@ fun LockerApp() {
                 backupViewModel = viewModel,
                 faceLoginViewModel = faceLoginViewModel,
                 accountid = accountid,  // ส่ง accountid ไปใช้ใน UI
+                accountname=name,
                 context = context,
                 nameUser = name,
                 role = role

@@ -94,7 +94,8 @@ fun BorrowUI(
     viewModel: LockerViewModel,
     usageLockerViewModel: UsageLockerViewModel,
     mqttViewModel: MqttViewModel,
-    accountid: Int
+    accountid: Int,
+    accountname:String
 ) {
     var selectedLocker by remember { mutableStateOf(0) } // เริ่มต้นที่ All Lockers
     val lockers by viewModel.lockers.collectAsState() // ใช้ StateFlow ในการเก็บค่า locker
@@ -134,7 +135,7 @@ fun BorrowUI(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("${compartments.size} Compartments", style = MaterialTheme.typography.h6.copy(fontWeight = FontWeight.SemiBold), color = Color.Black)
+            Text("${compartments.filter { it.usagestatus == "return" && it.status == "available" }.size} Compartments", style = MaterialTheme.typography.h6.copy(fontWeight = FontWeight.SemiBold), color = Color.Black)
 
             ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
                 Box(
@@ -196,6 +197,7 @@ fun BorrowUI(
                         viewModel = viewModel,          // ส่ง viewModel
                         usageLockerViewModel = usageLockerViewModel, // ส่ง usageLockerViewModel
                         accountid = accountid,          // ส่ง accountid
+                        accountname=accountname,
                         onStatusChange = { status -> isWaitingForClose = status }
 
                     )
@@ -216,6 +218,7 @@ fun CompartmentCard(
     viewModel: LockerViewModel,
     usageLockerViewModel: UsageLockerViewModel,
     accountid: Int,
+    accountname:String,
     onStatusChange: (Boolean) -> Unit
 ) {
     var showDialog by remember { mutableStateOf(false) } // State สำหรับแสดง Dialog
@@ -227,7 +230,7 @@ fun CompartmentCard(
     val safeLockerName = lockerName ?: "Unknown"
     var Topic = remember { mutableStateOf(" ") }
     var IsClick by remember { mutableStateOf(false) }
-
+    val lockername by viewModel.getLockername(compartment.LockerID).collectAsState(initial = null)
     LaunchedEffect(mqttData) {
         Log.d("mqttData", "MQTT Topic: ${mqttData.first}, Message: ${mqttData.second}")
         if (mqttData.first == Topic.value && mqttData.second == "OPEN") {
@@ -236,7 +239,7 @@ fun CompartmentCard(
             val usageTime = System.currentTimeMillis().toString()
             val topicMap = mapOf(
                 "token" to splitData[0],
-                "action" to splitData[1] + "ed",
+                "action" to splitData[1],
                 "compartmentId" to splitData[2].toInt(),
                 "status" to splitData[3]
             )
@@ -259,12 +262,13 @@ fun CompartmentCard(
 
                 // Insert usageLocker data in background thread
                 usageLockerViewModel.insertUsageLocker(
-                    compartment.LockerID,
+                    lockername.toString(),
                     compartment_Id,
                     usageTime,
                     action,
-                    accountid,
-                    "Success"
+                    accountname,
+                    "Success",
+                    compartment.Name_Item
                 )
             }
         }
@@ -290,12 +294,13 @@ fun CompartmentCard(
 
             val compartment_Id = viewModel.getCompartmentId(compartment.LockerID, compartmentId).first()
             usageLockerViewModel.insertUsageLocker(
-                compartment.LockerID,
+                lockername.toString(),
                 compartment_Id,
                 usageTime,
                 action,
-                accountid,
-                "Fail"
+                accountname,
+                "Fail",
+                compartment.Name_Item
             )
             IsClick = false
         }

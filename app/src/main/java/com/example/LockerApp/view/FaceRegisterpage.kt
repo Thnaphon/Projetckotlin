@@ -70,7 +70,7 @@ fun FaceCapturePage(
     var insufficientLandmarks by remember { mutableStateOf(false) }
     var capturingFace by remember { mutableStateOf(false) }
     var capturedFace by remember { mutableStateOf<Bitmap?>(null) }
-    var countdownSeconds by remember { mutableStateOf(5) }
+    var countdownSeconds by remember { mutableStateOf(3) }
     var isCountingDown by remember { mutableStateOf(false) }
 
     //brightness of user
@@ -146,7 +146,7 @@ fun FaceCapturePage(
             isCountingDown = false
 
             // Reset countdown for next face
-            countdownSeconds = 5
+            countdownSeconds = 3
         }
 
         // Hide countdown if user is in database
@@ -188,7 +188,7 @@ fun FaceCapturePage(
         ) {
 
             isCountingDown = true
-            countdownSeconds = 5
+            countdownSeconds = 3
 
             // Countdown loop
             while (countdownSeconds > 0 && isCountingDown && isFaceWithinBoundary && !insufficientLandmarks) {
@@ -210,7 +210,7 @@ fun FaceCapturePage(
         } else if (!isFaceWithinBoundary && isCountingDown) {
             // Cancel countdown if face moves out of boundary
             isCountingDown = false
-            countdownSeconds = 5
+            countdownSeconds = 3
         }
     }
 
@@ -245,9 +245,18 @@ fun FaceCapturePage(
                     participantPhone,
                     bitmap
                 )
+
+                // Log the account creation action using the existing ManageAccountViewModel
                 val usageTime = System.currentTimeMillis().toString()
-//                val ManageAccount = ManageAccount(AccountID = it,ByAccountID = accountid,UsageTime=usageTime,Usage = "Inser Account" )
-//                manageAccountViewModel.insertManageAccount(ManageAccount)
+                val manageAccount = ManageAccount(
+                    name_user = participantName,
+                    actoin_username = adminname,
+                    UsageTime = usageTime,
+                    Usage = "Insert Account"
+                )
+                manageAccountViewModel.insertManageAccount(manageAccount)
+
+
                 // Navigate back to main menu after capture and preview
                 navController.navigate("main_menu/$accountid/$adminname/$adminrole") {
                     popUpTo("face_capture") { inclusive = true }
@@ -274,7 +283,7 @@ fun FaceCapturePage(
                 // Reset counting state when face leaves frame
                 if (isCountingDown && capturedFace == null) {
                     isCountingDown = false
-                    countdownSeconds = 5
+                    countdownSeconds = 3
                 }
             }
         }
@@ -595,13 +604,13 @@ fun FaceCapturePage(
                                                 when {
                                                     capturedFace != null -> {
                                                         Text(
-                                                            text = "จัดเก็บใบหน้าของ!",
+                                                            text = "Capturing!",
                                                             fontSize = 22.sp,
                                                             fontWeight = FontWeight.Bold,
                                                             color = Color.Green
                                                         )
                                                         Text(
-                                                            text = "กำลังบันทึกข้อมูลของ $participantName",
+                                                            text = "On capturing process : $participantName",
                                                             fontSize = 18.sp,
                                                             color = Color.Black,
                                                             textAlign = TextAlign.Center
@@ -610,13 +619,13 @@ fun FaceCapturePage(
 
                                                     insufficientLandmarks -> {
                                                         Text(
-                                                            text = "ไม่สามารถตรวจจับใบหน้าได้ครบถ้วน",
+                                                            text = "Not enough informtation",
                                                             fontSize = 22.sp,
                                                             fontWeight = FontWeight.Bold,
                                                             color = Color.Red
                                                         )
                                                         Text(
-                                                            text = "โปรดตรวจสอบให้แน่ใจว่าใบหน้าของคุณอยู่ในกรอบและมองตรงไปที่กล้อง",
+                                                            text = "Please make take mask/glasses off",
                                                             fontSize = 18.sp,
                                                             color = Color.Black,
                                                             textAlign = TextAlign.Center
@@ -625,13 +634,13 @@ fun FaceCapturePage(
 
                                                     isCountingDown -> {
                                                         Text(
-                                                            text = "กำลังจะบันทึกข้อมูล",
+                                                            text = "Storing Data",
                                                             fontSize = 22.sp,
                                                             fontWeight = FontWeight.Bold,
                                                             color = Color(0xFFA15600)
                                                         )
                                                         Text(
-                                                            text = "ท่านกำลังจะถูกเก็บใบหน้าในอีก $countdownSeconds วินาที...",
+                                                            text = "Capturing Your face in $countdownSeconds Sec...",
                                                             fontSize = 18.sp,
                                                             color = Color.Black,
                                                             textAlign = TextAlign.Center
@@ -640,13 +649,13 @@ fun FaceCapturePage(
 
                                                     faceDetected && !isFaceWithinBoundary -> {
                                                         Text(
-                                                            text = "ใบหน้าไม่อยู่ในกรอบ",
+                                                            text = "Alignment",
                                                             fontSize = 22.sp,
                                                             fontWeight = FontWeight.Bold,
                                                             color = Color(0xFFA15600)
                                                         )
                                                         Text(
-                                                            text = "โปรดจัดตำแหน่งใบหน้าของท่านให้อยู่ในกรอบ",
+                                                            text = "Please alignment your face center in boundary",
                                                             fontSize = 18.sp,
                                                             color = Color.Black,
                                                             textAlign = TextAlign.Center
@@ -655,7 +664,7 @@ fun FaceCapturePage(
 
                                                     !cameraInitialized && isCameraActive -> {
                                                         Text(
-                                                            text = "กำลังรอกล้องใช้งาน...",
+                                                            text = "Setting Camera...",
                                                             fontSize = 22.sp,
                                                             fontWeight = FontWeight.Bold,
                                                             color = Color.Black
@@ -685,13 +694,13 @@ fun FaceCapturePage(
                                                     when {
                                                         faceDetected -> {
                                                             Text(
-                                                                text = "ทำรายการไม่ได้",
+                                                                text = "Duplicate",
                                                                 fontSize = 22.sp,
                                                                 fontWeight = FontWeight.Bold,
                                                                 color = Color.Red
                                                             )
                                                             Text(
-                                                                text = "ชื่อผู้ใช้งานในระบบของท่านคือ : $recognizedName",
+                                                                text = "We identify you as : $recognizedName in our database ",
                                                                 fontSize = 18.sp,
                                                                 color = Color.Red,
                                                                 textAlign = TextAlign.Center

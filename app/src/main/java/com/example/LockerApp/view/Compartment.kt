@@ -88,7 +88,7 @@ import java.io.InputStream
 
 
 @Composable
-fun CompartmentUI(lockerId: Int, viewModel: LockerViewModel = viewModel(),accountid: Int) {
+fun CompartmentUI(lockerId: Int, viewModel: LockerViewModel = viewModel(),accountid: Int,accountname:String) {
 
 
     val compartments by viewModel.compartments.collectAsState(emptyList())
@@ -102,7 +102,7 @@ fun CompartmentUI(lockerId: Int, viewModel: LockerViewModel = viewModel(),accoun
     val mqttTopic by viewModel.getMqttTopicFromDatabase(lockerId).collectAsState(initial = null)
     var selectedImagePath by remember { mutableStateOf("") }
     val available_compartment by viewModel.getavailableCompartmentByLockerId(lockerId).collectAsState(initial = null)
-
+    val lockername by viewModel.getLockername(lockerId).collectAsState(initial = null)
 
     val availableCompartments: MutableList<String> = available_compartment?.split(",")?.toMutableList() ?: mutableListOf()
 
@@ -122,12 +122,13 @@ fun CompartmentUI(lockerId: Int, viewModel: LockerViewModel = viewModel(),accoun
                 CompartmentId?.let {
                     Log.d("UsageCompartment","${it.CompartmentID} /$accountid")
                     usageLockerViewModel.insertUsageLocker(
-                        lockerId,
+                        lockername.toString(),
                         it.CompartmentID,
                         usageTime,
                         "Create Compartment",
-                        accountid,
-                        "Success"
+                        accountname,
+                        "Success",
+                        it.Name_Item
                     )
                 }
             }
@@ -169,7 +170,7 @@ fun CompartmentUI(lockerId: Int, viewModel: LockerViewModel = viewModel(),accoun
             columns = GridCells.Fixed(4),
             content = {
                 items(compartments) { compartment ->
-                    CompartmentCard(compartment=compartment,viewModel=viewModel,accountid=accountid)
+                    CompartmentCard(compartment=compartment,viewModel=viewModel,accountid=accountid,accountname=accountname)
                 }
                 if (showAddCard) {
 
@@ -224,24 +225,28 @@ fun CompartmentUI(lockerId: Int, viewModel: LockerViewModel = viewModel(),accoun
 }
 
 @Composable
-fun CompartmentCard(compartment: Compartment, viewModel: LockerViewModel = viewModel(),accountid: Int) {
+fun CompartmentCard(compartment: Compartment, viewModel: LockerViewModel = viewModel(),accountid: Int,accountname: String) {
     var selectedCompartmentId by remember { mutableStateOf<Int?>(null) }
     var deleteCompartmentTrigger by remember { mutableStateOf(false) }
     var isEditing by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     val usageLockerViewModel: UsageLockerViewModel = viewModel()
+    val lockername by viewModel.getLockername(compartment.LockerID).collectAsState(initial = null)
     // ใช้ LaunchedEffect ที่อยู่ในระดับของ Composable
     LaunchedEffect(deleteCompartmentTrigger) {
         if (deleteCompartmentTrigger) {
+            val usageTime = System.currentTimeMillis().toString()
+            usageLockerViewModel.insertUsageLocker(
+                lockername.toString(),
+                compartment.CompartmentID,
+                usageTime,
+                "Delete Compartment",
+                accountname,
+                "Success",
+                compartment.Name_Item
+            )
             viewModel.delteCompartment(compartment.LockerID, compartment.CompartmentID)
-//            usageLockerViewModel.insertUsageLocker(
-//                compartment.LockerID,
-//                compartment.CompartmentID,
-//                usageTime,
-//                "Delete Compartment",
-//                accountid,
-//                "Success"
-//            )
+
             deleteCompartmentTrigger = false // รีเซ็ต trigger หลังจากทำงานเสร็จ
         }
     }
@@ -255,7 +260,7 @@ fun CompartmentCard(compartment: Compartment, viewModel: LockerViewModel = viewM
     ) {
         Column {
             if (isEditing) {
-                EditCompartmentForm(compartment = compartment, onCancel = { isEditing = false },onCompartmentSelected = { selectedCompartmentId = it },accountid=accountid)
+                EditCompartmentForm(compartment = compartment, onCancel = { isEditing = false },onCompartmentSelected = { selectedCompartmentId = it },accountid=accountid,accountname=accountname)
             } else {
                 CompartmentView(compartment = compartment, onEdit = { isEditing = true }, onDelete = { deleteCompartmentTrigger = true })
             }
@@ -267,7 +272,7 @@ fun CompartmentCard(compartment: Compartment, viewModel: LockerViewModel = viewM
 }
 
 @Composable
-fun EditCompartmentForm(compartment: Compartment, onCancel: () -> Unit,viewModel: LockerViewModel = viewModel(),onCompartmentSelected: (Int?) -> Unit,accountid:Int) {
+fun EditCompartmentForm(compartment: Compartment, onCancel: () -> Unit,viewModel: LockerViewModel = viewModel(),onCompartmentSelected: (Int?) -> Unit,accountid:Int,accountname:String) {
     var selectedCompartmentId by remember { mutableStateOf<Int?>(null) }
 
     val available_compartment by viewModel.getavailableCompartmentByLockerId(compartment.LockerID).collectAsState(initial = null)
@@ -289,6 +294,7 @@ fun EditCompartmentForm(compartment: Compartment, onCancel: () -> Unit,viewModel
     var editCompartmentTrigger by remember { mutableStateOf(false) }
     var statusCompartment by remember { mutableStateOf(false) }
     var updatedLockerStatus by remember { mutableStateOf("") }
+    val lockername by viewModel.getLockername(compartment.LockerID).collectAsState(initial = null)
     Card(
         shape = RoundedCornerShape(15.dp),
         modifier = Modifier
@@ -462,12 +468,13 @@ fun EditCompartmentForm(compartment: Compartment, onCancel: () -> Unit,viewModel
                             val usageTime = System.currentTimeMillis().toString()
                             viewModel.updateCompartment(compartment.CompartmentID!!,nameItem,selectedImagePath,compartment.LockerID,compartmentNumber,updatedLockerStatus)
                             usageLockerViewModel.insertUsageLocker(
-                                compartment.LockerID,
+                                lockername.toString(),
                                 compartment.CompartmentID,
                                 usageTime,
                                 "Edit Compartment",
-                                accountid,
-                                "Success"
+                                accountname,
+                                "Success",
+                                compartment.Name_Item
                             )
                             onCancel()
                         } else {
@@ -613,27 +620,21 @@ fun CompartmentView(compartment: Compartment, onEdit: () -> Unit, onDelete: () -
                         style = MaterialTheme.typography.body1
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
+                    Button(
+                        onClick = {
+                            onDelete()
+                            showDeleteOptions = false
+                        },
+                        colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
+                        modifier = Modifier.fillMaxWidth().height(40.dp)
                     ) {
-                        Button(
-                            onClick = {
-                                onDelete()
-                                showDeleteOptions = false
-                            },
-                            colors = ButtonDefaults.buttonColors(backgroundColor = Color.White)
-                        ) {
-                            Text(text = "Confirm", color = Color.Red)
-                        }
-
-                        Button(
-                            onClick = { showDeleteOptions = false },
-                            colors = ButtonDefaults.buttonColors(backgroundColor = Color.White)
-                        ) {
-                            Text(text = "Cancel", color = Color.Black)
-                        }
+                        Text(text = "Confirm", color = Color.Red)
                     }
+
+                    TextButton(onClick = { showDeleteOptions = false }) {
+                        Text("Cancel", color = Color.White)
+                    }
+
                 }
             }
         }

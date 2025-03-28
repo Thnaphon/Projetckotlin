@@ -373,7 +373,7 @@ fun ParticipantScreen(
                                 val usageTime = System.currentTimeMillis().toString()
                                 accountIdToEdit?.let {
                                     accountViewModel.updateAccountFields(it, name, phone, role)
-                                    val ManageAccount = ManageAccount(AccountID = it,ByAccountID = accountid,UsageTime=usageTime,Usage = "Edit Account" )
+                                    val ManageAccount = ManageAccount(name_user = name,actoin_username = adminname,UsageTime=usageTime,Usage = "Edit Account" )
                                     manageAccountViewModel.insertManageAccount(ManageAccount)
 
                                 }
@@ -453,6 +453,9 @@ fun ParticipantScreen(
                                 IconButton(
                                     onClick = {
                                         if (!isAddDialogVisible && !isEditDialogVisible) {
+                                            val usageTime = System.currentTimeMillis().toString()
+                                            val ManageAccount = ManageAccount(name_user = user.Name,actoin_username = adminname,UsageTime=usageTime,Usage = "Delete Account Account" )
+                                            manageAccountViewModel.insertManageAccount(ManageAccount)
                                             accountViewModel.deleteAccount(user)
                                         }
                                     },
@@ -892,7 +895,7 @@ fun AddUserDialog(
                             .background(Color.Transparent),
                         colors = TextFieldDefaults.textFieldColors(
                             backgroundColor = Color.Transparent,
-                            focusedIndicatorColor = Color.White,
+                            focusedIndicatorColor = if (validationAttempted && isNameEmpty) Color.Red else Color.White,
                             unfocusedIndicatorColor = if (validationAttempted && isNameEmpty) Color.Red else Color.White
                         )
                     )
@@ -916,7 +919,7 @@ fun AddUserDialog(
                         modifier = Modifier.weight(1f),
                         colors = TextFieldDefaults.textFieldColors(
                             backgroundColor = Color.Transparent,
-                            focusedIndicatorColor = Color.White,
+                            focusedIndicatorColor = if (validationAttempted && (!isPhoneValid || isPhoneEmpty)) Color.Red else Color.White,
                             unfocusedIndicatorColor = if (validationAttempted && (!isPhoneValid || isPhoneEmpty)) Color.Red else Color.White
                         )
                     )
@@ -933,7 +936,7 @@ fun AddUserDialog(
                     TextButton(
                         onClick = {
                             validationAttempted = true
-                            if (isFormNull) {
+                            if (isFormNull && isPhoneValid) {
                                 onStartFaceRecognition()
                             }
                         },
@@ -966,6 +969,7 @@ fun EditAccountDialog(
     val isNameEmpty = name.isEmpty()
     val isRoleEmpty = role.isEmpty()
     val isPhoneEmpty = phone.isEmpty()
+    val isPhoneValid = isValidPhoneNumber(phone)
     val isFormNull = !isNameEmpty && !isRoleEmpty && !isPhoneEmpty
     if (isVisible) {
         Card(
@@ -985,10 +989,10 @@ fun EditAccountDialog(
                         onValueChange = onNameChange,
                         label = { Text("Name", color = Color.White) },
                         textStyle = TextStyle(color = Color.White),
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
                         colors = TextFieldDefaults.textFieldColors(
                             backgroundColor = Color.Transparent,
-                            focusedIndicatorColor = Color.White,
+                            focusedIndicatorColor = if (validationAttempted && isNameEmpty) Color.Red else Color.White,
                             unfocusedIndicatorColor = if (validationAttempted && isNameEmpty) Color.Red else Color.White
                         )
                     )
@@ -1005,11 +1009,11 @@ fun EditAccountDialog(
                         onValueChange = onPhoneChange,
                         label = { Text("Phone", color = Color.White) },
                         textStyle = TextStyle(color = Color.White),
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
                         colors = TextFieldDefaults.textFieldColors(
                             backgroundColor = Color.Transparent,
-                            focusedIndicatorColor = Color.White,
-                            unfocusedIndicatorColor = if (validationAttempted && isPhoneEmpty) Color.Red else Color.White
+                            focusedIndicatorColor = if (validationAttempted && (!isPhoneValid || isPhoneEmpty)) Color.Red else Color.White,
+                            unfocusedIndicatorColor = if (validationAttempted && (!isPhoneValid || isPhoneEmpty)) Color.Red else Color.White
                         )
                     )
                 }
@@ -1026,7 +1030,7 @@ fun EditAccountDialog(
                 TextButton(
                     onClick = {
                         validationAttempted = true
-                        if (isFormNull) {
+                        if (isFormNull && isPhoneValid) {
                             onApply()
                         }
                     },

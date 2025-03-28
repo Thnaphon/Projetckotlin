@@ -149,6 +149,14 @@ fun WelcomePage(
         }
     }
 
+    fun checkAndRequestFormaster() {
+        if (arePermissionsGranted()) {
+            //
+        } else {
+            permissionLauncher.launch(permissions)
+        }
+    }
+
     // Show face login overlay on call
     if (showFaceLoginOverlay) {
         FaceLoginOverlay(
@@ -240,8 +248,8 @@ fun WelcomePage(
                             }, modifier = Modifier.padding(top = 16.dp)
                         )
                     } else {
-                        Box (modifier = Modifier.fillMaxWidth()) {
-                            Row (verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 Column() {
                                     OutlinedTextField(
                                         value = enteredPassword,
@@ -268,24 +276,25 @@ fun WelcomePage(
                                     Button(
                                         onClick = {
                                             try {
-                                                arePermissionsGranted()
-                                                val encrypted = encryptedData.value
-                                                if (encrypted != null) {
-                                                    val decryptedPassword =
-                                                        KeystoreManager.decryptData(
-                                                            encrypted.first, encrypted.second
-                                                        )
+                                                checkAndRequestFormaster()
+                                                    val encrypted = encryptedData.value
+                                                    if (encrypted != null) {
+                                                        val decryptedPassword =
+                                                            KeystoreManager.decryptData(
+                                                                encrypted.first, encrypted.second
+                                                            )
 
-                                                    if (enteredPassword == decryptedPassword) {
-                                                        navController.navigate("main_menu/1/Service/Service")
-                                                    } else {
-                                                        Toast.makeText(
-                                                            context,
-                                                            "Incorrect password",
-                                                            Toast.LENGTH_SHORT
-                                                        ).show()
+                                                        if (enteredPassword == decryptedPassword) {
+                                                            navController.navigate("main_menu/1/Service/Service")
+                                                        } else {
+                                                            Toast.makeText(
+                                                                context,
+                                                                "Incorrect password",
+                                                                Toast.LENGTH_SHORT
+                                                            ).show()
+                                                        }
                                                     }
-                                                }
+
                                             } catch (e: Exception) {
                                                 Toast.makeText(
                                                     context,
@@ -365,12 +374,12 @@ fun WelcomePage(
                     showPermissionDialog = false
                     checkAndRequestPermissions()
                 }) {
-                    Text("ลองอีกครั้ง")
+                    Text("Try again")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showPermissionDialog = false }) {
-                    Text("ยกเลิก")
+                    Text("Cancel")
                 }
             }
         )
@@ -380,10 +389,10 @@ fun WelcomePage(
     if (showSettingsDialog) {
         AlertDialog(
             onDismissRequest = { showSettingsDialog = false },
-            title = { Text("จำเป็นต้องอนุญาต การเข้าถึงกล้องและพื้นที่") },
+            title = { Text("We need permission") },
             text = {
                 Text(
-                    "แอพพลิเคชั่นของเราจำเป็นต้องเข้าถึงกล้อง และพื้นที่ในการจัดเก็บข้อมูล.",
+                    "Our application need to access Camera and Gallery to work properly.",
                     textAlign = TextAlign.Center
                 )
             },
@@ -397,12 +406,12 @@ fun WelcomePage(
                     context.startActivity(intent)
                     showSettingsDialog = false
                 }) {
-                    Text("ไปที่การตั้งค่า")
+                    Text("Go to setting")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showSettingsDialog = false }) {
-                    Text("ยกเลิก")
+                    Text("Cancel")
                 }
             }
         )

@@ -224,11 +224,11 @@ fun MainMenuUser(
         Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
             when {
                 showBorrowUI -> {
-                    BorrowUI(viewModel = viewModel, mqttViewModel = mqttViewModel, usageLockerViewModel= usageLockerViewModel, accountid = accountid)
+                    BorrowUI(viewModel = viewModel, mqttViewModel = mqttViewModel, usageLockerViewModel= usageLockerViewModel, accountid = accountid,accountname=nameUser)
 
                 }
                 showReturnUI -> {
-                    ReturnUI(viewModel = viewModel, mqttViewModel = mqttViewModel,usageLockerViewModel= usageLockerViewModel, accountid = accountid) // เพิ่มการเรียก ReturnUI
+                    ReturnUI(viewModel = viewModel, mqttViewModel = mqttViewModel,usageLockerViewModel= usageLockerViewModel, accountid = accountid,accountname=nameUser) // เพิ่มการเรียก ReturnUI
                 }
 
 
@@ -241,7 +241,7 @@ fun MainMenuUser(
 
 
                 else -> {
-                    BorrowUI(viewModel = viewModel, mqttViewModel = mqttViewModel, usageLockerViewModel= usageLockerViewModel, accountid = accountid)
+                    BorrowUI(viewModel = viewModel, mqttViewModel = mqttViewModel, usageLockerViewModel= usageLockerViewModel, accountid = accountid,accountname=nameUser)
                 }
             }
         }

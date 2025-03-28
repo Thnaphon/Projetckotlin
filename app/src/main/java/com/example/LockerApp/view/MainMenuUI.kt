@@ -82,6 +82,7 @@ fun MainMenuUI(
     backupViewModel: BackupViewModel,
     faceLoginViewModel: FaceLoginViewModel,
     accountid: Int,
+    accountname: String,
     context: Context,// รับค่า accountid
     nameUser: String,
     role: String
@@ -274,7 +275,7 @@ fun MainMenuUI(
             )
             MenuItem(icon = Icons.Outlined.Password,
                 label = "Setpass",
-                backgroundColor = Color(0xFFEE6617),
+                backgroundColor = Color(0xFF8BC34A),
                 iconSize = 25.dp, // ขนาดของไอคอน
                 selected = showEditpassword,
                 onClick = {
@@ -321,7 +322,8 @@ fun MainMenuUI(
                         viewModel = viewModel,
                         mqttViewModel = mqttViewModel,
                         usageLockerViewModel = usageLockerViewModel,
-                        accountid = accountid
+                        accountid = accountid,
+                        accountname=accountname
                     )
 
                 }
@@ -331,7 +333,8 @@ fun MainMenuUI(
                         viewModel = viewModel,
                         mqttViewModel = mqttViewModel,
                         usageLockerViewModel = usageLockerViewModel,
-                        accountid = accountid
+                        accountid = accountid,
+                        accountname=accountname
                     ) // เพิ่มการเรียก ReturnUI
                 }
 
@@ -341,6 +344,7 @@ fun MainMenuUI(
                         lockerDao = lockerDao,
                         compartmentDao = compartmentDao,
                         accountid = accountid,
+                        accountname=accountname,
                     ) { id ->
                         lockerId = id
                         showCompartmentUI = true
@@ -349,7 +353,7 @@ fun MainMenuUI(
                 }
 
                 showCompartmentUI -> {
-                    CompartmentUI(lockerId = lockerId.toInt(), accountid = accountid)
+                    CompartmentUI(lockerId = lockerId.toInt(), accountid = accountid,accountname=accountname)
                 }
 
                 showParticipantUI -> {
@@ -374,7 +378,7 @@ fun MainMenuUI(
                 }
 
                 showBackupScreen -> {
-                    BackupScreen(viewModel = backupViewModel) // แสดงหน้า Participant ที่นี่
+                    BackupScreen(viewModel = backupViewModel,accountname=accountname) // แสดงหน้า Participant ที่นี่
                 }
 
                 showEditpassword -> {
@@ -387,7 +391,8 @@ fun MainMenuUI(
                         viewModel = viewModel,
                         mqttViewModel = mqttViewModel,
                         usageLockerViewModel = usageLockerViewModel,
-                        accountid = accountid
+                        accountid = accountid,
+                        accountname =accountname
                     )
                 }
             }

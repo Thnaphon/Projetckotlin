@@ -15,6 +15,7 @@ import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
 
 
 // Entity สำหรับ Locker
@@ -61,33 +62,42 @@ data class Account(
 )
 
 
+
+
+
+
+// Entity สำหรับ UsageLocker
+@Entity(tableName = "usage_locker")
 data class UsageLocker(
     @PrimaryKey(autoGenerate = true) val UsageLockerID: Int = 0,
-    val LockerID: Int,
-    val CompartmentID: Int ,
-    val AccountID: Int,
+    val locker_name: String,
+    val number_compartment: Int ,
+    val name_equipment: String,
+    val name_user: String,
     val UsageTime: String,
     val Usage : String,
     val Status: String
 
 )
 
-
+// Entity สำหรับ UsageLocker
+@Entity(tableName = "manage_locker")
 data class ManageLocker(
     @PrimaryKey(autoGenerate = true) val ManageLockerID: Int = 0,
-    val LockerID: Int,
-    val AccountID: Int,
+    val locker_name: String,
+    val name_user: String,
     val UsageTime: String,
     val Usage : String,
     val Status: String
 
 )
 
-
+// Entity สำหรับ UsageLocker
+@Entity(tableName = "manage_account")
 data class ManageAccount(
     @PrimaryKey(autoGenerate = true) val ManageAccount: Int = 0,
-    val AccountID : Int,
-    val ByAccountID : Int,
+    val name_user : String,
+    val actoin_username : String,
     val UsageTime: String,
     val Usage : String
 )
@@ -97,18 +107,21 @@ data class ManageAccount(
 // Entity สำหรับ Backup
 @Entity(tableName = "backup_settings")
 data class BackupSettings(
-    @PrimaryKey(autoGenerate = true) val set_backup_id: Int = 0,
+    @PrimaryKey val id: Int = 1,
     val frequency: String, // เช่น "Daily", "Weekly"
-    val backupTime: String
+    val backupTime: String, // เวลา backup เช่น "02:00 AM"
+    val lastBackupDate: String? = null, // เก็บวันที่ backup ล่าสุด
+    val description:String
 )
 
 @Entity(tableName = "backup_log")
 data class BackupLog(
     @PrimaryKey(autoGenerate = true) val backup_log_id : Int = 0,
-    val date_time: String, // เช่น "Daily", "Weekly"
-    val description: String, // เวลา backup เช่น "02:00 AM"
-    val status: Int,
-    val AccountID: Int
+    val date_time: String,
+    val operation: String,
+    val status: String,
+    val actoin_username: String,
+    val description:String
 )
 
 
@@ -118,10 +131,11 @@ interface BackupDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrUpdateBackupSettings(settings: BackupSettings)
 
-    @Query("SELECT * FROM backup_settings LIMIT 1")
+    @Query("SELECT * FROM backup_settings WHERE id = 1 LIMIT 1")
     suspend fun getBackupSettings(): BackupSettings?
 
-
+    @Query("UPDATE backup_settings SET lastBackupDate = :date WHERE id = :id")
+    suspend fun updateLastBackupDate(id: Int, date: String)
 }
 
 // DAO สำหรับ Locker
@@ -236,6 +250,11 @@ interface AccountDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAccount(account: Account)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAccountAndGetId(account: Account) : Long
+
+
+
     @Query("SELECT * FROM account")
     fun getAllAccounts(): LiveData<List<Account>>
 
@@ -305,25 +324,13 @@ interface ManageLockerDao {
     @Query("SELECT * FROM manage_locker")
     fun getAllManageLockers(): LiveData<List<ManageLocker>>
 
-
-    // ค้นหาข้อมูลโดย AccountID
-    @Query("SELECT * FROM manage_locker WHERE AccountID = :accountId")
-    suspend fun getManageLockerByAccountId(accountId: Int): List<ManageLocker>
-
-    // ค้นหาข้อมูลที่มีการใช้งานโดย Status
-    @Query("SELECT * FROM manage_locker WHERE Status = :status")
-    suspend fun getManageLockerByStatus(status: String): List<ManageLocker>
-
-    // ค้นหาข้อมูลที่มีการใช้งานโดยช่วงเวลาการใช้งาน
-    @Query("SELECT * FROM manage_locker WHERE UsageTime BETWEEN :startTime AND :endTime")
-    suspend fun getManageLockerByUsageTime(startTime: String, endTime: String): List<ManageLocker>
 }
 
 @Dao
 interface ManageAccountDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertManageAccount(manageAccount: ManageAccount): Long
+    suspend fun insertManageAccount(manageAccount: ManageAccount)
 
     @Update
     suspend fun updateManageAccount(manageAccount: ManageAccount)
@@ -331,20 +338,35 @@ interface ManageAccountDao {
     @Delete
     suspend fun deleteManageAccount(manageAccount: ManageAccount)
 
-    @Query("SELECT * FROM manage_account WHERE AccountID = :accountId")
-    suspend fun getManageAccountByAccountId(accountId: Int): List<ManageAccount>
+    @Query("SELECT * FROM manage_account")
+    fun getAllAccounts(): Flow<List<ManageAccount>>
 
-    @Query("SELECT * FROM manage_account WHERE ByAccountID = :byAccountId")
-    suspend fun getManageAccountByByAccountId(byAccountId: Int): List<ManageAccount>
+    @Query("SELECT * FROM manage_account WHERE ManageAccount = :id")
+    suspend fun getManageAccountByID(id: Int): ManageAccount?
 
-    @Query("SELECT * FROM manage_account ORDER BY UsageTime DESC")
-    suspend fun getAllManageAccounts(): List<ManageAccount>
+    @Query("DELETE FROM manage_account")
+    suspend fun deleteAllManageAccount()
+}
+@Dao
+interface BackupLogDao {
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBackupLog(backupLog: BackupLog)
+
+    @Query("SELECT * FROM backup_log ORDER BY backup_log_id DESC")
+    fun getAllBackupLogs(): Flow<List<BackupLog>>
+
+    @Delete
+    suspend fun deleteBackupLog(backupLog: BackupLog)
+
+    @Query("DELETE FROM backup_log")
+    suspend fun clearBackupLogs()
 }
 
 
+
 // Room Database สำหรับการรวม Entity และ DAO ทั้งหมด
-@Database(entities = [Locker::class, Compartment::class, Account::class,  UsageLocker::class,ManageLocker::class,ManageAccount::class,BackupSettings::class ], version = 1)
+@Database(entities = [Locker::class, Compartment::class, Account::class,  UsageLocker::class,ManageLocker::class,ManageAccount::class,BackupSettings::class ,BackupLog::class], version = 1)
 abstract class LockerDatabase : RoomDatabase() {
     abstract fun lockerDao(): LockerDao
     abstract fun compartmentDao(): CompartmentDao
@@ -353,6 +375,8 @@ abstract class LockerDatabase : RoomDatabase() {
     abstract fun backupDao(): BackupDao
     abstract fun ManageLockerDao(): ManageLockerDao
     abstract fun ManageAccountDao(): ManageAccountDao
+    abstract fun BackupLogDao(): BackupLogDao
+
 
 
     companion object {

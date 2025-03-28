@@ -74,7 +74,7 @@ import java.io.File
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLockerViewModel: UsageLockerViewModel,accountid: Int) {
+fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLockerViewModel: UsageLockerViewModel,accountid: Int,accountname:String) {
     var selectedLocker by remember { mutableStateOf(0) } // เริ่มต้นที่ All Lockers
     val lockers by viewModel.lockers.collectAsState() // ใช้ StateFlow ในการเก็บค่า locker
     val compartments by viewModel.compartments.collectAsState(initial = emptyList())
@@ -118,7 +118,7 @@ fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLocke
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("${compartments.size} Compartments", style = MaterialTheme.typography.h6.copy(fontWeight = FontWeight.SemiBold), color = Color.Black)
+            Text("${compartments.filter { it.usagestatus == "borrow" && it.status == "available" }.size}  Compartments", style = MaterialTheme.typography.h6.copy(fontWeight = FontWeight.SemiBold), color = Color.Black)
 
             ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
                 Box(
@@ -173,13 +173,14 @@ fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLocke
             modifier = Modifier.width(1000.dp),
             columns = GridCells.Fixed(4), // กำหนดจำนวนคอลัมน์เป็น 3
             content = {
-                items(compartments.filter { it.usagestatus == "borrowed" && it.status == "available" }) { compartment ->
+                items(compartments.filter { it.usagestatus == "borrow" && it.status == "available" }) { compartment ->
                     CompartmentCardReturn(
                         compartment = compartment,
                         mqttViewModel = mqttViewModel,  // ส่ง mqttViewModel
                         viewModel = viewModel,          // ส่ง viewModel
                         usageLockerViewModel = usageLockerViewModel, // ส่ง usageLockerViewModel
                         accountid = accountid,          // ส่ง accountid
+                        accountname=accountname,
                         onStatusChange = { status -> isWaitingForClose = status }
 
                     )
@@ -200,6 +201,7 @@ fun CompartmentCardReturn(
     viewModel: LockerViewModel,
     usageLockerViewModel: UsageLockerViewModel,
     accountid: Int,
+    accountname:String,
     onStatusChange: (Boolean) -> Unit
 ) {
     var showDialog by remember { mutableStateOf(false) } // State สำหรับแสดง Dialog
@@ -245,12 +247,13 @@ fun CompartmentCardReturn(
 
                 // Insert usageLocker data in background thread
                 usageLockerViewModel.insertUsageLocker(
-                    compartment.LockerID,
+                    lockerName.toString(),
                     compartment_Id,
                     usageTime,
                     action,
-                    accountid,
-                    "Success"
+                    accountname,
+                    "Success",
+                    compartment.Name_Item
                 )
             }
 
@@ -278,12 +281,13 @@ fun CompartmentCardReturn(
 
             val compartment_Id = viewModel.getCompartmentId(compartment.LockerID, compartmentId).first()
             usageLockerViewModel.insertUsageLocker(
-                compartment.LockerID,
+                lockerName.toString(),
                 compartment_Id,
                 usageTime,
                 action,
-                accountid,
-                "Fail"
+                accountname,
+                "Fail",
+                compartment.Name_Item
             )
             IsClick = false
         }

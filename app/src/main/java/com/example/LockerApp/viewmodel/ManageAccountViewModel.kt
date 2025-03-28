@@ -1,6 +1,7 @@
 package com.example.LockerApp.viewmodel
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -33,6 +34,7 @@ class ManageAccountViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch {
             manageAccountDao.insertManageAccount(manageAccount)
             getAllManageAccounts()
+            Log.d("Insert","Success")
         }
     }
 
@@ -50,21 +52,13 @@ class ManageAccountViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
-    fun getManageAccountByAccountId(accountId: Int) {
-        viewModelScope.launch {
-            _manageAccounts.value = manageAccountDao.getManageAccountByAccountId(accountId)
-        }
-    }
 
-    fun getManageAccountByByAccountId(byAccountId: Int) {
-        viewModelScope.launch {
-            _manageAccounts.value = manageAccountDao.getManageAccountByByAccountId(byAccountId)
-        }
-    }
 
     fun getAllManageAccounts() {
         viewModelScope.launch {
-            _manageAccounts.value = manageAccountDao.getAllManageAccounts()
+            manageAccountDao.getAllAccounts().collect { accounts ->
+                _manageAccounts.value = accounts
+            }
         }
     }
 }
