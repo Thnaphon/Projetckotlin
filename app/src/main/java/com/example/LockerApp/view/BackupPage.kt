@@ -44,11 +44,13 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.RestorePage
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -85,8 +87,6 @@ import java.util.Locale
 @Composable
 fun BackupScreen(viewModel: BackupViewModel,accountname: String) {
 
-
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -110,8 +110,10 @@ fun BackupScreen(viewModel: BackupViewModel,accountname: String) {
 
 @Composable
 fun BackupSectionTitle(viewModel: BackupViewModel,title: String, showButton:Boolean,accountname: String) {
+    val mqttService = MqttService()
     val settings by viewModel.backupSettings.collectAsState()
     val context = LocalContext.current
+    
     Row(modifier = Modifier
         .fillMaxWidth()
         .padding(bottom = 15.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
@@ -133,39 +135,83 @@ fun BackupSectionTitle(viewModel: BackupViewModel,title: String, showButton:Bool
             Column {
                 Row() {
                     Column {
-                        Button(onClick = {
-                            val Time = System.currentTimeMillis().toString()
-                            viewModel.insertBackupLog(
-                                BackupLog(date_time = Time, description = settings?.description ?: "Full Backup", status = "Success", actoin_username = accountname, operation = "Backup")
-                            )
-                            viewModel.performBackup(context)
-
-                        }
-
+                        Card(
+                            modifier = Modifier
+                                .width(56.dp)
+                                .height(56.dp)
+                                .clip(RoundedCornerShape(15.dp))
+                                .border(
+                                    2.dp,
+                                    Color(0xFF3961AA),
+                                    RoundedCornerShape(15.dp)
+                                ), // มุมมนของการ์ด
+                            elevation = 8.dp, // ความสูงของเงา
+                            backgroundColor = Color.White // พื้นหลังสีขาวของการ์ด
                         ) {
-                            Icon(
-                                imageVector = Icons.Filled.Backup,
-                                contentDescription = "Backup Icon"
-                            )
+                            IconButton(
+                                onClick = {
+                                    val Time = System.currentTimeMillis().toString()
+                                    viewModel.insertBackupLog(
+                                        BackupLog(date_time = Time, description = settings?.description ?: "Full Backup", status = "Success", actoin_username = accountname, operation = "Backup")
+                                    )
+                                    viewModel.performBackupToPi(mqttService, context)
+
+                                },
+                                modifier = Modifier
+                                    .fillMaxSize() // ขยายขนาดให้เต็มการ์ด
+                                    .padding(4.dp) // เพิ่ม padding รอบๆ IconButton
+                                ,
+
+
+                                ) {
+                                Icon(
+                                    Icons.Filled.Backup,
+                                    contentDescription = "Backup Icon",
+                                    tint = Color(0xFF3961AA)
+                                )
+                            }
                         }
+
 
 
                     }
                     Column(modifier = Modifier.padding(start = 8.dp)) {
-                        Button(onClick = {
-                            val Time = System.currentTimeMillis().toString()
-                            viewModel.performRestore(context)
-                            viewModel.insertBackupLog(
-                                BackupLog(date_time = Time, description = settings?.description ?: "Full Backup", status = "Success", actoin_username = accountname, operation = "Restore")
-                            )
-
-                        }
-
+                        Card(
+                            modifier = Modifier
+                                .width(56.dp)
+                                .height(56.dp)
+                                .clip(RoundedCornerShape(15.dp))
+                                .border(
+                                    2.dp,
+                                    Color(0xFF3961AA),
+                                    RoundedCornerShape(15.dp)
+                                ), // มุมมนของการ์ด
+                            elevation = 8.dp, // ความสูงของเงา
+                            backgroundColor = Color.White // พื้นหลังสีขาวของการ์ด
                         ) {
-                            Icon(
-                                imageVector = Icons.Filled.RestorePage,
-                                contentDescription = "Restore Icon"
-                            )
+                            IconButton(
+                                onClick = {
+                                    val Time = System.currentTimeMillis().toString()
+                                    viewModel.insertBackupLog(
+                                        BackupLog(date_time = Time, description = settings?.description ?: "Full Backup", status = "Success", actoin_username = accountname, operation = "Restore")
+                                    )
+                                    viewModel.restoreBackupFromPi(mqttService, context)
+
+
+                                },
+                                modifier = Modifier
+                                    .fillMaxSize() // ขยายขนาดให้เต็มการ์ด
+                                    .padding(4.dp) // เพิ่ม padding รอบๆ IconButton
+                                ,
+
+
+                                ) {
+                                Icon(
+                                    Icons.Filled.RestorePage,
+                                    contentDescription = "Restore Icon",
+                                    tint = Color(0xFF3961AA)
+                                )
+                            }
                         }
                     }
                 }
@@ -339,10 +385,19 @@ fun ScheduledBackupCard(viewModel: BackupViewModel) {
                         }
 
                     } else {
-                        IconButton(
-                            onClick = { isEditing = true }
+                        Box(
+                            contentAlignment = Alignment.CenterEnd,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(Icons.Outlined.Edit, contentDescription = "Edit", tint = Color.Black)
+                            IconButton(
+                                onClick = { isEditing = true }
+                            ) {
+                                Icon(
+                                    Icons.Filled.Edit,
+                                    contentDescription = "Edit",
+                                    tint = Color.Black
+                                )
+                            }
                         }
                     }
                 }

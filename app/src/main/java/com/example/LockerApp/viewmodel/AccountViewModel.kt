@@ -20,7 +20,7 @@ import java.time.format.DateTimeFormatter
 class AccountViewModel(application: Application) : AndroidViewModel(application) {
     private val accountDao: AccountDao = LockerDatabase.getDatabase(application).accountDao()
 
-    val userDetails: LiveData<List<Account>> = accountDao.getAllAccounts()
+    var userDetails: LiveData<List<Account>> = accountDao.getAllAccounts()
     var existingServiceAccount by mutableStateOf<Account?>(null)
         private set
 
@@ -40,7 +40,8 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                 )
 
                 accountDao.insertAccount(serviceAccount) // บันทึกและรับค่า ID กลับมา
-
+                refreshUserDetails()
+                accountDao.getAllAccounts()
 
             }
         }
@@ -73,6 +74,13 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
     fun updateAccountFields(accountId: Int, name: String, phone: String, role: String) {
         viewModelScope.launch {
             accountDao.updateAccountFields(accountId, name, phone, role)
+        }
+    }
+    fun refreshUserDetails() {
+        viewModelScope.launch(Dispatchers.IO) {
+            // ลบข้อมูลจาก cache (หากจำเป็น) และดึงข้อมูลใหม่
+            val newDetails = accountDao.getAllAccounts()
+            userDetails = newDetails
         }
     }
 

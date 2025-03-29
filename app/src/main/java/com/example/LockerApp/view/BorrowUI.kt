@@ -98,6 +98,7 @@ fun BorrowUI(
     accountname:String
 ) {
     var selectedLocker by remember { mutableStateOf(0) } // เริ่มต้นที่ All Lockers
+    var nameSelectedLocker by remember {mutableStateOf(" ")}
     val lockers by viewModel.lockers.collectAsState() // ใช้ StateFlow ในการเก็บค่า locker
     val compartments by viewModel.compartments.collectAsState(initial = emptyList())
     var statusMessage by remember { mutableStateOf("") }
@@ -109,6 +110,14 @@ fun BorrowUI(
     LaunchedEffect(Unit) {
         viewModel.loadCompartments(selectedLocker)
         viewModel.loadLockersUi()  // โหลดข้อมูลใหม่เมื่อเลือก Locker
+        compartments?.forEach { Number ->
+            viewModel.getMqttTopicFromDatabase(Number.LockerID).collect { mqttTopic ->
+                mqttTopic?.let {
+                    mqttViewModel.subscribeToTopic("$it/borrow/${Number.number_compartment}/status")
+                    mqttViewModel.subscribeToTopic("$it/return/${Number.number_compartment}/status")
+                }
+            }
+        }
     }
 
     LaunchedEffect(selectedLocker) {
@@ -135,7 +144,15 @@ fun BorrowUI(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("${compartments.filter { it.usagestatus == "return" && it.status == "available" }.size} Compartments", style = MaterialTheme.typography.h6.copy(fontWeight = FontWeight.SemiBold), color = Color.Black)
+            Text(
+                "${compartments.filter { compartment ->
+                    compartment.usagestatus == "return" &&
+                            compartment.status == "available" &&
+                            lockers.find { it.LockerID == compartment.LockerID }?.status == "available" // เช็คสถานะของ locker
+                }.size} Compartments",
+                style = MaterialTheme.typography.h6.copy(fontWeight = FontWeight.SemiBold),
+                color = Color.Black
+            )
 
             ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
                 Box(
@@ -153,7 +170,7 @@ fun BorrowUI(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = if (selectedLocker == 0) "All Lockers" else "Locker $selectedLocker",
+                            text = if (selectedLocker == 0) "All Lockers" else "Locker $nameSelectedLocker",
                             style = MaterialTheme.typography.body1
                         )
                         Icon(
@@ -170,9 +187,10 @@ fun BorrowUI(
                     lockers.forEach { locker ->
                         DropdownMenuItem(onClick = {
                             selectedLocker = locker.LockerID
+                            nameSelectedLocker = locker.Lockername
                             expanded = false
                         }) {
-                            Text("Locker ${locker.LockerID}")
+                            Text("Locker ${locker.Lockername}")
                         }
                     }
                     DropdownMenuItem(onClick = {
@@ -190,7 +208,13 @@ fun BorrowUI(
             modifier = Modifier.width(1000.dp),
             columns = GridCells.Fixed(4), // กำหนดจำนวนคอลัมน์เป็น 3
             content = {
-                items(compartments.filter { it.usagestatus == "return" && it.status == "available" }) { compartment ->
+                items(
+                    compartments.filter { compartment ->
+                        compartment.usagestatus == "return" &&
+                                compartment.status == "available" &&
+                                lockers.find { it.LockerID == compartment.LockerID }?.status == "available" // เช็คสถานะของ locker ด้วย
+                    }
+                ) { compartment ->
                     CompartmentCard(
                         compartment = compartment,
                         mqttViewModel = mqttViewModel,  // ส่ง mqttViewModel

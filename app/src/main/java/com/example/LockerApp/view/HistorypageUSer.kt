@@ -95,20 +95,17 @@ import kotlin.math.log
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun UsageHistoryScreenUser(accountViewModel: AccountViewModel, usageLockerViewModel: UsageLockerViewModel, navController: NavController,viewModel: LockerViewModel,accountid:Int) {
+fun UsageHistoryScreenUser(usageLockerViewModel: UsageLockerViewModel,viewModel: LockerViewModel,accountname:String) {
     var searchQuery by remember { mutableStateOf("") }
     val manageAccountViewModel : ManageAccountViewModel = viewModel()
     // ดึงข้อมูลจาก ViewModel
     val usageLockers by usageLockerViewModel.allUsageLockers.observeAsState(emptyList())
-    val manageLockers by usageLockerViewModel.allManageLockers.observeAsState(emptyList())
-    val manageAccounts by manageAccountViewModel.manageAccounts.observeAsState(emptyList())
-    var filterShowcolumn by remember { mutableStateOf("All History") }
     var selectedlocker by remember { mutableStateOf("all locker") }
     val filteredUsageLockers = usageLockers.filter {
         (selectedlocker == "all locker" || it.locker_name == selectedlocker) &&
                 (it.Usage.contains(searchQuery, ignoreCase = true) ||
                         it.locker_name.contains(searchQuery, ignoreCase = true) ||
-                        it.number_compartment.toString().contains(searchQuery, ignoreCase = true)) && (it.Usage == "borrow" || it.Usage == "return")
+                        it.number_compartment.toString().contains(searchQuery, ignoreCase = true)) && (it.Usage == "borrow" || it.Usage == "return") &&(it.name_user==accountname)
 
     }
 

@@ -82,6 +82,7 @@ fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLocke
     var expanded by remember { mutableStateOf(false) }
     var isWaitingForClose by remember { mutableStateOf(false) }
     val compartmentNumber by viewModel.getAllCompartmentNumber(selectedLocker).observeAsState(initial = emptyList())
+    var nameSelectedLocker by remember {mutableStateOf(" ")}
 
     LaunchedEffect(Unit) {
         viewModel.loadCompartments(selectedLocker)
@@ -118,7 +119,15 @@ fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLocke
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("${compartments.filter { it.usagestatus == "borrow" && it.status == "available" }.size}  Compartments", style = MaterialTheme.typography.h6.copy(fontWeight = FontWeight.SemiBold), color = Color.Black)
+            Text(
+                "${compartments.filter { compartment ->
+                    compartment.usagestatus == "borrow" &&
+                            compartment.status == "available" &&
+                            lockers.find { it.LockerID == compartment.LockerID }?.status == "available" // เช็คสถานะของ locker
+                }.size} Compartments",
+                style = MaterialTheme.typography.h6.copy(fontWeight = FontWeight.SemiBold),
+                color = Color.Black
+            )
 
             ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
                 Box(
@@ -136,7 +145,7 @@ fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLocke
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = if (selectedLocker == 0) "All Lockers" else "Locker $selectedLocker",
+                            text = if (selectedLocker == 0) "All Lockers" else "Locker $nameSelectedLocker",
                             style = MaterialTheme.typography.body1
                         )
                         Icon(
@@ -153,9 +162,10 @@ fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLocke
                     lockers.forEach { locker ->
                         DropdownMenuItem(onClick = {
                             selectedLocker = locker.LockerID
+                            nameSelectedLocker = locker.Lockername
                             expanded = false
                         }) {
-                            Text("Locker ${locker.LockerID}")
+                            Text("Locker ${locker.Lockername}")
                         }
                     }
                     DropdownMenuItem(onClick = {
@@ -173,7 +183,13 @@ fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLocke
             modifier = Modifier.width(1000.dp),
             columns = GridCells.Fixed(4), // กำหนดจำนวนคอลัมน์เป็น 3
             content = {
-                items(compartments.filter { it.usagestatus == "borrow" && it.status == "available" }) { compartment ->
+                items(
+                    compartments.filter { compartment ->
+                        compartment.usagestatus == "borrow" &&
+                                compartment.status == "available" &&
+                                lockers.find { it.LockerID == compartment.LockerID }?.status == "available" // เช็คสถานะของ locker ด้วย
+                    }
+                ){ compartment ->
                     CompartmentCardReturn(
                         compartment = compartment,
                         mqttViewModel = mqttViewModel,  // ส่ง mqttViewModel

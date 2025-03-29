@@ -69,7 +69,7 @@ fun FaceVerificationOverlay(
     var isScanningVisible by remember { mutableStateOf(true) }
     var isSuccessVisible by remember { mutableStateOf(false) }
     var isFailedVisible by remember { mutableStateOf(false) }
-    var verificationMessage by remember { mutableStateOf("กำลังสแกนใบหน้า") }
+    var verificationMessage by remember { mutableStateOf("Scanning") }
 
     // Handle login state changes for verification
     LaunchedEffect(loginState) {
@@ -78,7 +78,7 @@ fun FaceVerificationOverlay(
                 isScanningVisible = true
                 isSuccessVisible = false
                 isFailedVisible = false
-                verificationMessage = "กำลังสแกนใบหน้า"
+                verificationMessage = "Scanning"
             }
             is FaceLoginViewModel.LoginState.Success -> {
                 val state = loginState as FaceLoginViewModel.LoginState.Success
@@ -88,7 +88,7 @@ fun FaceVerificationOverlay(
                     isSuccessVisible = true
                     isFailedVisible = false
                     isVerificationSuccessful = true
-                    verificationMessage = "ยืนยันสำเร็จ"
+                    verificationMessage = "Success"
 
                     delay(1500) // Show success animation briefly
 
@@ -114,7 +114,7 @@ fun FaceVerificationOverlay(
                     isSuccessVisible = false
                     isFailedVisible = true
                     isVerificationFailed = true
-                    verificationMessage = "ใบหน้าผู้ใช้งานไม่ตรงกับผู้ใช้งาน"
+                    verificationMessage = "Denied Different Face"
 
                     delay(3000) // Show error animation briefly
 
@@ -128,7 +128,7 @@ fun FaceVerificationOverlay(
                 isScanningVisible = false
                 isSuccessVisible = false
                 isFailedVisible = true
-                verificationMessage = "ยืนยันตัวตนล้มเหลว: ${state.message}"
+                verificationMessage = "Failed: ${state.message}"
 
                 delay(3000) // Show error briefly
                 viewModel.resetToScanning() // Reset to scanning state
@@ -259,7 +259,7 @@ fun FaceVerificationOverlay(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = "ยืนยันตัวตน",
+                                text = "Verification",
                                 fontSize = 18.sp,
                                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                                 textAlign = TextAlign.Center,
@@ -294,7 +294,7 @@ fun FaceVerificationOverlay(
                             contentColor = Color.White
                         )
                     ) {
-                        Text("กลับสู้ mainmenu")
+                        Text("Back to mainmenu")
                     }
                 }
             }

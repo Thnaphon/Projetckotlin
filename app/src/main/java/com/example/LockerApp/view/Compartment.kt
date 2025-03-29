@@ -196,7 +196,8 @@ fun CompartmentUI(lockerId: Int, viewModel: LockerViewModel = viewModel(),accoun
 
                                     viewModel.addCompartment(compartment,lockerId)
                                     Topic.value = "$mqttTopic/create/$selectedCompartmentId/status"
-                                    mqttViewModel.subscribeToTopic(Topic.value)
+                                    mqttViewModel.subscribeToTopic("$mqttTopic/borrow/${compartment.number_compartment}/status")
+                                    mqttViewModel.subscribeToTopic("$mqttTopic/return/${compartment.number_compartment}/status")
                                     mqttViewModel.sendMessage("$mqttTopic/create/$selectedCompartmentId","")
 
 
@@ -295,6 +296,7 @@ fun EditCompartmentForm(compartment: Compartment, onCancel: () -> Unit,viewModel
     var statusCompartment by remember { mutableStateOf(false) }
     var updatedLockerStatus by remember { mutableStateOf("") }
     val lockername by viewModel.getLockername(compartment.LockerID).collectAsState(initial = null)
+    if (compartment.status=="available")  statusCompartment = true else statusCompartment = false
     Card(
         shape = RoundedCornerShape(15.dp),
         modifier = Modifier

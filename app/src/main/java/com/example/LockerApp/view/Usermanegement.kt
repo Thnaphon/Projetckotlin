@@ -52,8 +52,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -67,6 +70,7 @@ import com.example.LockerApp.viewmodel.FaceLoginViewModel
 import com.example.LockerApp.viewmodel.LockerViewModel
 import com.example.LockerApp.viewmodel.ManageAccountViewModel
 import com.example.LockerApp.viewmodel.MqttViewModel
+import org.bouncycastle.util.Arrays.append
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -107,15 +111,20 @@ fun ParticipantScreen(
         (selectedRole == "All Users" || it.Role == selectedRole) && // ฟิลเตอร์ Role
                 (it.Name.contains(searchQuery, ignoreCase = true) ||
                         it.Role.contains(searchQuery, ignoreCase = true) ||
-                        it.Phone.contains(searchQuery, ignoreCase = true))
+                        it.Phone.contains(searchQuery, ignoreCase = true) || formatDate(it.CreatedDate).contains(searchQuery, ignoreCase = true))&&it.Name!="service"
     }
     val userCount = filteredUsers.size
-
+    var isDeleteDialogVisible by remember { mutableStateOf(false) }
+    var userToDelete by remember { mutableStateOf<Account?>(null) }
 
     // Reset the face login state when entering the screen
     LaunchedEffect(Unit) {
         faceLoginViewModel.refreshFaceData()
         faceLoginViewModel.resetToScanning()
+        accountViewModel.refreshUserDetails()
+    }
+    LaunchedEffect(userDetails) {
+        accountViewModel.refreshUserDetails()
     }
 
     if (isAdminVerificationDialogVisible) {
@@ -218,6 +227,7 @@ fun ParticipantScreen(
                             contentDescription = "Search Icon"
                         )
                     },
+                    singleLine = true,
                     placeholder = {
                         Text("Search")  // ใช้ placeholder แทน label
                     },
@@ -380,6 +390,25 @@ fun ParticipantScreen(
                                 isEditDialogVisible = false
                             }
                         )
+                        DeleteUserDialog(
+                            isVisible = isDeleteDialogVisible,
+                            user = userToDelete,
+                            onConfirmDelete = {
+                                userToDelete?.let { user ->
+                                    val usageTime = System.currentTimeMillis().toString()
+                                    val manageAccount = ManageAccount(
+                                        name_user = user.Name,
+                                        actoin_username = adminname,
+                                        UsageTime = usageTime,
+                                        Usage = "Delete Account"
+                                    )
+                                    manageAccountViewModel.insertManageAccount(manageAccount)
+                                    accountViewModel.deleteAccount(user)
+                                }
+                                isDeleteDialogVisible = false
+                            },
+                            onDismiss = { isDeleteDialogVisible = false }
+                        )
 
                     }
 
@@ -453,10 +482,8 @@ fun ParticipantScreen(
                                 IconButton(
                                     onClick = {
                                         if (!isAddDialogVisible && !isEditDialogVisible) {
-                                            val usageTime = System.currentTimeMillis().toString()
-                                            val ManageAccount = ManageAccount(name_user = user.Name,actoin_username = adminname,UsageTime=usageTime,Usage = "Delete Account Account" )
-                                            manageAccountViewModel.insertManageAccount(ManageAccount)
-                                            accountViewModel.deleteAccount(user)
+                                            userToDelete = user
+                                            isDeleteDialogVisible = true
                                         }
                                     },
                                     modifier = Modifier.weight(0.3f),
@@ -893,6 +920,7 @@ fun AddUserDialog(
                         modifier = Modifier
                             .weight(1f)
                             .background(Color.Transparent),
+                        singleLine = true,
                         colors = TextFieldDefaults.textFieldColors(
                             backgroundColor = Color.Transparent,
                             focusedIndicatorColor = if (validationAttempted && isNameEmpty) Color.Red else Color.White,
@@ -914,6 +942,7 @@ fun AddUserDialog(
                                 onPhoneChange(newValue)
                             }
                         },
+                        singleLine = true,
                         label = { Text("Phone Number", color = Color.White) },
                         textStyle = TextStyle(color = Color.White),
                         modifier = Modifier.weight(1f),
@@ -973,8 +1002,7 @@ fun EditAccountDialog(
     val isFormNull = !isNameEmpty && !isRoleEmpty && !isPhoneEmpty
     if (isVisible) {
         Card(
-            modifier = Modifier
-                .fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(bottomEnd = 16.dp, bottomStart = 16.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
             colors = CardDefaults.cardColors(containerColor = Color(0xFF2A3D4F))
@@ -987,9 +1015,11 @@ fun EditAccountDialog(
                     TextField(
                         value = name,
                         onValueChange = onNameChange,
+
                         label = { Text("Name", color = Color.White) },
                         textStyle = TextStyle(color = Color.White),
-                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
                         colors = TextFieldDefaults.textFieldColors(
                             backgroundColor = Color.Transparent,
                             focusedIndicatorColor = if (validationAttempted && isNameEmpty) Color.Red else Color.White,
@@ -1006,10 +1036,15 @@ fun EditAccountDialog(
 
                     TextField(
                         value = phone,
-                        onValueChange = onPhoneChange,
+                        onValueChange = { onPhoneChange ->
+                            if (onPhoneChange.length <= 10 && onPhoneChange.all { it.isDigit() }) {
+                                onPhoneChange(onPhoneChange)
+                            }
+                        },
+                        singleLine = true,
                         label = { Text("Phone", color = Color.White) },
                         textStyle = TextStyle(color = Color.White),
-                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                        modifier = Modifier.weight(1f),
                         colors = TextFieldDefaults.textFieldColors(
                             backgroundColor = Color.Transparent,
                             focusedIndicatorColor = if (validationAttempted && (!isPhoneValid || isPhoneEmpty)) Color.Red else Color.White,
@@ -1017,34 +1052,86 @@ fun EditAccountDialog(
                         )
                     )
                 }
-            }
 
-            Row(
-                horizontalArrangement = Arrangement.End,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                TextButton(onClick = onCancel, modifier = Modifier.padding(top = 16.dp)) {
-                    Text("Cancel", color = Color.White)
-                }
-
-                TextButton(
-                    onClick = {
-                        validationAttempted = true
-                        if (isFormNull && isPhoneValid) {
-                            onApply()
-                        }
-                    },
-                    modifier = Modifier
-                        .padding(start = 8.dp, top = 16.dp)
-                        .background(Color.White, shape = RoundedCornerShape(8.dp))
+                Row(
+                    horizontalArrangement = Arrangement.End,
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
                 ) {
-                    Text("Apply", color = Color(0xFF2A3D4F))
+                    TextButton(onClick = onCancel) {
+                        Text("Cancel", color = Color.White)
+                    }
+
+                    TextButton(
+                        onClick = {
+                            validationAttempted = true
+                            if (isFormNull && isPhoneValid) {
+                                onApply()
+                            }
+                        },
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .background(Color.White, shape = RoundedCornerShape(8.dp))
+                    ) {
+                        Text("Apply", color = Color(0xFF2A3D4F))
+                    }
                 }
             }
         }
     }
 }
+@Composable
+fun DeleteUserDialog(
+    isVisible: Boolean,
+    user: Account?,
+    onConfirmDelete: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    if (isVisible) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(bottomEnd = 16.dp, bottomStart = 16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFB71C1C)) // สีแดงเข้ม
+        ) {
+            Column(
+                modifier = Modifier.padding(30.dp),
+                horizontalAlignment = Alignment.Start
+            ) {
 
+                Text(
+                    text = buildAnnotatedString {
+                        append("Do you want to ")
+                        withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                            append("DELETE Name: ${user?.Name} Role: ${user?.Role} Phone: ${user?.Phone} ?")
+                        }
+                    },
+                    color = Color.White,
+                    style = MaterialTheme.typography.body1.copy(fontSize = 18.sp)
+                )
+
+                Row(
+                    horizontalArrangement = Arrangement.End,
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel", color = Color.White)
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    TextButton(
+                        onClick = onConfirmDelete,
+                        modifier = Modifier
+                            .background(Color.White, shape = RoundedCornerShape(8.dp))
+                            .padding(horizontal = 8.dp)
+                    ) {
+                        Text("Delete", color = Color(0xFFB71C1C))
+                    }
+                }
+            }
+        }
+    }
+}
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun DropdownUser(

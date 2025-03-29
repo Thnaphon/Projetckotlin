@@ -232,10 +232,8 @@ fun MainMenuUser(
                 }
 
 
-
-
                 showUsageHistoryScreen -> {
-                    UsageHistoryScreenUser(accountViewModel= accountViewModel,usageLockerViewModel=  usageLockerViewModel, navController = navController ,viewModel=viewModel,accountid=accountid) // แสดงหน้า Participant ที่นี่
+                    UsageHistoryScreenUser(usageLockerViewModel=  usageLockerViewModel ,viewModel=viewModel,accountname=nameUser) // แสดงหน้า Participant ที่นี่
                 }
 
 

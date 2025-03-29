@@ -153,7 +153,6 @@ fun LockerApp() {
 //    }
 
 
-
     // ฟังก์ชันที่จัดการการโต้ตอบ
 
 
@@ -209,7 +208,7 @@ fun LockerApp() {
                 mqttViewModel = mqttViewModel,
                 usageLockerViewModel = usageLockerViewModel,
                 accountid = accountid, // ส่งค่าไปใช้งานใน UI
-                accountname=name
+                accountname = name
             )
         }
         composable(
@@ -226,7 +225,7 @@ fun LockerApp() {
                 mqttViewModel = mqttViewModel,
                 usageLockerViewModel = usageLockerViewModel,
                 accountid = accountid, // ส่งค่าไปใช้งานใน UI
-                accountname= name
+                accountname = name
             )
         }
         composable(
@@ -244,7 +243,7 @@ fun LockerApp() {
                 navController = navController,
                 compartmentDao = compartmentDao,
                 accountid = accountid, // ส่งค่า accountid ไป
-                accountname= name,
+                accountname = name,
                 onLockerClick = {
                     // ใส่โค้ดที่ต้องการให้ทำเมื่อมีการคลิกที่ Locker
                 }
@@ -272,7 +271,7 @@ fun LockerApp() {
                     lockerId = lockerId,
                     viewModel = lockerViewModel,
                     accountid = accountid,
-                    accountname=name
+                    accountname = name
                 ) // ส่ง LockerViewModel
             }
         }
@@ -332,7 +331,7 @@ fun LockerApp() {
                 backupViewModel = viewModel,
                 faceLoginViewModel = faceLoginViewModel,
                 accountid = accountid,  // ส่ง accountid ไปใช้ใน UI
-                accountname=name,
+                accountname = name,
                 context = context,
                 nameUser = name,
                 role = role
@@ -361,32 +360,6 @@ fun LockerApp() {
                 role = role
             )
         }
-
-        composable(
-            "main_menu_user/{accountid}/{name}/{role}",
-            arguments = listOf(
-                navArgument("accountid") { type = NavType.IntType },
-                navArgument("name") { type = NavType.StringType },
-                navArgument("role") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            // ดึง accountid จาก arguments ที่ส่งมาจาก route
-            val accountid = backStackEntry.arguments?.getInt("accountid") ?: 0
-            val name = backStackEntry.arguments?.getString("name") ?: "Unknown"
-            val role = backStackEntry.arguments?.getString("role") ?: "Unknown"
-            MainMenuUser(
-                viewModel = lockerViewModel,
-                mqttViewModel = mqttViewModel,
-                navController = navController,
-                accountViewModel = accountViewModel,
-                usageLockerViewModel = usageLockerViewModel,
-                accountid = accountid,  // ส่ง accountid ไปใช้ใน UI
-                nameUser = name,
-                role = role
-            )
-        }
-
-
 
         composable(
             route = "face_capture/{accountid}/{adminname}/{adminrole}?name={name}&role={role}&phone={phone}",
@@ -424,7 +397,5 @@ fun LockerApp() {
                 )
             }
         }
-
-
     }
 }

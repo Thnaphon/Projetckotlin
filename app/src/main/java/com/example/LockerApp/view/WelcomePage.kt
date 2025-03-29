@@ -117,7 +117,7 @@ fun WelcomePage(
         val allPermissionsGranted = permissions.values.all { it }
         if (allPermissionsGranted) {
             // Show face login overlay instead of navigating
-            showFaceLoginOverlay = true
+//            showFaceLoginOverlay = true
         } else {
             // annoying user What is going on now you have to do it your own
             permissionDenialCount++
@@ -276,7 +276,9 @@ fun WelcomePage(
                                     Button(
                                         onClick = {
                                             try {
-                                                checkAndRequestFormaster()
+                                                if (!arePermissionsGranted()) {
+                                                    permissionLauncher.launch(permissions)
+                                                } else {
                                                     val encrypted = encryptedData.value
                                                     if (encrypted != null) {
                                                         val decryptedPassword =
@@ -294,7 +296,7 @@ fun WelcomePage(
                                                             ).show()
                                                         }
                                                     }
-
+                                                }
                                             } catch (e: Exception) {
                                                 Toast.makeText(
                                                     context,
@@ -362,10 +364,10 @@ fun WelcomePage(
     if (showPermissionDialog) {
         AlertDialog(
             onDismissRequest = { showPermissionDialog = false },
-            title = { Text("จำเป็นต้องอนุญาต การเข้าถึงกล้องและพื้นที่") },
+            title = { Text("Need permission") },
             text = {
                 Text(
-                    "แอพพลิเคชั่นของเราจำเป็นต้องเข้าถึงกล้อง และพื้นที่ในการจัดเก็บข้อมูล.",
+                    "Our application need to access Camera and Gallery to work properly.",
                     textAlign = TextAlign.Center
                 )
             },

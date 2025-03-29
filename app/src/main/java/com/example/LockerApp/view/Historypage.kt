@@ -33,7 +33,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Divider
@@ -100,7 +102,7 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.log
 
-@OptIn(ExperimentalMaterialApi::class)
+
 @Composable
 fun UsageHistoryScreen(accountViewModel: AccountViewModel, usageLockerViewModel: UsageLockerViewModel, navController: NavController,viewModel: LockerViewModel) {
     var searchQuery by remember { mutableStateOf("") }
@@ -202,6 +204,7 @@ fun UsageHistoryScreen(accountViewModel: AccountViewModel, usageLockerViewModel:
 
                             )
                     },
+                    singleLine = true,
                     colors = TextFieldDefaults.textFieldColors(
                         backgroundColor = Color.Transparent, // ตั้งให้พื้นหลังโปร่งใส
                         focusedIndicatorColor = Color.Transparent,  // สีเส้นขอบเมื่อเลือก
@@ -244,29 +247,49 @@ fun UsageHistoryScreen(accountViewModel: AccountViewModel, usageLockerViewModel:
                                     val filteredCombinedLockers = when (filterShowcolumn) {
                                         "All History" -> {
                                             usageLockerCount = combinedLockers.size
-                                            combinedLockers
+                                            combinedLockers.filter {
+                                                it.Username.contains(searchQuery, ignoreCase = true) ||
+                                                        it.Lockername?.contains(searchQuery, ignoreCase = true) == true ||
+                                                        it.Usage.contains(searchQuery, ignoreCase = true)
+                                            }
                                         }
                                         "Manage Locker" -> {
                                             val filteredCompartmentLockers = filteredUsageLockersTransformed.filter { usageLocker ->
-                                                usageLocker.Usage == "Edit Compartment" || usageLocker.Usage == "Create Compartment"
+                                                (usageLocker.Usage == "Edit Compartment" || usageLocker.Usage == "Create Compartment") &&
+                                                        (usageLocker.Username.contains(searchQuery, ignoreCase = true) ||
+                                                                usageLocker.Lockername?.contains(searchQuery, ignoreCase = true) == true ||
+                                                                usageLocker.Usage.contains(searchQuery, ignoreCase = true))
                                             }
                                             usageLockerCount = manageAccountsTransformed.size + filteredCompartmentLockers.size
-                                            manageAccountsTransformed + filteredCompartmentLockers
+                                            (manageAccountsTransformed + filteredCompartmentLockers).filter {
+                                                it.Username.contains(searchQuery, ignoreCase = true) ||
+                                                        it.Lockername?.contains(searchQuery, ignoreCase = true) == true ||
+                                                        it.Usage.contains(searchQuery, ignoreCase = true)
+                                            }
                                         }
                                         "Manage User" -> {
                                             usageLockerCount = manageAccountsTransformed.size
-                                            manageAccountsTransformed
-                                        }
-
-                                        "Usage Locker" -> {
-                                            usageLockerCount = filteredUsageLockersTransformed.filter { usageLocker ->
-                                                usageLocker.Usage == "borrow" || usageLocker.Usage == "return"
-                                            }.size
-                                            filteredUsageLockersTransformed.filter { usageLocker ->
-                                                usageLocker.Usage == "borrow" || usageLocker.Usage == "return"
+                                            manageAccountsTransformed.filter {
+                                                it.Username.contains(searchQuery, ignoreCase = true) ||
+                                                        it.Lockername?.contains(searchQuery, ignoreCase = true) == true ||
+                                                        it.Usage.contains(searchQuery, ignoreCase = true)
                                             }
                                         }
-                                        else -> combinedLockers // กรองข้อมูลตามค่าที่ไม่รู้จัก
+                                        "Usage Locker" -> {
+                                            val filteredLocker = filteredUsageLockersTransformed.filter { usageLocker ->
+                                                (usageLocker.Usage == "borrow" || usageLocker.Usage == "return") &&
+                                                        (usageLocker.Username.contains(searchQuery, ignoreCase = true) ||
+                                                                usageLocker.Lockername?.contains(searchQuery, ignoreCase = true) == true ||
+                                                                usageLocker.Usage.contains(searchQuery, ignoreCase = true))
+                                            }
+                                            usageLockerCount = filteredLocker.size
+                                            filteredLocker
+                                        }
+                                        else -> combinedLockers.filter {
+                                            it.Username.contains(searchQuery, ignoreCase = true) ||
+                                                    it.Lockername?.contains(searchQuery, ignoreCase = true) == true ||
+                                                    it.Usage.contains(searchQuery, ignoreCase = true)
+                                        }
                                     }
 
                                     LazyColumn(
@@ -441,7 +464,7 @@ fun DropdownLocker(viewModel: LockerViewModel,selectedlocker: String, onRoleChan
         ExposedDropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            modifier = Modifier.wrapContentSize()
+            modifier = Modifier.wrapContentSize().verticalScroll(rememberScrollState())
         ) {
             lockers.forEach { locker ->
                 DropdownMenuItem(onClick = {
@@ -450,7 +473,7 @@ fun DropdownLocker(viewModel: LockerViewModel,selectedlocker: String, onRoleChan
                 }
 
                 ) {
-                    Text("Locker ${locker.LockerID}")
+                    Text("Locker ${locker.Lockername}")
                 }
             }
             DropdownMenuItem(onClick = {
@@ -541,7 +564,7 @@ fun HeaderRow() {
         }
         Column(modifier = Modifier.width(100.dp)) {
             Text(
-                "Locker",
+                "Locker/Account",
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
                 textAlign = TextAlign.Center

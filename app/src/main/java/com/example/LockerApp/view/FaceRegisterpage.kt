@@ -159,10 +159,8 @@ fun FaceCapturePage(
     }
 
     // main logic of faceboundary and face in frame
-    LaunchedEffect(isFaceWithinBoundary, recognizedName, faceDetected) {
-
+    LaunchedEffect(isFaceWithinBoundary, recognizedName, faceDetected, insufficientLandmarks) {
         /*
-
             Start countdown for capture the face in sequence by if:
          1. Face is within boundary rectangle
          2. Face is detected (That must be face of something Error of my project is
@@ -174,7 +172,6 @@ fun FaceCapturePage(
          6. face not enough information like ear , eye , mouth and nose
          7. No face already captured
          8. Camera Must active
-
          */
 
         if (isFaceWithinBoundary &&
@@ -198,6 +195,7 @@ fun FaceCapturePage(
                 // If during countdown we detect a face in database or face leaves boundary, insufficientLandmarks , cancel countdown
                 if (recognizedName.isNotEmpty() || !isFaceWithinBoundary || insufficientLandmarks) {
                     isCountingDown = false
+                    delay(1500)
                     break
                 }
             }
@@ -275,8 +273,14 @@ fun FaceCapturePage(
             delay(250) // Check every 1/4 second
             val currentTime = System.currentTimeMillis()
 
-            // If no face detected for more than half second and a face was previously detected
-            if (currentTime - lastFaceDetectionTime > 500 && faceDetected) {
+            //reset counting when insufficent landmark
+            if (insufficientLandmarks && isCountingDown) {
+                isCountingDown = false
+                countdownSeconds = 3
+            }
+
+            // If no face detected for more than one second and a face was previously detected
+            if (currentTime - lastFaceDetectionTime > 1000 && faceDetected) {
                 faceDetected = false
                 isFaceWithinBoundary = false
 
@@ -298,8 +302,8 @@ fun FaceCapturePage(
                 if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
                     == PackageManager.PERMISSION_GRANTED
                 ) {
-                    delay(500)
 
+                    delay(1000)
                     // Ensure we're still active after the delay
                     if (!isCameraActive) {
                         Log.d(
@@ -332,6 +336,7 @@ fun FaceCapturePage(
                                     imageHeight = bitmap.height
 
                                     // Update face detection state and timestamp
+
                                     faceDetected = true
                                     lastFaceDetectionTime = System.currentTimeMillis()
 
@@ -361,6 +366,7 @@ fun FaceCapturePage(
 
                                     // perform recognition all time
                                     viewModel.recognizeFace(faceBitmap)
+                                    insufficientLandmarks = false
 
                                     // If capture is requested, save the face
                                     if (capturingFace) {
@@ -375,7 +381,7 @@ fun FaceCapturePage(
                                     insufficientLandmarks = true
 
                                     scope.launch {
-                                        delay(1500)
+                                        delay(1750)
                                         insufficientLandmarks = false
                                     }
                                 }
@@ -529,6 +535,7 @@ fun FaceCapturePage(
                                         ) {
                                             val overlayResId = when {
                                                 recognizedName.isNotEmpty() && isFaceWithinBoundary -> R.drawable.rectangleerror
+                                                insufficientLandmarks && isFaceWithinBoundary -> R.drawable.rectangleerror
                                                 isFaceWithinBoundary -> R.drawable.rectangleok
                                                 else -> R.drawable.rectangle
                                             }
@@ -586,7 +593,9 @@ fun FaceCapturePage(
                                         .padding(16.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    if (isCountingDown || !cameraInitialized || (faceDetected && !isFaceWithinBoundary && recognizedName.isEmpty()) || capturedFace != null) {
+                                    if (insufficientLandmarks || isCountingDown || !cameraInitialized ||
+                                        (faceDetected && !isFaceWithinBoundary && recognizedName.isEmpty()) ||
+                                        capturedFace != null) {
                                         Card(
                                             modifier = Modifier.padding(
                                                 horizontal = 16.dp,
@@ -632,6 +641,21 @@ fun FaceCapturePage(
                                                         )
                                                     }
 
+                                                    faceDetected && !isFaceWithinBoundary -> {
+                                                        Text(
+                                                            text = "Alignment",
+                                                            fontSize = 22.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = Color.Red
+                                                        )
+                                                        Text(
+                                                            text = "Please alignment your face center in boundary",
+                                                            fontSize = 18.sp,
+                                                            color = Color.Black,
+                                                            textAlign = TextAlign.Center
+                                                        )
+                                                    }
+
                                                     isCountingDown -> {
                                                         Text(
                                                             text = "Storing Data",
@@ -647,20 +671,7 @@ fun FaceCapturePage(
                                                         )
                                                     }
 
-                                                    faceDetected && !isFaceWithinBoundary -> {
-                                                        Text(
-                                                            text = "Alignment",
-                                                            fontSize = 22.sp,
-                                                            fontWeight = FontWeight.Bold,
-                                                            color = Color(0xFFA15600)
-                                                        )
-                                                        Text(
-                                                            text = "Please alignment your face center in boundary",
-                                                            fontSize = 18.sp,
-                                                            color = Color.Black,
-                                                            textAlign = TextAlign.Center
-                                                        )
-                                                    }
+
 
                                                     !cameraInitialized && isCameraActive -> {
                                                         Text(
@@ -676,7 +687,7 @@ fun FaceCapturePage(
                                     }
 
                                     if (capturedFace == null) {
-                                        if ((recognizedName.isNotEmpty() && isFaceWithinBoundary) || (recognizedName.isNotEmpty() && !isFaceWithinBoundary)) {
+                                        if ((recognizedName.isNotEmpty() && isFaceWithinBoundary)) {
                                             Card(
                                                 modifier = Modifier.padding(
                                                     horizontal = 16.dp,

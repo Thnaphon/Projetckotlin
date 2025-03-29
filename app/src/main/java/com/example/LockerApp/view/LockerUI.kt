@@ -453,6 +453,7 @@ fun AddLockerCard(
                     focusedIndicatorColor = Color.White, // กำหนดเส้นใต้เมื่อโฟกัสเป็นสีขาว
                     unfocusedIndicatorColor = Color.White,
                 ),
+                singleLine = true,
                 textStyle = TextStyle(
                     fontSize = 25.sp, // ปรับขนาดตัวอักษรขณะพิมพ์
                 ),
@@ -469,6 +470,7 @@ fun AddLockerCard(
                     focusedIndicatorColor = Color.White, // กำหนดเส้นใต้เมื่อโฟกัสเป็นสีขาว
                     unfocusedIndicatorColor = Color.White,
                 ),
+                singleLine = true,
                 textStyle = TextStyle(
                     fontSize = 25.sp, // ปรับขนาดตัวอักษรขณะพิมพ์
                 ),
@@ -646,6 +648,7 @@ fun Editlocker(
     var updatedLocker by remember { mutableStateOf(locker.copy()) }
     val viewModel: LockerViewModel = viewModel()
     var isConfirmed by remember { mutableStateOf(false) }
+    if (updatedLocker.status =="available") isConfirmed = true else isConfirmed=false
 
     AnimatedVisibility(visible = showEditOptions) {
         Card(
@@ -673,6 +676,7 @@ fun Editlocker(
                         focusedIndicatorColor = Color.White, // กำหนดเส้นใต้เมื่อโฟกัสเป็นสีขาว
                         unfocusedIndicatorColor = Color.White,
                     ),
+                    singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 TextField(
@@ -685,6 +689,7 @@ fun Editlocker(
                         focusedIndicatorColor = Color.White, // กำหนดเส้นใต้เมื่อโฟกัสเป็นสีขาว
                         unfocusedIndicatorColor = Color.White,
                     ),
+                    singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -693,7 +698,7 @@ fun Editlocker(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .wrapContentHeight()
-                        .fillMaxWidth()
+                        .fillMaxWidth().padding(top=8.dp)
 
                 ) {
                     Switch(
