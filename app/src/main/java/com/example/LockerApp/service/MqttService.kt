@@ -41,6 +41,8 @@ class MqttService() {
 
     // ฟังก์ชันการเชื่อมต่อ
     fun connect(context: Context) {
+
+
         try {
             if (mqttClient?.isConnected == true) {
                 mqttClient?.disconnect()
@@ -48,16 +50,22 @@ class MqttService() {
                 Log.d("Mqtt", "Disconnected from broker")
             }
 
-            // ใช้ tcp://test.mosquitto.org:1883 แทน ssl://172.20.10.7:8883
-            mqttClient = MqttClient("tcp://test.mosquitto.org:1883", MqttClient.generateClientId(), null)
+            // สร้าง client
+            mqttClient = MqttClient("ssl://172.20.10.7:8883", MqttClient.generateClientId(), null)
+
 
             val options = MqttConnectOptions()
             options.isCleanSession = true
 
+            // โหลดไฟล์ CA และ Client Certificate
+            val sslContext = context.createSslContext("ca.crt", "client.p12", "1234")
+
+            options.socketFactory = sslContext.socketFactory
+
             // เชื่อมต่อกับ MQTT Broker
             mqttClient?.connect(options)
             _connectionStatus.value = "Connected"
-            Log.d("Mqtt", "Connected to broker")
+            Log.d("Mqtt", "Connected to broker with TLS")
 
             // ตั้งค่าคอลแบ็ก
             mqttClient?.setCallback(object : org.eclipse.paho.client.mqttv3.MqttCallback {
@@ -82,6 +90,7 @@ class MqttService() {
             Log.e("Mqtt", "Failed to connect: ${e.message}")
         }
     }
+
 
 
 

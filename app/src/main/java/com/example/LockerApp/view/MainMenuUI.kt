@@ -255,24 +255,24 @@ fun MainMenuUI(
                     showEditpassword = false
                 }
             )
-            MenuItem(icon = Icons.Outlined.CloudUpload,
-                label = "Backup",
-                backgroundColor = Color(0xFFEE6617),
-                iconSize = 25.dp, // ขนาดของไอคอน
-                selected = showBackupScreen,
-                onClick = {
-                    selectshowLockerUI=false
-                    showBorrowUI = false
-                    showLockerUI = false
-                    showAddLockerUI = false
-                    showCompartmentUI = false
-                    showReturnUI = false
-                    showParticipantUI = false
-                    showUsageHistoryScreen = false// เพิ่มสถานะการแสดงหน้า Participant
-                    showBackupScreen = true
-                    showEditpassword = false
-                }
-            )
+//            MenuItem(icon = Icons.Outlined.CloudUpload,
+//                label = "Backup",
+//                backgroundColor = Color(0xFFEE6617),
+//                iconSize = 25.dp, // ขนาดของไอคอน
+//                selected = showBackupScreen,
+//                onClick = {
+//                    selectshowLockerUI=false
+//                    showBorrowUI = false
+//                    showLockerUI = false
+//                    showAddLockerUI = false
+//                    showCompartmentUI = false
+//                    showReturnUI = false
+//                    showParticipantUI = false
+//                    showUsageHistoryScreen = false// เพิ่มสถานะการแสดงหน้า Participant
+//                    showBackupScreen = true
+//                    showEditpassword = false
+//                }
+//            )
             MenuItem(icon = Icons.Outlined.Password,
                 label = "Setpass",
                 backgroundColor = Color(0xFF8BC34A),

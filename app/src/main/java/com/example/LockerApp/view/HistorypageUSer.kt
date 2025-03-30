@@ -100,20 +100,32 @@ fun UsageHistoryScreenUser(usageLockerViewModel: UsageLockerViewModel,viewModel:
     val manageAccountViewModel : ManageAccountViewModel = viewModel()
     // ดึงข้อมูลจาก ViewModel
     val usageLockers by usageLockerViewModel.allUsageLockers.observeAsState(emptyList())
+    val manageLockers by usageLockerViewModel.allManageLockers.observeAsState(emptyList())
+    val manageAccounts by manageAccountViewModel.manageAccounts.observeAsState(emptyList())
+    var filterShowcolumn by remember { mutableStateOf("All History") }
     var selectedlocker by remember { mutableStateOf("all locker") }
     val filteredUsageLockers = usageLockers.filter {
         (selectedlocker == "all locker" || it.locker_name == selectedlocker) &&
                 (it.Usage.contains(searchQuery, ignoreCase = true) ||
-                        it.locker_name.contains(searchQuery, ignoreCase = true) ||
-                        it.number_compartment.toString().contains(searchQuery, ignoreCase = true)) && (it.Usage == "borrow" || it.Usage == "return") &&(it.name_user==accountname)
+                        it.locker_name.contains(searchQuery, ignoreCase = true) ||it.name_equipment.contains(searchQuery, ignoreCase = true)||it.Status.contains(searchQuery, ignoreCase = true)) &&(it.name_user==accountname)
 
+    }
+    val filteredUsageLockersTransformed = filteredUsageLockers.map {
+        combine(it.name_user, it.locker_name,it.number_compartment,it.UsageTime,it.Status,it.Usage,it.name_equipment,null) // ไม่มี Status สำหรับ filteredUsageLockers
+    }.filter {
+        it.Username.contains(searchQuery, ignoreCase = true) || // ค้นหาจาก Username
+                it.Lockername?.contains(searchQuery, ignoreCase = true) ?: false || // ค้นหาจาก Lockername ป้องกัน null
+                it.Usage.contains(searchQuery, ignoreCase = true) || // ค้นหาจาก Usage
+                it.Equipment?.contains(searchQuery, ignoreCase = true) ?: false || // ค้นหาจาก Equipment ป้องกัน null
+                it.Compartmentnumber?.toString()?.contains(searchQuery, ignoreCase = true) ?: false || // ค้นหาจาก Compartmentnumber ป้องกัน null
+                it.Status.contains(searchQuery, ignoreCase = true) ?: false // ค้นหาจาก Status ป้องกัน null
     }
 
 
+
+
     var usageLockerCount by remember { mutableStateOf(0) }
-
-    usageLockerCount = filteredUsageLockers.size
-
+    usageLockerCount = filteredUsageLockersTransformed.size
     LaunchedEffect(Unit) {
         manageAccountViewModel.getAllManageAccounts()
     }
@@ -175,6 +187,7 @@ fun UsageHistoryScreenUser(usageLockerViewModel: UsageLockerViewModel,viewModel:
 
                             )
                     },
+                    singleLine = true,
                     colors = TextFieldDefaults.textFieldColors(
                         backgroundColor = Color.Transparent, // ตั้งให้พื้นหลังโปร่งใส
                         focusedIndicatorColor = Color.Transparent,  // สีเส้นขอบเมื่อเลือก
@@ -189,6 +202,9 @@ fun UsageHistoryScreenUser(usageLockerViewModel: UsageLockerViewModel,viewModel:
                 Spacer(modifier = Modifier.width(10.dp))
 
                 DropdownLocker(viewModel=viewModel,selectedlocker = selectedlocker, onRoleChange = { selectedlocker = it })
+                Spacer(modifier = Modifier.width(10.dp))
+
+
 
             }
 
@@ -210,24 +226,26 @@ fun UsageHistoryScreenUser(usageLockerViewModel: UsageLockerViewModel,viewModel:
 
 
 
+
+
                         LazyColumn(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(start = 26.dp, end = 10.dp)
                         ) {
-                            items(filteredUsageLockers) { filteredUsageLockers ->
+                            items(filteredUsageLockersTransformed) { filteredCombinedLockers ->
                                 // Get account names outside of Composable using observeAsState()
+
 
 
                                 // Use rememberUpdatedState to update the namelocker state only when LockerID changes
 
 
-                                // Handle compartment list updates using LaunchedEffect
-                                var compartmentList by remember { mutableStateOf(emptyList<Compartment>()) }
+
 
 
                                 // Format date
-                                val splitDateTime = formatTimestamp(filteredUsageLockers.UsageTime).split(" ")
+                                val splitDateTime = formatTimestamp(filteredCombinedLockers.UsageTime).split(" ")
 
                                 // Row with various columns
                                 Row(
@@ -237,22 +255,21 @@ fun UsageHistoryScreenUser(usageLockerViewModel: UsageLockerViewModel,viewModel:
                                         .fillMaxWidth()
                                         .padding(vertical = 8.dp)
                                 ) {
-
-
-                                    // Column for locker name or edited account name
+                                    // Column for account name
                                     Column(modifier = Modifier.width(100.dp)) {
                                         Text(
-                                            text = filteredUsageLockers.locker_name ?: "",
+                                            text = filteredCombinedLockers.Lockername?:"",
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
                                             textAlign = TextAlign.Center
                                         )
                                     }
 
+
                                     // Column for compartment number
                                     Column(modifier = Modifier.width(50.dp)) {
                                         Text(
-                                            text = compartmentList.firstOrNull()?.number_compartment?.toString() ?: "_",
+                                            text = filteredCombinedLockers.Compartmentnumber?.toString() ?: "  _",
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
                                             textAlign = TextAlign.Center
@@ -262,7 +279,7 @@ fun UsageHistoryScreenUser(usageLockerViewModel: UsageLockerViewModel,viewModel:
                                     // Column for item name
                                     Column(modifier = Modifier.width(130.dp)) {
                                         Text(
-                                            text = compartmentList.firstOrNull()?.Name_Item?.toString() ?: "_",
+                                            text = filteredCombinedLockers.Equipment ?: "  _",
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
                                             textAlign = TextAlign.Center
@@ -293,27 +310,21 @@ fun UsageHistoryScreenUser(usageLockerViewModel: UsageLockerViewModel,viewModel:
                                     // Column for usage status
                                     Column(modifier = Modifier.width(130.dp)) {
                                         Text(
-                                            text = filteredUsageLockers.Usage,
+                                            text = filteredCombinedLockers.Usage,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
                                             textAlign = TextAlign.Center,
+
                                         )
                                     }
                                     Column(modifier = Modifier.width(130.dp)) {
                                         Text(
-                                            text = filteredUsageLockers.Status,
+                                            text = filteredCombinedLockers.Status,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
                                             textAlign = TextAlign.Center,
-                                            color = when (filteredUsageLockers.Status.lowercase()) {
-                                                "fail" -> Color.Red
-                                                else -> Color.Black // Default color if not "fail"
-                                            },
-                                            fontWeight = when (filteredUsageLockers.Status.lowercase()) {
-                                                "fail" -> FontWeight.Bold
-                                                else -> FontWeight.Normal // Default font weight
-                                            }
-                                        )
+
+                                            )
                                     }
                                 }
 

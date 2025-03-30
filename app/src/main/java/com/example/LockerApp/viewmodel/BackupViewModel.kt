@@ -76,17 +76,40 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
 
 
     // ฟังก์ชันสำหรับการแบ็คอัพ
-    fun performBackup(context: Context) {
+    fun insertBackupLog(backupLog: BackupLog) {
         viewModelScope.launch {
+            try {
+                backupLogDao.insertBackupLog(backupLog) // สมมติว่า insertBackupLog เป็นฟังก์ชันที่บันทึกลงในฐานข้อมูล
+                Log.d("Backup", "Backup log inserted successfully")
+            } catch (e: Exception) {
+                Log.e("Backup", "Error inserting backup log", e)
+            }
+        }
+    }
+
+    // ฟังก์ชันสำหรับการแบ็คอัพ
+    fun performBackup(context: Context, accountname: String,description: String,) {
+        viewModelScope.launch {
+
+            // หลังจากสำรองข้อมูลเสร็จ บันทึก log
+            val Time = System.currentTimeMillis().toString()
+            insertBackupLog(
+                BackupLog(
+                    date_time = Time,
+                    description = description,
+                    status = "Success",
+                    actoin_username = accountname,
+                    operation = "Backup"
+                )
+            )
+
             val sourceDatabaseFile = context.getDatabasePath("locker_database")
             val sourceShmFile = context.getDatabasePath("locker_database-shm")
             val sourceWalFile = context.getDatabasePath("locker_database-wal")
 
             val backupFolder = context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
 
-            // ตรวจสอบว่า backupFolder ไม่เป็น null
             if (backupFolder != null) {
-                // สร้างไฟล์สำรองสำหรับแต่ละไฟล์
                 val backupDatabaseFile = File(backupFolder, "backup_locker_database")
                 val backupShmFile = File(backupFolder, "backup_locker_database-shm")
                 val backupWalFile = File(backupFolder, "backup_locker_database-wal")
@@ -113,15 +136,9 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
                         }
                     }
 
-                    // บันทึกชื่อไฟล์สำรองและที่อยู่ไฟล์
-                    backupFileName.value = backupDatabaseFile.name
-                    backupFilePath.value = backupDatabaseFile.absolutePath
+
 
                     Log.d("Backup", "Backup completed successfully")
-
-
-
-
 
                 } catch (e: IOException) {
                     Log.e("Backup", "Backup failed", e)
@@ -129,68 +146,69 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
     }
-    // ฟังก์ชันสำหรับการคืนค่าข้อมูล
-    fun performRestore(context: Context) {
+
+
+    // ฟังก์ชันสำหรับการ Restore
+    fun performRestore(context: Context, accountname: String,description: String,) {
         viewModelScope.launch {
-            val backupFolder = context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
+            val sourceBackupDatabaseFile = File(context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "backup_locker_database")
+            val sourceBackupShmFile = File(context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "backup_locker_database-shm")
+            val sourceBackupWalFile = File(context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "backup_locker_database-wal")
 
-            if (backupFolder != null) {
-                // ตัวอย่างการคืนค่าไฟล์สำรองที่ชื่อว่า "backup_locker_database"
-                val backupDatabaseFile = File(backupFolder, "backup_locker_database")
-                val backupShmFile = File(backupFolder, "backup_locker_database-shm")
-                val backupWalFile = File(backupFolder, "backup_locker_database-wal")
+            val destinationDatabaseFile = context.getDatabasePath("locker_database")
+            val destinationShmFile = context.getDatabasePath("locker_database-shm")
+            val destinationWalFile = context.getDatabasePath("locker_database-wal")
 
-                val sourceDatabaseFile = context.getDatabasePath("locker_database")
-                val sourceShmFile = context.getDatabasePath("locker_database-shm")
-                val sourceWalFile = context.getDatabasePath("locker_database-wal")
 
+            val Time = System.currentTimeMillis().toString()
+            insertBackupLog(
+                BackupLog(
+                    date_time = Time,
+                    description = description,
+                    status = "Success",
+                    actoin_username = accountname,
+                    operation = "Restore"
+                )
+            )
+            // ตรวจสอบว่าไฟล์สำรองมีอยู่หรือไม่
+            if (sourceBackupDatabaseFile.exists() && sourceBackupShmFile.exists() && sourceBackupWalFile.exists()) {
                 try {
-                    // เช็คว่ามีไฟล์ฐานข้อมูลเดิมอยู่หรือไม่ ถ้ามีก็ลบออกก่อน
-                    if (sourceDatabaseFile.exists()) {
-                        sourceDatabaseFile.delete()
-                    }
-                    if (sourceShmFile.exists()) {
-                        sourceShmFile.delete()
-                    }
-                    if (sourceWalFile.exists()) {
-                        sourceWalFile.delete()
-                    }
+                    // ลบไฟล์ปัจจุบันก่อน
+                    destinationDatabaseFile.delete()
+                    destinationShmFile.delete()
+                    destinationWalFile.delete()
 
-                    // คัดลอกไฟล์สำรองคืนไปยังไฟล์ฐานข้อมูล
-                    backupDatabaseFile.inputStream().use { input ->
-                        sourceDatabaseFile.outputStream().use { output ->
+                    // คัดลอกไฟล์สำรองกลับมา
+                    sourceBackupDatabaseFile.inputStream().use { input ->
+                        destinationDatabaseFile.outputStream().use { output ->
                             input.copyTo(output)
                         }
                     }
 
-                    // คัดลอกไฟล์ SHM
-                    backupShmFile.inputStream().use { input ->
-                        sourceShmFile.outputStream().use { output ->
+                    sourceBackupShmFile.inputStream().use { input ->
+                        destinationShmFile.outputStream().use { output ->
                             input.copyTo(output)
                         }
                     }
 
-                    // คัดลอกไฟล์ WAL
-                    backupWalFile.inputStream().use { input ->
-                        sourceWalFile.outputStream().use { output ->
+                    sourceBackupWalFile.inputStream().use { input ->
+                        destinationWalFile.outputStream().use { output ->
                             input.copyTo(output)
                         }
                     }
-
-                    // อัปเดตสถานะของการคืนค่าข้อมูล
-                    backupFileName.value = backupDatabaseFile.name
-                    backupFilePath.value = backupDatabaseFile.absolutePath
 
                     Log.d("Restore", "Restore completed successfully")
-
-                    val backupDao = LockerDatabase.getDatabase(context).backupDao()
 
                 } catch (e: IOException) {
                     Log.e("Restore", "Restore failed", e)
                 }
+            } else {
+                Log.e("Restore", "Backup files not found")
             }
         }
     }
+
+
 
 
     fun performBackupToPi(mqttService: MqttService, context: Context) {
@@ -335,11 +353,6 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun insertBackupLog(backupLog: BackupLog) {
-        viewModelScope.launch {
-            backupLogDao.insertBackupLog(backupLog)
-        }
-    }
 
     fun deleteBackupLog(backupLog: BackupLog) {
         viewModelScope.launch {
@@ -352,4 +365,54 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
             backupLogDao.clearBackupLogs()
         }
     }
+    fun loadBackupData(context: Context) {
+        viewModelScope.launch {
+            // ตรวจสอบว่ามีไฟล์สำรองที่ต้องการโหลดหรือไม่
+            val backupFolder = context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
+            val backupDatabaseFile = File(backupFolder, "backup_locker_database")
+            val backupShmFile = File(backupFolder, "backup_locker_database-shm")
+            val backupWalFile = File(backupFolder, "backup_locker_database-wal")
+
+            // ตรวจสอบว่าไฟล์สำรองมีอยู่หรือไม่
+            if (backupDatabaseFile.exists() && backupShmFile.exists() && backupWalFile.exists()) {
+                try {
+                    // คัดลอกไฟล์จาก backup กลับไปยังฐานข้อมูลปัจจุบัน
+                    val destinationDatabaseFile = context.getDatabasePath("locker_database")
+                    val destinationShmFile = context.getDatabasePath("locker_database-shm")
+                    val destinationWalFile = context.getDatabasePath("locker_database-wal")
+
+                    // ลบไฟล์เดิมที่มีอยู่
+                    destinationDatabaseFile.delete()
+                    destinationShmFile.delete()
+                    destinationWalFile.delete()
+
+                    // คัดลอกไฟล์สำรองกลับไปยังที่เดิม
+                    backupDatabaseFile.inputStream().use { input ->
+                        destinationDatabaseFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+
+                    backupShmFile.inputStream().use { input ->
+                        destinationShmFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+
+                    backupWalFile.inputStream().use { input ->
+                        destinationWalFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+
+                    Log.d("Restore", "Restore completed successfully")
+                } catch (e: IOException) {
+                    Log.e("Restore", "Restore failed", e)
+                }
+            } else {
+                Log.e("Restore", "Backup files not found")
+            }
+        }
+    }
+
 }

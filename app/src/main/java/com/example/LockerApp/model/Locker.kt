@@ -256,7 +256,8 @@ interface AccountDao {
 
 
     @Query("SELECT * FROM account")
-    fun getAllAccounts(): LiveData<List<Account>>
+    fun getAllAccounts(): Flow<List<Account>>
+
 
     @Query("SELECT * FROM account")
     suspend fun getAllAccountsSync(): List<Account>
@@ -350,7 +351,7 @@ interface ManageAccountDao {
 @Dao
 interface BackupLogDao {
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) // ✅ เปลี่ยนจาก REPLACE เป็น IGNORE
     suspend fun insertBackupLog(backupLog: BackupLog)
 
     @Query("SELECT * FROM backup_log ORDER BY backup_log_id DESC")

@@ -53,6 +53,11 @@ class MqttViewModel( application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             mqttService.connect(getApplication<Application>().applicationContext)
             mqttService.subscribeToTopic("respond/locker")
+            mqttService.subscribeToTopic("locker/restore/database")
+            mqttService.subscribeToTopic("locker/restore/shm")
+            mqttService.subscribeToTopic("locker/restore/wal")
+            mqttService.subscribeToTopic("locker/restore")
+
             _lockerList.value = lockerDao.getAllLockers()
             lockerList.collect { lockers ->
                 lockers.forEach { locker ->

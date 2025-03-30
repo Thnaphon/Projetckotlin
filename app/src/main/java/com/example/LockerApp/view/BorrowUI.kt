@@ -287,9 +287,9 @@ fun CompartmentCard(
                 // Insert usageLocker data in background thread
                 usageLockerViewModel.insertUsageLocker(
                     lockername.toString(),
-                    compartment_Id,
+                    compartmentId,
                     usageTime,
-                    action,
+                    "Borrow",
                     accountname,
                     "Success",
                     compartment.Name_Item
@@ -308,7 +308,7 @@ fun CompartmentCard(
             val usageTime = System.currentTimeMillis().toString()
             val topicMap = mapOf(
                 "token" to splitData[0],
-                "action" to splitData[1] + "ed",
+                "action" to splitData[1] ,
                 "compartmentId" to splitData[2].toInt(),
                 "status" to splitData[3]
             )

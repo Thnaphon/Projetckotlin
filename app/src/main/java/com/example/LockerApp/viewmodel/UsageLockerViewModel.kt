@@ -48,6 +48,7 @@ class UsageLockerViewModel(application: Application) : AndroidViewModel(applicat
             mqttService.subscribeToTopic("respond/locker")
 
         }
+        insertUsageLocker("msadop",1,"1743309504099","Edit Compartment","sadjoai","Success","sada")
 
     }
 

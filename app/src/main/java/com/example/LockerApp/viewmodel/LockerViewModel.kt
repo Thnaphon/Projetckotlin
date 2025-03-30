@@ -110,7 +110,7 @@ class LockerViewModel(private val lockerDao: LockerDao,private val compartmentDa
 // ฟังก์ชันเพิ่มล็อคเกอร์ใหม่
     fun addLocker(Lockername: String,detail: String, receivedTopic: String, availableCompartment:String,onComplete: () -> Unit) {
 
-        val status = "Available"
+        val status = "available"
         val topicMqtt = receivedTopic    // สร้าง topic_mqtt ใหม่
         val availableCompartment = availableCompartment
 

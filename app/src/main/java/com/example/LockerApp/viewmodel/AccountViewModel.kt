@@ -7,12 +7,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
 import com.example.LockerApp.model.Account
 import com.example.LockerApp.model.AccountDao
 import com.example.LockerApp.model.LockerDatabase
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -20,7 +23,10 @@ import java.time.format.DateTimeFormatter
 class AccountViewModel(application: Application) : AndroidViewModel(application) {
     private val accountDao: AccountDao = LockerDatabase.getDatabase(application).accountDao()
 
-    var userDetails: LiveData<List<Account>> = accountDao.getAllAccounts()
+    private val _userDetails = MutableLiveData<List<Account>>()
+    val userDetails: LiveData<List<Account>> = accountDao.getAllAccounts().asLiveData()
+
+
     var existingServiceAccount by mutableStateOf<Account?>(null)
         private set
 
@@ -76,12 +82,13 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
             accountDao.updateAccountFields(accountId, name, phone, role)
         }
     }
+
     fun refreshUserDetails() {
-        viewModelScope.launch(Dispatchers.IO) {
-            // ลบข้อมูลจาก cache (หากจำเป็น) และดึงข้อมูลใหม่
-            val newDetails = accountDao.getAllAccounts()
-            userDetails = newDetails
+        viewModelScope.launch {
+            _userDetails.value = accountDao.getAllAccounts().first() // ดึงค่าล่าสุดจาก Flow
         }
     }
+
+
 
 }

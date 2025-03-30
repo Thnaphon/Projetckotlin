@@ -28,6 +28,7 @@ class ManageAccountViewModel(application: Application) : AndroidViewModel(applic
     val manageAccounts: LiveData<List<ManageAccount>> = _manageAccounts
     init {
         getAllManageAccounts()
+
     }
 
     fun insertManageAccount(manageAccount: ManageAccount) {

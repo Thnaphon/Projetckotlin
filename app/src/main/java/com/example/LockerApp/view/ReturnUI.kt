@@ -264,9 +264,9 @@ fun CompartmentCardReturn(
                 // Insert usageLocker data in background thread
                 usageLockerViewModel.insertUsageLocker(
                     lockerName.toString(),
-                    compartment_Id,
+                    compartmentId,
                     usageTime,
-                    action,
+                    "Return",
                     accountname,
                     "Success",
                     compartment.Name_Item

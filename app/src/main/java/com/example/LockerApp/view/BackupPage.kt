@@ -79,6 +79,7 @@ import com.example.LockerApp.model.BackupLog
 import com.example.LockerApp.model.BackupSettings
 import com.example.LockerApp.model.LockerDatabase
 import com.example.LockerApp.service.MqttService
+import com.example.LockerApp.viewmodel.AccountViewModel
 import com.example.LockerApp.viewmodel.BackupViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -86,6 +87,8 @@ import java.util.Locale
 
 @Composable
 fun BackupScreen(viewModel: BackupViewModel,accountname: String) {
+
+
 
     Column(
         modifier = Modifier
@@ -104,16 +107,21 @@ fun BackupScreen(viewModel: BackupViewModel,accountname: String) {
 
         // Recent Backup Section
         BackupSectionTitle(title = "Recent", showButton = false ,viewModel=viewModel,accountname=accountname)
-        RecentBackup(title = "Recent")
+        RecentBackup(title = "Recent",viewModel=viewModel)
     }
 }
 
 @Composable
 fun BackupSectionTitle(viewModel: BackupViewModel,title: String, showButton:Boolean,accountname: String) {
-    val mqttService = MqttService()
     val settings by viewModel.backupSettings.collectAsState()
     val context = LocalContext.current
-    
+    val accountViewModel: AccountViewModel = viewModel()
+
+    LaunchedEffect(Unit) {
+        // ทำสิ่งที่ต้องการเมื่อหน้าจอกลับมาจากหน้าก่อนหน้า เช่นการรีเฟรชข้อมูล
+        viewModel.loadBackupData(context) // ตัวอย่างเช่นเรียกฟังก์ชันใน ViewModel ที่ทำการโหลดข้อมูลสำรองใหม่
+    }
+
     Row(modifier = Modifier
         .fillMaxWidth()
         .padding(bottom = 15.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
@@ -150,11 +158,9 @@ fun BackupSectionTitle(viewModel: BackupViewModel,title: String, showButton:Bool
                         ) {
                             IconButton(
                                 onClick = {
-                                    val Time = System.currentTimeMillis().toString()
-                                    viewModel.insertBackupLog(
-                                        BackupLog(date_time = Time, description = settings?.description ?: "Full Backup", status = "Success", actoin_username = accountname, operation = "Backup")
-                                    )
-                                    viewModel.performBackupToPi(mqttService, context)
+
+                                    viewModel.performBackup(context,accountname,settings?.description ?: "Full Backup")
+
 
                                 },
                                 modifier = Modifier
@@ -191,11 +197,8 @@ fun BackupSectionTitle(viewModel: BackupViewModel,title: String, showButton:Bool
                         ) {
                             IconButton(
                                 onClick = {
-                                    val Time = System.currentTimeMillis().toString()
-                                    viewModel.insertBackupLog(
-                                        BackupLog(date_time = Time, description = settings?.description ?: "Full Backup", status = "Success", actoin_username = accountname, operation = "Restore")
-                                    )
-                                    viewModel.restoreBackupFromPi(mqttService, context)
+
+                                    viewModel.performRestore(context,accountname,settings?.description ?: "Full Backup")
 
 
                                 },
@@ -410,7 +413,7 @@ fun ScheduledBackupCard(viewModel: BackupViewModel) {
 
 
 @Composable
-fun RecentBackup(title: String) {
+fun RecentBackup(title: String,viewModel: BackupViewModel) {
     Card(
         elevation = 8.dp
     ) {
@@ -453,16 +456,15 @@ fun RecentBackup(title: String) {
 
             }
             Row{
-                RecentBackupCard()
+                RecentBackupCard(viewModel)
             }
         }
     }
 }
 
 @Composable
-fun RecentBackupCard() {
-    val viewModel : BackupViewModel = viewModel()
-    val backupLogs by viewModel.allBackupLogs.collectAsState()
+fun RecentBackupCard(viewModel: BackupViewModel) {
+    val backupLogs by viewModel.allBackupLogs.collectAsState(initial = emptyList())
 
     Card(
         modifier = Modifier.fillMaxWidth(),

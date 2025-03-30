@@ -123,7 +123,7 @@ fun CompartmentUI(lockerId: Int, viewModel: LockerViewModel = viewModel(),accoun
                     Log.d("UsageCompartment","${it.CompartmentID} /$accountid")
                     usageLockerViewModel.insertUsageLocker(
                         lockername.toString(),
-                        it.CompartmentID,
+                        it.number_compartment,
                         usageTime,
                         "Create Compartment",
                         accountname,
@@ -196,6 +196,7 @@ fun CompartmentUI(lockerId: Int, viewModel: LockerViewModel = viewModel(),accoun
 
                                     viewModel.addCompartment(compartment,lockerId)
                                     Topic.value = "$mqttTopic/create/$selectedCompartmentId/status"
+                                    mqttViewModel.subscribeToTopic("$mqttTopic/create/$selectedCompartmentId/status")
                                     mqttViewModel.subscribeToTopic("$mqttTopic/borrow/${compartment.number_compartment}/status")
                                     mqttViewModel.subscribeToTopic("$mqttTopic/return/${compartment.number_compartment}/status")
                                     mqttViewModel.sendMessage("$mqttTopic/create/$selectedCompartmentId","")
@@ -239,7 +240,7 @@ fun CompartmentCard(compartment: Compartment, viewModel: LockerViewModel = viewM
             val usageTime = System.currentTimeMillis().toString()
             usageLockerViewModel.insertUsageLocker(
                 lockername.toString(),
-                compartment.CompartmentID,
+                compartment.number_compartment,
                 usageTime,
                 "Delete Compartment",
                 accountname,
@@ -471,7 +472,7 @@ fun EditCompartmentForm(compartment: Compartment, onCancel: () -> Unit,viewModel
                             viewModel.updateCompartment(compartment.CompartmentID!!,nameItem,selectedImagePath,compartment.LockerID,compartmentNumber,updatedLockerStatus)
                             usageLockerViewModel.insertUsageLocker(
                                 lockername.toString(),
-                                compartment.CompartmentID,
+                                compartmentNumber,
                                 usageTime,
                                 "Edit Compartment",
                                 accountname,

@@ -123,9 +123,8 @@ fun ParticipantScreen(
         faceLoginViewModel.resetToScanning()
         accountViewModel.refreshUserDetails()
     }
-    LaunchedEffect(userDetails) {
-        accountViewModel.refreshUserDetails()
-    }
+
+
 
     if (isAdminVerificationDialogVisible) {
         Dialog(
