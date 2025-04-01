@@ -1,7 +1,7 @@
 package com.example.LockerApp.view
 
 
-import android.content.Context
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -39,55 +39,51 @@ import com.example.LockerApp.model.Locker
 import com.example.LockerApp.model.LockerDao
 import com.example.LockerApp.viewmodel.LockerViewModelFactory
 import com.example.LockerApp.viewmodel.MqttViewModel
-import kotlinx.coroutines.coroutineScope
+
 import kotlinx.coroutines.launch
 import org.json.JSONObject
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.withTimeout
+
 import androidx.compose.runtime.LaunchedEffect
 import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.shape.CircleShape
+
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Switch
 import androidx.compose.material.SwitchDefaults
+import androidx.compose.material.TextButton
 import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.Close
+
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
+
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.example.LockerApp.model.MessageForweb
+import com.example.LockerApp.utils.formatTimestamp
 import com.example.LockerApp.viewmodel.ManageLockerViewModel
-import com.example.LockerApp.viewmodel.UsageLockerViewModel
-import kotlinx.coroutines.async
-import kotlinx.coroutines.delay
 
-data class Message(
-    val token: String,
-    val name: String,
-    val availablecompartment: String,
-    val date: String,
-    val time: String,
 
-    )
+
 
 @Composable
-fun LockerUI(navController: NavController, lockerDao: LockerDao, accountid: Int, compartmentDao: CompartmentDao, onLockerClick: (String) -> Unit) {
+fun LockerUI(
+    navController: NavController,
+    lockerDao: LockerDao,
+    accountid: Int,
+    accountname: String,
+    compartmentDao: CompartmentDao,
+    onLockerClick: (String) -> Unit
+) {
     val viewModel: LockerViewModel = viewModel(factory = LockerViewModelFactory(lockerDao, compartmentDao))
     val mqttViewModel: MqttViewModel = viewModel()
     val lockers by viewModel.lockers.collectAsState()
@@ -108,6 +104,7 @@ fun LockerUI(navController: NavController, lockerDao: LockerDao, accountid: Int,
         }
 
     }
+
 
 
     Column(
@@ -174,7 +171,8 @@ fun LockerUI(navController: NavController, lockerDao: LockerDao, accountid: Int,
                     locker = locker,
                     onClick = { onLockerClick(locker.LockerID.toString()) },
                     onUpdateStatus = { lockerID, newStatus -> viewModel.updateLockerStatus(lockerID, newStatus) },
-                    accountid = accountid
+                    accountid = accountid,
+                    accountname=accountname
                 )
             }
 
@@ -187,6 +185,7 @@ fun LockerUI(navController: NavController, lockerDao: LockerDao, accountid: Int,
                         navController = navController,
                         lockerDao = lockerDao,
                         accountid = accountid,
+                        accountname=accountname,
                         ManageLockerViewModel = ManageLockerViewModel,
                         showAddLockerCard = { showAddLockerCard = false }
                     )
@@ -198,7 +197,13 @@ fun LockerUI(navController: NavController, lockerDao: LockerDao, accountid: Int,
 
 
 @Composable
-fun LockerCard(locker: Locker, onClick: () -> Unit, onUpdateStatus: (Int, String) -> Unit,accountid: Int) {
+fun LockerCard(
+    locker: Locker,
+    onClick: () -> Unit,
+    onUpdateStatus: (Int, String) -> Unit,
+    accountid: Int,
+    accountname: String
+){
     val viewModel: LockerViewModel = viewModel()
     var showDeleteOptions by remember { mutableStateOf(false) }
     var deleteCompartmentTrigger by remember { mutableStateOf(false) }
@@ -207,16 +212,17 @@ fun LockerCard(locker: Locker, onClick: () -> Unit, onUpdateStatus: (Int, String
 
     LaunchedEffect(deleteCompartmentTrigger) {
         if (deleteCompartmentTrigger) {
+            val usageTime = System.currentTimeMillis().toString()
+            ManageLockerViewModel.insertManageLocker(
+                locker_name = locker.Lockername,
+                usageTime = usageTime,
+                usage = "Delete Locker",
+                name_user = accountname,
+                Status = "Success"
+            )
             viewModel.deleteLocker(locker.LockerID)
             deleteCompartmentTrigger = false // รีเซ็ต trigger หลังจากทำงานเสร็จ
-//            val usageTime = System.currentTimeMillis().toString()
-//            ManageLockerViewModel.insertManageLocker(
-//                lockerId = locker.LockerID,
-//                usageTime = usageTime,
-//                usage = "Delete Locker",
-//                AccountID = accountid,
-//                Status = "Success"
-//            )
+
         }
     }
 
@@ -330,6 +336,7 @@ fun LockerCard(locker: Locker, onClick: () -> Unit, onUpdateStatus: (Int, String
                 showEditOptions = showEditOptions,
                 locker = locker,
                 accountid=accountid,
+                accountname=accountname,
                 onConfirmEdit = {
                     // Handle Locker Edit Confirmation logic
                     showEditOptions = false
@@ -366,26 +373,22 @@ fun DeleteConfirmation(
                     style = MaterialTheme.typography.body1
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                Button(
+                    onClick = {
+                        onConfirmDelete()
+                    },
+                    colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
+                    modifier = Modifier.fillMaxWidth().height(40.dp)
                 ) {
-                    Button(
-                        onClick = {
-                            onConfirmDelete()
-                        },
-                        colors = ButtonDefaults.buttonColors(backgroundColor = Color.White)
-                    ) {
-                        Text(text = "Confirm", color = Color.Red)
-                    }
-
-                    Button(
-                        onClick = { onCancelDelete() },
-                        colors = ButtonDefaults.buttonColors(backgroundColor = Color.White)
-                    ) {
-                        Text(text = "Cancel", color = Color.Black)
-                    }
+                    Text(text = "Confirm", color = Color.Red)
                 }
+
+                TextButton(onClick = {onCancelDelete()  }) {
+                    Text("Cancel", color = Color.White)
+                }
+
+
+
             }
         }
     }
@@ -400,6 +403,7 @@ fun AddLockerCard(
     navController: NavController,
     lockerDao: LockerDao,
     accountid: Int,
+    accountname:String,
     ManageLockerViewModel: ManageLockerViewModel,
     showAddLockerCard: () -> Unit
 ) {
@@ -451,6 +455,7 @@ fun AddLockerCard(
                     focusedIndicatorColor = Color.White, // กำหนดเส้นใต้เมื่อโฟกัสเป็นสีขาว
                     unfocusedIndicatorColor = Color.White,
                 ),
+                singleLine = true,
                 textStyle = TextStyle(
                     fontSize = 25.sp, // ปรับขนาดตัวอักษรขณะพิมพ์
                 ),
@@ -467,6 +472,7 @@ fun AddLockerCard(
                     focusedIndicatorColor = Color.White, // กำหนดเส้นใต้เมื่อโฟกัสเป็นสีขาว
                     unfocusedIndicatorColor = Color.White,
                 ),
+                singleLine = true,
                 textStyle = TextStyle(
                     fontSize = 25.sp, // ปรับขนาดตัวอักษรขณะพิมพ์
                 ),
@@ -550,10 +556,10 @@ fun AddLockerCard(
                                                 LokcerId?.let {
                                                     Log.d("Usage","${it.LockerID} /$accountid")
                                                     ManageLockerViewModel.insertManageLocker(
-                                                        lockerId = it.LockerID,
+                                                        locker_name = it.Lockername,
                                                         usageTime = usageTime,
                                                         usage = "Create Locker",
-                                                        AccountID = accountid,
+                                                        name_user = accountname,
                                                         Status = "Success"
                                                     )
                                                 }
@@ -572,7 +578,7 @@ fun AddLockerCard(
 
 
 
-                                        val message = Message(
+                                        val message = MessageForweb(
                                             token = TokenTopic,
                                             name = Lockername,
                                             availablecompartment = availableCompartment,
@@ -614,17 +620,6 @@ fun AddLockerCard(
         }
     }
 
-
-    // ฟังก์ชันแปลง timestamp เป็นรูปแบบ hh:mm dd/MM/yyyy
-    fun formatTimestamp(timestamp: String): String {
-        return try {
-            val date = Date(timestamp.toLong())
-            val sdf = SimpleDateFormat("HH:mm dd/MM/yyyy", Locale.getDefault())
-            sdf.format(date)
-        } catch (e: Exception) {
-            "Invalid date"
-        }
-    }
 }
 
 
@@ -636,12 +631,15 @@ fun Editlocker(
     onConfirmEdit: () -> Unit,
     onCancelEdit: () -> Unit,
     locker: Locker,
-    accountid:Int
+    accountid:Int,
+    accountname:String
+
 ) {
     val ManageLockerViewModel: ManageLockerViewModel = viewModel()
     var updatedLocker by remember { mutableStateOf(locker.copy()) }
     val viewModel: LockerViewModel = viewModel()
     var isConfirmed by remember { mutableStateOf(false) }
+    if (updatedLocker.status =="available") isConfirmed = true else isConfirmed=false
 
     AnimatedVisibility(visible = showEditOptions) {
         Card(
@@ -669,6 +667,7 @@ fun Editlocker(
                         focusedIndicatorColor = Color.White, // กำหนดเส้นใต้เมื่อโฟกัสเป็นสีขาว
                         unfocusedIndicatorColor = Color.White,
                     ),
+                    singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 TextField(
@@ -681,6 +680,7 @@ fun Editlocker(
                         focusedIndicatorColor = Color.White, // กำหนดเส้นใต้เมื่อโฟกัสเป็นสีขาว
                         unfocusedIndicatorColor = Color.White,
                     ),
+                    singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -689,7 +689,7 @@ fun Editlocker(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .wrapContentHeight()
-                        .fillMaxWidth()
+                        .fillMaxWidth().padding(top=8.dp)
 
                 ) {
                     Switch(
@@ -730,10 +730,10 @@ fun Editlocker(
                             viewModel.updateLocker(updatedLocker.LockerID,updatedLocker.status,updatedLocker.Lockername,updatedLocker.detail)
                             val usageTime = System.currentTimeMillis().toString()
                             ManageLockerViewModel.insertManageLocker(
-                                lockerId = updatedLocker.LockerID,
+                                locker_name = updatedLocker.Lockername,
                                 usageTime = usageTime,
                                 usage = "Edit Locker",
-                                AccountID = accountid,
+                                name_user = accountname,
                                 Status = "Success"
                             )
                             Log.d("EditLocker","Test")

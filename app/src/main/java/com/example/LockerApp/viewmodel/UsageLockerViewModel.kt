@@ -49,6 +49,7 @@ class UsageLockerViewModel(application: Application) : AndroidViewModel(applicat
 
         }
 
+
     }
 
     // ฟังก์ชันเชื่อมต่อ
@@ -78,14 +79,16 @@ class UsageLockerViewModel(application: Application) : AndroidViewModel(applicat
             }
         }
     }
-    fun insertUsageLocker(lockerId: Int, compartmentId: Int, usageTime: String, usage: String, AccountID: Int,Status: String) {
+    fun insertUsageLocker(locker_name: String, compartmentId: Int, usageTime: String, usage: String, name_user: String,Status: String,name_equipment:String,accountID:Int) {
         val usageLocker = UsageLocker(
-            LockerID = lockerId,
-            AccountID = AccountID,
-            CompartmentID = compartmentId,
+            locker_name = locker_name,
+            name_user = name_user,
+            number_compartment = compartmentId,
             UsageTime = usageTime,
             Usage = usage,
-            Status = Status
+            Status = Status,
+            name_equipment= name_equipment,
+            accountID=accountID
         )
         viewModelScope.launch {
             usageLockerDao.insert(usageLocker)  // เรียกใช้งาน DAO แทน repository

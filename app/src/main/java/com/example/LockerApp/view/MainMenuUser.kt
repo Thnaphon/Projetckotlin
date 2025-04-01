@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.example.LockerApp.Component.MenuItem
 import com.example.LockerApp.model.CompartmentDao
 import com.example.LockerApp.model.LockerDao
 import com.example.LockerApp.viewmodel.AccountViewModel
@@ -211,7 +212,10 @@ fun MainMenuUser(
                 iconSize = 25.dp,
                 selected = false,
                 onClick = {
-                    navController.navigate("WelcomePage")
+                    navController.navigate("WelcomePage") {
+                        // Clear the back stack to prevent the user from going back to the previous screen
+                        popUpTo("WelcomePage") { inclusive = true }
+                    }
 
                 }
             )
@@ -221,24 +225,22 @@ fun MainMenuUser(
         Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
             when {
                 showBorrowUI -> {
-                    BorrowUI(viewModel = viewModel, mqttViewModel = mqttViewModel, usageLockerViewModel= usageLockerViewModel, accountid = accountid)
+                    BorrowUI(viewModel = viewModel, mqttViewModel = mqttViewModel, usageLockerViewModel= usageLockerViewModel, accountid = accountid,accountname=nameUser)
 
                 }
                 showReturnUI -> {
-                    ReturnUI(viewModel = viewModel, mqttViewModel = mqttViewModel,usageLockerViewModel= usageLockerViewModel, accountid = accountid) // เพิ่มการเรียก ReturnUI
+                    ReturnUI(viewModel = viewModel, mqttViewModel = mqttViewModel,usageLockerViewModel= usageLockerViewModel, accountid = accountid,accountname=nameUser) // เพิ่มการเรียก ReturnUI
                 }
 
 
-
-
                 showUsageHistoryScreen -> {
-                    UsageHistoryScreenUser(accountViewModel= accountViewModel,usageLockerViewModel=  usageLockerViewModel, navController = navController ,viewModel=viewModel,accountid=accountid) // แสดงหน้า Participant ที่นี่
+                    UsageHistoryScreenUser(usageLockerViewModel=  usageLockerViewModel ,viewModel=viewModel,accountname=nameUser,accountid = accountid) // แสดงหน้า Participant ที่นี่
                 }
 
 
 
                 else -> {
-                    BorrowUI(viewModel = viewModel, mqttViewModel = mqttViewModel, usageLockerViewModel= usageLockerViewModel, accountid = accountid)
+                    BorrowUI(viewModel = viewModel, mqttViewModel = mqttViewModel, usageLockerViewModel= usageLockerViewModel, accountid = accountid,accountname=nameUser)
                 }
             }
         }

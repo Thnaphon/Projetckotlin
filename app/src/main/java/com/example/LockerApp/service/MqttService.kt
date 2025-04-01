@@ -53,6 +53,7 @@ class MqttService() {
             // สร้าง client
             mqttClient = MqttClient("ssl://172.20.10.7:8883", MqttClient.generateClientId(), null)
 
+
             val options = MqttConnectOptions()
             options.isCleanSession = true
 
@@ -89,6 +90,8 @@ class MqttService() {
             Log.e("Mqtt", "Failed to connect: ${e.message}")
         }
     }
+
+
 
 
     fun Context.createSslContext(

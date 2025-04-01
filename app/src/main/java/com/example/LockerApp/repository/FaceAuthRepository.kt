@@ -91,7 +91,7 @@ class FaceAuthRepository(private val context: Context) {
                     return@withTimeout RecognitionResult.Failure("Recognition failed: ${e.message}")
                 }
 
-                if (recognition?.title != null && recognition.title != "Unknown" && recognition.distance!! < 0.7f) {
+                if (recognition?.title != null && recognition.title != "Unknown" && recognition.distance!! < 0.75f) {
                     try {
                         val user = accountDao.getUserByName(recognition.title)
                         if (user != null) {
@@ -104,14 +104,14 @@ class FaceAuthRepository(private val context: Context) {
                                 )
                             )
                         } else {
-                            RecognitionResult.Failure("ไม่พบข้อมูล")
+                            RecognitionResult.Failure("Timeout")
                         }
                     } catch (e: Exception) {
                         Log.e("FaceAuthRepository", "Database error", e)
                         RecognitionResult.Failure("Database error: ${e.message}")
                     }
                 } else {
-                    RecognitionResult.Failure("ไม่พบข้อมูลผู้ใช้งาน")
+                    RecognitionResult.Failure("Access Deny")
                 }
             }
         } catch (e: TimeoutCancellationException) {

@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.example.LockerApp.Component.MenuItem
 import com.example.LockerApp.model.CompartmentDao
 import com.example.LockerApp.model.LockerDao
 import com.example.LockerApp.viewmodel.AccountViewModel
@@ -82,6 +83,7 @@ fun MainMenuUI(
     backupViewModel: BackupViewModel,
     faceLoginViewModel: FaceLoginViewModel,
     accountid: Int,
+    accountname: String,
     context: Context,// รับค่า accountid
     nameUser: String,
     role: String
@@ -254,27 +256,27 @@ fun MainMenuUI(
                     showEditpassword = false
                 }
             )
-            MenuItem(icon = Icons.Outlined.CloudUpload,
-                label = "Backup",
-                backgroundColor = Color(0xFFEE6617),
-                iconSize = 25.dp, // ขนาดของไอคอน
-                selected = showBackupScreen,
-                onClick = {
-                    selectshowLockerUI=false
-                    showBorrowUI = false
-                    showLockerUI = false
-                    showAddLockerUI = false
-                    showCompartmentUI = false
-                    showReturnUI = false
-                    showParticipantUI = false
-                    showUsageHistoryScreen = false// เพิ่มสถานะการแสดงหน้า Participant
-                    showBackupScreen = true
-                    showEditpassword = false
-                }
-            )
+//            MenuItem(icon = Icons.Outlined.CloudUpload,
+//                label = "Backup",
+//                backgroundColor = Color(0xFFEE6617),
+//                iconSize = 25.dp, // ขนาดของไอคอน
+//                selected = showBackupScreen,
+//                onClick = {
+//                    selectshowLockerUI=false
+//                    showBorrowUI = false
+//                    showLockerUI = false
+//                    showAddLockerUI = false
+//                    showCompartmentUI = false
+//                    showReturnUI = false
+//                    showParticipantUI = false
+//                    showUsageHistoryScreen = false// เพิ่มสถานะการแสดงหน้า Participant
+//                    showBackupScreen = true
+//                    showEditpassword = false
+//                }
+//            )
             MenuItem(icon = Icons.Outlined.Password,
                 label = "Setpass",
-                backgroundColor = Color(0xFFEE6617),
+                backgroundColor = Color(0xFF8BC34A),
                 iconSize = 25.dp, // ขนาดของไอคอน
                 selected = showEditpassword,
                 onClick = {
@@ -321,7 +323,8 @@ fun MainMenuUI(
                         viewModel = viewModel,
                         mqttViewModel = mqttViewModel,
                         usageLockerViewModel = usageLockerViewModel,
-                        accountid = accountid
+                        accountid = accountid,
+                        accountname=accountname
                     )
 
                 }
@@ -331,7 +334,8 @@ fun MainMenuUI(
                         viewModel = viewModel,
                         mqttViewModel = mqttViewModel,
                         usageLockerViewModel = usageLockerViewModel,
-                        accountid = accountid
+                        accountid = accountid,
+                        accountname=accountname
                     ) // เพิ่มการเรียก ReturnUI
                 }
 
@@ -341,6 +345,7 @@ fun MainMenuUI(
                         lockerDao = lockerDao,
                         compartmentDao = compartmentDao,
                         accountid = accountid,
+                        accountname=accountname,
                     ) { id ->
                         lockerId = id
                         showCompartmentUI = true
@@ -349,7 +354,7 @@ fun MainMenuUI(
                 }
 
                 showCompartmentUI -> {
-                    CompartmentUI(lockerId = lockerId.toInt(), accountid = accountid)
+                    CompartmentUI(lockerId = lockerId.toInt(), accountid = accountid,accountname=accountname)
                 }
 
                 showParticipantUI -> {
@@ -359,7 +364,7 @@ fun MainMenuUI(
                         faceLoginViewModel = faceLoginViewModel,
                         accountid = accountid,
                         adminname = nameUser,
-                        adminrole = nameUser,
+                        adminrole = role,
                         viewModel = viewModel
                     ) // แสดงหน้า Participant ที่นี่
                 }
@@ -374,7 +379,7 @@ fun MainMenuUI(
                 }
 
                 showBackupScreen -> {
-                    BackupScreen(viewModel = backupViewModel) // แสดงหน้า Participant ที่นี่
+                    BackupScreen(viewModel = backupViewModel,accountname=accountname) // แสดงหน้า Participant ที่นี่
                 }
 
                 showEditpassword -> {
@@ -387,56 +392,12 @@ fun MainMenuUI(
                         viewModel = viewModel,
                         mqttViewModel = mqttViewModel,
                         usageLockerViewModel = usageLockerViewModel,
-                        accountid = accountid
+                        accountid = accountid,
+                        accountname =accountname
                     )
                 }
             }
         }
-    }
-}
-
-
-@Composable
-fun MenuItem(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit,
-    iconTint: Color = Color.White, // สีของไอคอน
-    iconSize: Dp = 24.dp, // ขนาดของไอคอน
-    backgroundColor: Color = Color.LightGray,
-    selected: Boolean// สีพื้นหลังของไอคอน
-) {
-    val bgColor = if (selected) Color(0xFF3A4750) else Color.Transparent
-    val textColor = if (selected) Color.White else Color.Black
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-
-            .clickable(onClick = onClick)
-            .background(bgColor, shape = RoundedCornerShape(15.dp))
-
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(iconSize * 1.65f) // ให้ขนาด Box ใหญ่กว่าไอคอนนิดหน่อย
-                .background(
-                    backgroundColor,
-                    shape = RoundedCornerShape(10.dp)
-                ) // กำหนดสีพื้นหลังและขอบมน
-                .padding(8.dp), // ให้มีระยะห่างระหว่างขอบกับไอคอน
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                icon,
-                contentDescription = label,
-                tint = iconTint, // กำหนดสีของไอคอน
-                modifier = Modifier.size(iconSize) // กำหนดขนาดของไอคอน
-            )
-        }
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(label, color = textColor)
     }
 }
 

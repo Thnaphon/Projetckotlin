@@ -110,7 +110,7 @@ class LockerViewModel(private val lockerDao: LockerDao,private val compartmentDa
 // ฟังก์ชันเพิ่มล็อคเกอร์ใหม่
     fun addLocker(Lockername: String,detail: String, receivedTopic: String, availableCompartment:String,onComplete: () -> Unit) {
 
-        val status = "Available"
+        val status = "available"
         val topicMqtt = receivedTopic    // สร้าง topic_mqtt ใหม่
         val availableCompartment = availableCompartment
 
@@ -148,14 +148,14 @@ class LockerViewModel(private val lockerDao: LockerDao,private val compartmentDa
 
 
 
-    fun updateCompartmentStatus(compartmentID: Int, newStatus: String, lockerID: Int) {
+    fun updateCompartmentStatus(compartmentID: Int, newStatus: String, lockerID: Int,Usage_By: String) {
         viewModelScope.launch {
             try {
                 // ตรวจสอบว่า LockerID มีอยู่ในตาราง locker หรือไม่
                 val lockerExists = compartmentDao.checkLockerExists(lockerID)
                 if (lockerExists) {
                     // ถ้ามี LockerID ในตาราง Locker ให้ทำการอัปเดตสถานะ
-                    compartmentDao.updateCompartmentStatus(compartmentID, newStatus, lockerID)
+                    compartmentDao.updateCompartmentStatus(compartmentID, newStatus, lockerID,Usage_By)
                     loadCompartments(lockerID)
                 } else {
                     Log.e("LockerViewModel", "LockerID does not exist")
@@ -224,19 +224,7 @@ class LockerViewModel(private val lockerDao: LockerDao,private val compartmentDa
         }
     }
 
-    fun CheckupdateCompartmentStatus(compartmentIds: List<String>, lockerId: Int) {
-        viewModelScope.launch {
-            val allCompartments = getCompartmentsByLocker(lockerId).first() // ดึงข้อมูลทั้งหมดก่อน
-            allCompartments.forEach { compartment ->
-                val newStatus = if (compartment.CompartmentID.toString() in compartmentIds) {
-                    "available"
-                } else {
-                    "unavailable"
-                }
-                updateCompartmentStatus(compartment.CompartmentID, newStatus,lockerId)
-            }
-        }
-    }
+
 
 
 
@@ -360,5 +348,6 @@ class LockerViewModel(private val lockerDao: LockerDao,private val compartmentDa
         emit(mqttTopic)
 
     }
+
 
 }

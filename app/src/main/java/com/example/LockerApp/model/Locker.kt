@@ -15,6 +15,7 @@ import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
 
 
 // Entity สำหรับ Locker
@@ -45,7 +46,8 @@ data class Compartment(
     val status: String,
     val LockerID: Int,
     val Name_Item: String,
-    val pic_item: String
+    val pic_item: String,
+    val Usage_By: String,
 )
 
 
@@ -66,59 +68,26 @@ data class Account(
 
 
 // Entity สำหรับ UsageLocker
-@Entity(tableName = "usage_locker",
-    foreignKeys = [
-        ForeignKey(
-            entity = Locker::class,
-            parentColumns = ["LockerID"],
-            childColumns = ["LockerID"],
-            onDelete = ForeignKey.CASCADE),
-        ForeignKey(
-            entity = Account::class,
-            parentColumns = ["AccountID"],
-            childColumns = ["AccountID"],
-            onDelete = ForeignKey.CASCADE
-        ),
-        ForeignKey(
-            entity = Compartment::class,
-            parentColumns = ["CompartmentID"],
-            childColumns = ["CompartmentID"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ]
-)
+@Entity(tableName = "usage_locker")
 data class UsageLocker(
     @PrimaryKey(autoGenerate = true) val UsageLockerID: Int = 0,
-    val LockerID: Int,
-    val CompartmentID: Int ,
-    val AccountID: Int,
+    val locker_name: String,
+    val number_compartment: Int ,
+    val name_equipment: String,
+    val name_user: String,
     val UsageTime: String,
     val Usage : String,
-    val Status: String
+    val Status: String,
+    val accountID: Int
 
 )
 
 // Entity สำหรับ UsageLocker
-@Entity(tableName = "manage_locker",
-    foreignKeys = [
-        ForeignKey(
-            entity = Locker::class,
-            parentColumns = ["LockerID"],
-            childColumns = ["LockerID"],
-            onDelete = ForeignKey.CASCADE),
-        ForeignKey(
-            entity = Account::class,
-            parentColumns = ["AccountID"],
-            childColumns = ["AccountID"],
-            onDelete = ForeignKey.CASCADE
-        )
-
-    ]
-)
+@Entity(tableName = "manage_locker")
 data class ManageLocker(
     @PrimaryKey(autoGenerate = true) val ManageLockerID: Int = 0,
-    val LockerID: Int,
-    val AccountID: Int,
+    val locker_name: String,
+    val name_user: String,
     val UsageTime: String,
     val Usage : String,
     val Status: String
@@ -126,30 +95,13 @@ data class ManageLocker(
 )
 
 // Entity สำหรับ UsageLocker
-@Entity(tableName = "manage_account",
-    foreignKeys = [
-        ForeignKey(
-            entity = Account::class,
-            parentColumns = ["AccountID"],
-            childColumns = ["AccountID"],
-            onDelete = ForeignKey.CASCADE
-        ),
-        ForeignKey(
-            entity = Account::class,
-            parentColumns = ["AccountID"],
-            childColumns = ["ByAccountID"],
-            onDelete = ForeignKey.CASCADE
-        )
-
-    ]
-)
+@Entity(tableName = "manage_account")
 data class ManageAccount(
     @PrimaryKey(autoGenerate = true) val ManageAccount: Int = 0,
-    val AccountID : Int,
-    val ByAccountID : Int,
+    val name_user : String,
+    val actoin_username : String,
     val UsageTime: String,
     val Usage : String
-
 )
 
 
@@ -157,10 +109,21 @@ data class ManageAccount(
 // Entity สำหรับ Backup
 @Entity(tableName = "backup_settings")
 data class BackupSettings(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    @PrimaryKey val id: Int = 1,
     val frequency: String, // เช่น "Daily", "Weekly"
     val backupTime: String, // เวลา backup เช่น "02:00 AM"
-    val lastBackupDate: String? = null // เก็บวันที่ backup ล่าสุด
+    val lastBackupDate: String? = null, // เก็บวันที่ backup ล่าสุด
+    val description:String
+)
+
+@Entity(tableName = "backup_log")
+data class BackupLog(
+    @PrimaryKey(autoGenerate = true) val backup_log_id : Int = 0,
+    val date_time: String,
+    val operation: String,
+    val status: String,
+    val actoin_username: String,
+    val description:String
 )
 
 
@@ -170,7 +133,7 @@ interface BackupDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrUpdateBackupSettings(settings: BackupSettings)
 
-    @Query("SELECT * FROM backup_settings LIMIT 1")
+    @Query("SELECT * FROM backup_settings WHERE id = 1 LIMIT 1")
     suspend fun getBackupSettings(): BackupSettings?
 
     @Query("UPDATE backup_settings SET lastBackupDate = :date WHERE id = :id")
@@ -249,8 +212,8 @@ interface CompartmentDao {
         numCompartmen : Int
     )
 
-    @Query("UPDATE compartment SET usagestatus = :newStatus WHERE CompartmentID = :compartmentID AND LockerID = :lockerID")
-    suspend fun updateCompartmentStatus(compartmentID: Int, newStatus: String, lockerID: Int)
+    @Query("UPDATE compartment SET usagestatus = :newStatus ,Usage_By= :Usage_By WHERE CompartmentID = :compartmentID AND LockerID = :lockerID")
+    suspend fun updateCompartmentStatus(compartmentID: Int, newStatus: String, lockerID: Int,Usage_By:String)
 
     @Query("SELECT COUNT(*) FROM locker WHERE LockerID = :lockerID")
     suspend fun checkLockerExists(lockerID: Int): Boolean
@@ -289,8 +252,14 @@ interface AccountDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAccount(account: Account)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAccountAndGetId(account: Account) : Long
+
+
+
     @Query("SELECT * FROM account")
-    fun getAllAccounts(): LiveData<List<Account>>
+    fun getAllAccounts(): Flow<List<Account>>
+
 
     @Query("SELECT * FROM account")
     suspend fun getAllAccountsSync(): List<Account>
@@ -307,8 +276,8 @@ interface AccountDao {
     @Query("SELECT * FROM account WHERE AccountID = :accountID LIMIT 1")
     suspend fun getUserAccountID(accountID: Int): Account?
 
-    @Query("SELECT Name FROM Account WHERE AccountID = :accountId LIMIT 1")
-    fun getAccountNameById(accountId: Int): LiveData<String>
+    @Query("SELECT AccountID FROM Account WHERE Name = :Name LIMIT 1")
+    fun getAccountNameById(Name: String): LiveData<Int>
 
     @Query("UPDATE account SET Name = :name, Phone = :phone, Role = :role WHERE AccountID = :accountId")
     suspend fun updateAccountFields(accountId: Int, name: String, phone: String, role: String)
@@ -358,25 +327,13 @@ interface ManageLockerDao {
     @Query("SELECT * FROM manage_locker")
     fun getAllManageLockers(): LiveData<List<ManageLocker>>
 
-
-    // ค้นหาข้อมูลโดย AccountID
-    @Query("SELECT * FROM manage_locker WHERE AccountID = :accountId")
-    suspend fun getManageLockerByAccountId(accountId: Int): List<ManageLocker>
-
-    // ค้นหาข้อมูลที่มีการใช้งานโดย Status
-    @Query("SELECT * FROM manage_locker WHERE Status = :status")
-    suspend fun getManageLockerByStatus(status: String): List<ManageLocker>
-
-    // ค้นหาข้อมูลที่มีการใช้งานโดยช่วงเวลาการใช้งาน
-    @Query("SELECT * FROM manage_locker WHERE UsageTime BETWEEN :startTime AND :endTime")
-    suspend fun getManageLockerByUsageTime(startTime: String, endTime: String): List<ManageLocker>
 }
 
 @Dao
 interface ManageAccountDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertManageAccount(manageAccount: ManageAccount): Long
+    suspend fun insertManageAccount(manageAccount: ManageAccount)
 
     @Update
     suspend fun updateManageAccount(manageAccount: ManageAccount)
@@ -384,20 +341,35 @@ interface ManageAccountDao {
     @Delete
     suspend fun deleteManageAccount(manageAccount: ManageAccount)
 
-    @Query("SELECT * FROM manage_account WHERE AccountID = :accountId")
-    suspend fun getManageAccountByAccountId(accountId: Int): List<ManageAccount>
+    @Query("SELECT * FROM manage_account")
+    fun getAllAccounts(): Flow<List<ManageAccount>>
 
-    @Query("SELECT * FROM manage_account WHERE ByAccountID = :byAccountId")
-    suspend fun getManageAccountByByAccountId(byAccountId: Int): List<ManageAccount>
+    @Query("SELECT * FROM manage_account WHERE ManageAccount = :id")
+    suspend fun getManageAccountByID(id: Int): ManageAccount?
 
-    @Query("SELECT * FROM manage_account ORDER BY UsageTime DESC")
-    suspend fun getAllManageAccounts(): List<ManageAccount>
+    @Query("DELETE FROM manage_account")
+    suspend fun deleteAllManageAccount()
+}
+@Dao
+interface BackupLogDao {
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE) // ✅ เปลี่ยนจาก REPLACE เป็น IGNORE
+    suspend fun insertBackupLog(backupLog: BackupLog)
+
+    @Query("SELECT * FROM backup_log ORDER BY backup_log_id DESC")
+    fun getAllBackupLogs(): Flow<List<BackupLog>>
+
+    @Delete
+    suspend fun deleteBackupLog(backupLog: BackupLog)
+
+    @Query("DELETE FROM backup_log")
+    suspend fun clearBackupLogs()
 }
 
 
+
 // Room Database สำหรับการรวม Entity และ DAO ทั้งหมด
-@Database(entities = [Locker::class, Compartment::class, Account::class,  UsageLocker::class,ManageLocker::class,ManageAccount::class,BackupSettings::class ], version = 1)
+@Database(entities = [Locker::class, Compartment::class, Account::class,  UsageLocker::class,ManageLocker::class,ManageAccount::class,BackupSettings::class ,BackupLog::class], version = 1)
 abstract class LockerDatabase : RoomDatabase() {
     abstract fun lockerDao(): LockerDao
     abstract fun compartmentDao(): CompartmentDao
@@ -406,6 +378,8 @@ abstract class LockerDatabase : RoomDatabase() {
     abstract fun backupDao(): BackupDao
     abstract fun ManageLockerDao(): ManageLockerDao
     abstract fun ManageAccountDao(): ManageAccountDao
+    abstract fun BackupLogDao(): BackupLogDao
+
 
 
     companion object {

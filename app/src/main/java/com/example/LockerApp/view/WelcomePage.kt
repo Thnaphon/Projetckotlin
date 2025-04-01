@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,6 +37,7 @@ import com.example.LockerApp.viewmodel.FaceLoginViewModel
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import coil.compose.rememberImagePainter
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.AnnotatedString
@@ -114,7 +117,7 @@ fun WelcomePage(
         val allPermissionsGranted = permissions.values.all { it }
         if (allPermissionsGranted) {
             // Show face login overlay instead of navigating
-            showFaceLoginOverlay = true
+//            showFaceLoginOverlay = true
         } else {
             // annoying user What is going on now you have to do it your own
             permissionDenialCount++
@@ -146,6 +149,14 @@ fun WelcomePage(
         }
     }
 
+    fun checkAndRequestFormaster() {
+        if (arePermissionsGranted()) {
+            //
+        } else {
+            permissionLauncher.launch(permissions)
+        }
+    }
+
     // Show face login overlay on call
     if (showFaceLoginOverlay) {
         FaceLoginOverlay(
@@ -158,7 +169,7 @@ fun WelcomePage(
                 showFaceLoginOverlay = false
                 // calling mainmenu if success login state after loginoverlay
                 val route = when (role) {
-                    "admin" -> "main_menu/$accountId/$name/$role"  // if admin then admin_dashboard
+                    "Owner" -> "main_menu/$accountId/$name/$role"  // if Owner then admin_dashboard
                     "service" -> "main_menu/$accountId/$name/$role"  // if service ให้ไปหน้า service_dashboard
                     else -> "main_menu_user/$accountId/$name/$role"  // if user ให้ไปหน้า user_dashboard
                 }
@@ -237,8 +248,8 @@ fun WelcomePage(
                             }, modifier = Modifier.padding(top = 16.dp)
                         )
                     } else {
-                        Box (modifier = Modifier.fillMaxWidth()) {
-                            Row (verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 Column() {
                                     OutlinedTextField(
                                         value = enteredPassword,
@@ -265,21 +276,25 @@ fun WelcomePage(
                                     Button(
                                         onClick = {
                                             try {
-                                                val encrypted = encryptedData.value
-                                                if (encrypted != null) {
-                                                    val decryptedPassword =
-                                                        KeystoreManager.decryptData(
-                                                            encrypted.first, encrypted.second
-                                                        )
+                                                if (!arePermissionsGranted()) {
+                                                    permissionLauncher.launch(permissions)
+                                                } else {
+                                                    val encrypted = encryptedData.value
+                                                    if (encrypted != null) {
+                                                        val decryptedPassword =
+                                                            KeystoreManager.decryptData(
+                                                                encrypted.first, encrypted.second
+                                                            )
 
-                                                    if (enteredPassword == decryptedPassword) {
-                                                        navController.navigate("main_menu/1/Service/Service")
-                                                    } else {
-                                                        Toast.makeText(
-                                                            context,
-                                                            "Incorrect password",
-                                                            Toast.LENGTH_SHORT
-                                                        ).show()
+                                                        if (enteredPassword == decryptedPassword) {
+                                                            navController.navigate("main_menu/1/Service/Service")
+                                                        } else {
+                                                            Toast.makeText(
+                                                                context,
+                                                                "Incorrect password",
+                                                                Toast.LENGTH_SHORT
+                                                            ).show()
+                                                        }
                                                     }
                                                 }
                                             } catch (e: Exception) {
@@ -292,17 +307,20 @@ fun WelcomePage(
                                         },
                                         shape = RoundedCornerShape(8.dp),
                                         modifier = Modifier
-                                            .fillMaxWidth() // ให้ปุ่มกว้างเท่ากับช่องกรอก Master Password
-                                            .height(30.dp), // กำหนดความสูงของปุ่มให้เท่ากับช่องกรอก
+                                            .padding(top = 7.dp)
+                                            .width(61.dp) // ให้ปุ่มกว้างเท่ากับช่องกรอก Master Password
+                                            .height(61.dp), // กำหนดความสูงของปุ่มให้เท่ากับช่องกรอก
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = Color(
                                                 0xFF3961AA
                                             )
                                         )
                                     ) {
-                                        Text(
-                                            text = "Confirm",
-                                            style = TextStyle(fontSize = 12.sp) // ปรับขนาดตัวอักษรที่ต้องการ
+                                        Icon(
+                                            Icons.Filled.Check,
+                                            contentDescription = "Add Locker",
+                                            tint = Color(0xFFFFFFFF),
+                                            modifier = Modifier.scale(2f)
                                         )
                                     }
                                 }
@@ -346,10 +364,10 @@ fun WelcomePage(
     if (showPermissionDialog) {
         AlertDialog(
             onDismissRequest = { showPermissionDialog = false },
-            title = { Text("จำเป็นต้องอนุญาต การเข้าถึงกล้องและพื้นที่") },
+            title = { Text("Need permission") },
             text = {
                 Text(
-                    "แอพพลิเคชั่นของเราจำเป็นต้องเข้าถึงกล้อง และพื้นที่ในการจัดเก็บข้อมูล.",
+                    "Our application need to access Camera and Gallery to work properly.",
                     textAlign = TextAlign.Center
                 )
             },
@@ -358,12 +376,12 @@ fun WelcomePage(
                     showPermissionDialog = false
                     checkAndRequestPermissions()
                 }) {
-                    Text("ลองอีกครั้ง")
+                    Text("Try again")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showPermissionDialog = false }) {
-                    Text("ยกเลิก")
+                    Text("Cancel")
                 }
             }
         )
@@ -373,10 +391,10 @@ fun WelcomePage(
     if (showSettingsDialog) {
         AlertDialog(
             onDismissRequest = { showSettingsDialog = false },
-            title = { Text("จำเป็นต้องอนุญาต การเข้าถึงกล้องและพื้นที่") },
+            title = { Text("We need permission") },
             text = {
                 Text(
-                    "แอพพลิเคชั่นของเราจำเป็นต้องเข้าถึงกล้อง และพื้นที่ในการจัดเก็บข้อมูล.",
+                    "Our application need to access Camera and Gallery to work properly.",
                     textAlign = TextAlign.Center
                 )
             },
@@ -390,12 +408,12 @@ fun WelcomePage(
                     context.startActivity(intent)
                     showSettingsDialog = false
                 }) {
-                    Text("ไปที่การตั้งค่า")
+                    Text("Go to setting")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showSettingsDialog = false }) {
-                    Text("ยกเลิก")
+                    Text("Cancel")
                 }
             }
         )

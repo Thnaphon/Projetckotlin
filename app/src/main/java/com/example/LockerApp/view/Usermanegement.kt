@@ -1,12 +1,14 @@
 package com.example.LockerApp.view
 
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,6 +20,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
 import androidx.compose.material.TextField
@@ -47,17 +50,34 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.LockerApp.Component.DropdownUser
+import com.example.LockerApp.model.Account
+import com.example.LockerApp.model.ManageAccount
+import com.example.LockerApp.utils.formatDate
 import com.example.LockerApp.viewmodel.AccountViewModel
 import com.example.LockerApp.viewmodel.FaceLoginViewModel
 import com.example.LockerApp.viewmodel.LockerViewModel
+import com.example.LockerApp.viewmodel.ManageAccountViewModel
+import com.example.LockerApp.viewmodel.MqttViewModel
+import org.bouncycastle.util.Arrays.append
+import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.Date
+import java.util.Locale
 
 
 @Composable
@@ -70,12 +90,14 @@ fun ParticipantScreen(
     adminrole: String,
     viewModel: LockerViewModel
 ) {
+    Log.d("value","$adminname , $adminrole")
     var isAddDialogVisible by remember { mutableStateOf(false) }
     var isEditDialogVisible by remember { mutableStateOf(false) }
     var isEditMode by remember { mutableStateOf(false) }
     var isPdpDialogVisible by remember { mutableStateOf(false) }
+    var isAdminVerificationDialogVisible by remember { mutableStateOf(false) }
 
-
+    val manageAccountViewModel: ManageAccountViewModel = viewModel()
     var name by remember { mutableStateOf("") }
     var role by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
@@ -83,21 +105,45 @@ fun ParticipantScreen(
     var searchQuery by remember { mutableStateOf("") }
 
     var showFaceVerification by remember { mutableStateOf(false) } // Add this state variable
+    var selectedRole by remember { mutableStateOf("All Users") }
 
     val currentDate = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
     val userDetails by accountViewModel.userDetails.observeAsState(emptyList())
     val filteredUsers = userDetails.filter {
-        it.Name.contains(searchQuery, ignoreCase = true) ||
-                it.Role.contains(searchQuery, ignoreCase = true) ||
-                it.Phone.contains(searchQuery, ignoreCase = true)
+        (selectedRole == "All Users" || it.Role == selectedRole) && // ฟิลเตอร์ Role
+                (it.Name.contains(searchQuery, ignoreCase = true) ||
+                        it.Role.contains(searchQuery, ignoreCase = true) ||
+                        it.Phone.contains(searchQuery, ignoreCase = true) || formatDate(it.CreatedDate).contains(searchQuery, ignoreCase = true))&&it.Name!="service"
     }
     val userCount = filteredUsers.size
-
+    var isDeleteDialogVisible by remember { mutableStateOf(false) }
+    var userToDelete by remember { mutableStateOf<Account?>(null) }
 
     // Reset the face login state when entering the screen
     LaunchedEffect(Unit) {
         faceLoginViewModel.refreshFaceData()
         faceLoginViewModel.resetToScanning()
+        accountViewModel.refreshUserDetails()
+    }
+
+
+
+    if (isAdminVerificationDialogVisible) {
+        Dialog(
+            onDismissRequest = { isAdminVerificationDialogVisible = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            AdminVerificationPage(
+                navController = navController,
+                adminAccountId = accountid,
+                adminname = adminname,
+                adminrole = adminrole,
+                name = name,
+                role = role,
+                phone = phone
+            )
+        }
+
     }
 
 
@@ -182,6 +228,7 @@ fun ParticipantScreen(
                             contentDescription = "Search Icon"
                         )
                     },
+                    singleLine = true,
                     placeholder = {
                         Text("Search")  // ใช้ placeholder แทน label
                     },
@@ -192,15 +239,16 @@ fun ParticipantScreen(
                     ),
                     modifier = Modifier
                         .width(270.dp)
-                        .padding(8.dp)
-                        .border(1.dp, Color.Black, RoundedCornerShape(25))
+                        .height(56.dp)
+                        .border(2.dp, Color(0xFF8D8B8B), RoundedCornerShape(25))
                 )
                 Spacer(modifier = Modifier.width(10.dp))
-                DropdownUser(viewModel)
+                DropdownUser(selectedRole = selectedRole, onRoleChange = { selectedRole = it })
                 Spacer(modifier = Modifier.width(10.dp))
                 androidx.compose.material.Card(
                     modifier = Modifier
-                        .size(47.dp)
+                        .width(56.dp)
+                        .height(56.dp)
                         .clip(RoundedCornerShape(15.dp))
                         .border(
                             2.dp,
@@ -266,7 +314,6 @@ fun ParticipantScreen(
                             horizontalArrangement = Arrangement.Start,
                         ) {
 
-
                             Box(
                                 modifier = Modifier
                                     .width(40.dp)
@@ -281,18 +328,19 @@ fun ParticipantScreen(
                                     tint = Color.Transparent
                                 )
                             }
-                            Spacer(modifier = Modifier.weight(0.36f))
+                            Spacer(modifier = Modifier.weight(0.33f))
                             Text(
                                 "Name",
                                 Modifier
-                                    .weight(0.9f)
-                                    .padding(start = 16.dp),
+                                    .weight(1.13f)
+                                    .padding(start = 16.dp)
+                                    ,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp
                             )
                             Text(
                                 "Role",
-                                Modifier.weight(1f),
+                                Modifier.weight(0.8f),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp
                             )
@@ -304,7 +352,7 @@ fun ParticipantScreen(
                             )
                             Text(
                                 "Created Date",
-                                Modifier.weight(1f),
+                                Modifier.weight(0.9f),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp
                             )
@@ -336,9 +384,31 @@ fun ParticipantScreen(
                                 val usageTime = System.currentTimeMillis().toString()
                                 accountIdToEdit?.let {
                                     accountViewModel.updateAccountFields(it, name, phone, role)
+                                    val ManageAccount = ManageAccount(name_user = name,actoin_username = adminname,UsageTime=usageTime,Usage = "Edit Account" )
+                                    manageAccountViewModel.insertManageAccount(ManageAccount)
+
                                 }
                                 isEditDialogVisible = false
                             }
+                        )
+                        DeleteUserDialog(
+                            isVisible = isDeleteDialogVisible,
+                            user = userToDelete,
+                            onConfirmDelete = {
+                                userToDelete?.let { user ->
+                                    val usageTime = System.currentTimeMillis().toString()
+                                    val manageAccount = ManageAccount(
+                                        name_user = user.Name,
+                                        actoin_username = adminname,
+                                        UsageTime = usageTime,
+                                        Usage = "Delete Account"
+                                    )
+                                    manageAccountViewModel.insertManageAccount(manageAccount)
+                                    accountViewModel.deleteAccount(user)
+                                }
+                                isDeleteDialogVisible = false
+                            },
+                            onDismiss = { isDeleteDialogVisible = false }
                         )
 
                     }
@@ -358,7 +428,7 @@ fun ParticipantScreen(
                                     .padding(top = 8.dp)
 
                             ) {
-                                Spacer(modifier = Modifier.weight(0.15f))
+                                Spacer(modifier = Modifier.weight(0.16f))
                                 Box(
                                     modifier = Modifier
                                         .size(40.dp)
@@ -373,16 +443,20 @@ fun ParticipantScreen(
                                         modifier = Modifier.size(50.dp)
                                     )
                                 }
-                                Spacer(modifier = Modifier.weight(0.15f))
+                                Spacer(modifier = Modifier.weight(0.17f))
                                 Text(
                                     user.Name,
                                     Modifier
-                                        .weight(1f)
+                                        .weight(1.1f)
                                         .padding(start = 16.dp)
                                 )
-                                Text(user.Role, Modifier.weight(1f))
-                                Text(user.Phone, Modifier.weight(1f))
-                                Text(user.CreatedDate, Modifier.weight(1f))
+                                Spacer(modifier = Modifier.weight(0.1f))
+                                Text(user.Role, Modifier.weight(0.8f))
+                                Spacer(modifier = Modifier.weight(0.1f))
+                                Text(user.Phone, Modifier.weight(0.9f))
+                                Spacer(modifier = Modifier.weight(0.1f))
+                                Text(formatDate(user.CreatedDate), Modifier.weight(1f))
+
 
                                 IconButton(
                                     onClick = {
@@ -409,7 +483,8 @@ fun ParticipantScreen(
                                 IconButton(
                                     onClick = {
                                         if (!isAddDialogVisible && !isEditDialogVisible) {
-                                            accountViewModel.deleteAccount(user)
+                                            userToDelete = user
+                                            isDeleteDialogVisible = true
                                         }
                                     },
                                     modifier = Modifier.weight(0.3f),
@@ -440,7 +515,7 @@ fun ParticipantScreen(
                     isPdpDialogVisible = false
                     if (accountid == 1) {
                         // Master Password admin account - use password verification
-                        navController.navigate("admin_verification/$accountid/$adminname/$adminrole?name=${name}&role=${role}&phone=${phone}")
+                        isAdminVerificationDialogVisible = true
                     } else {
                         // Normal user account - show face verification overlay
                         showFaceVerification = true
@@ -470,7 +545,7 @@ fun RoleDropdown(
     isError: Boolean = false
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val roles = listOf("admin", "user")
+    val roles = listOf("Owner", "User")
 
     ExposedDropdownMenuBox(
         expanded = expanded,
@@ -531,113 +606,244 @@ fun RoleDropdown(
 
 @Composable
 fun PdpDialog(onConfirm: () -> Unit, onCancel: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onCancel,
-        title = {
-            Text(
-                text = "นโยบายความเป็นส่วนตัว (Privacy Policy)",
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
-            )
-        },
-        backgroundColor = Color(0xFF2A3D4F),
-        shape = RoundedCornerShape(16.dp),
+    // Track if user has scrolled to bottom
+    var canAccept by remember { mutableStateOf(false) }
+    val lazyListState = rememberLazyListState()
 
-        text = {
-            Column(
-                modifier = Modifier
-                    .verticalScroll(rememberScrollState())
-                    .padding(vertical = 8.dp)
-            ) {
-                Text(
-                    text = "แอปพลิเคชัน Face Authentication Locker for Equipment Borrowing ให้ความสำคัญกับความเป็นส่วนตัวของผู้ใช้ และมุ่งมั่นในการปกป้องข้อมูลส่วนบุคคลของคุณตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)",
-                    color = Color.White
-                )
+    // Only check scroll position when necessary
+    LaunchedEffect(lazyListState.layoutInfo.visibleItemsInfo.size, lazyListState.firstVisibleItemIndex) {
+        val lastVisibleItem = lazyListState.layoutInfo.visibleItemsInfo.lastOrNull()
+        val totalItems = lazyListState.layoutInfo.totalItemsCount
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = "1. ข้อมูลที่เราเก็บรวบรวม",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "เมื่อคุณใช้แอปพลิเคชันของเรา เราอาจเก็บรวบรวมข้อมูลส่วนบุคคลของคุณ ได้แก่:",
-                    color = Color.White
-                )
-
-                BulletPoint("ชื่อ: เพื่อใช้ในการระบุตัวตน")
-                BulletPoint("เบอร์โทรศัพท์: เพื่อการติดต่อและยืนยันตัวตน")
-                BulletPoint("ข้อมูลใบหน้า: เพื่อใช้ในฟีเจอร์ระบุตัวตนหรือการตรวจสอบใบหน้า")
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "2. วัตถุประสงค์ในการใช้ข้อมูล",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "เราจะใช้ข้อมูลของคุณเพื่อวัตถุประสงค์ดังต่อไปนี้:",
-                    color = Color.White
-                )
-
-                BulletPoint("การให้บริการตามฟังก์ชันของแอปพลิเคชัน")
-                BulletPoint("การยืนยันตัวตนและความปลอดภัยของบัญชี")
-                BulletPoint("การติดต่อผู้ใช้เกี่ยวกับการใช้งานแอปพลิเคชัน")
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "3. การเก็บรักษาข้อมูล",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "ข้อมูลของคุณจะถูกเก็บรักษาอย่างปลอดภัยและจะถูกลบเมื่อไม่มีความจำเป็นในการใช้งานอีกต่อไป",
-                    color = Color.White
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "4. สิทธิของเจ้าของข้อมูล",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "คุณมีสิทธิ์ในการ",
-                    color = Color.White
-                )
-
-                BulletPoint("ขอเข้าถึง แก้ไข หรือลบข้อมูลส่วนบุคคลของคุณ")
-                BulletPoint("ขอให้ระงับหรือคัดค้านการประมวลผลข้อมูลของคุณ")
-                BulletPoint("เพิกถอนความยินยอมในการเก็บและใช้ข้อมูล")
-
-                Text(
-                    text = "หากคุณต้องการใช้สิทธิ์ของคุณ หรือมีข้อสงสัยเกี่ยวกับนโยบายนี้ กรุณาติดต่อ ผู้ให้บริการแอปพลิเคชัน",
-                    color = Color.White,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm , modifier = Modifier
-                .padding(start = 8.dp , bottom = 10.dp, end = 8.dp)
-                .background(Color.Green, shape = RoundedCornerShape(8.dp))) {
-                Text("ยอมรับ", color = Color.White)
-
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onCancel , modifier = Modifier
-                .padding(start = 8.dp,bottom = 10.dp, end = 8.dp)
-                .background(Color.Red, shape = RoundedCornerShape(8.dp))) {
-                Text("ยกเลิก", color = Color.Black)
-            }
+        // Check if last item is visible
+        if (lastVisibleItem != null && lastVisibleItem.index >= totalItems - 1) {
+            canAccept = true
         }
-    )
+    }
+
+    // Custom dialog implementation instead of AlertDialog
+    Dialog(
+        onDismissRequest = onCancel,
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true,
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = Color.White,
+            modifier = Modifier
+                .padding(vertical = 115.dp)
+                .padding(horizontal = 416.dp)
+//                .width(600.dp)
+//                .height(400.dp)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // Fixed title area
+                Text(
+                    text = "Privacy Policy",
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 22.sp,
+                    modifier = Modifier
+                        .padding(horizontal = 20.dp, vertical = 25.dp)
+                        .fillMaxWidth()
+                )
+
+                // Scrollable content area with fixed height
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                ) {
+                    // Scrollable content
+                    LazyColumn(
+                        state = lazyListState,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 20.dp)
+                            .background(Color(0xFFEEEEEE))
+                    ) {
+                        item {
+                            Text(
+                                text = "The Face Authentication Locker for Equipment Borrowing application prioritizes user privacy in accordance with the Personal Data Protection Act B.E. 2562 (PDPA).",
+                                color = Color.Black,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+                        }
+
+                        item { Spacer(modifier = Modifier.height(16.dp)) }
+
+                        item {
+                            Text(
+                                text = "1. Data We Collect",
+                                color = Color.Black,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        item {
+                            Text(
+                                text = "When you use our application, we may collect your personal data, including:",
+                                color = Color.Black
+                            )
+                        }
+
+                        item { BulletPoint("Name: Used for identification purposes") }
+                        item { BulletPoint("Phone number: Used for contact and identity verification") }
+                        item { BulletPoint("Facial data: Used for facial recognition and identity verification features") }
+
+                        item { Spacer(modifier = Modifier.height(8.dp)) }
+
+                        item {
+                            Text(
+                                text = "2. Purpose of Data Usage",
+                                color = Color.Black,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        item {
+                            Text(
+                                text = "We will use your data for the following purposes:",
+                                color = Color.Black
+                            )
+                        }
+
+                        item { BulletPoint("Providing application functionalities") }
+                        item { BulletPoint("Identity verification and account security") }
+                        item { BulletPoint("Contacting users regarding application usage") }
+
+                        item { Spacer(modifier = Modifier.height(8.dp)) }
+
+                        item {
+                            Text(
+                                text = "3. Data Retention",
+                                color = Color.Black,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        item {
+                            Text(
+                                text = "Your data will be securely stored and deleted when it is no longer necessary.",
+                                color = Color.Black
+                            )
+                        }
+
+                        item { Spacer(modifier = Modifier.height(8.dp)) }
+
+                        item {
+                            Text(
+                                text = "4. User Rights",
+                                color = Color.Black,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        item {
+                            Text(
+                                text = "You have the right to:",
+                                color = Color.Black
+                            )
+                        }
+
+                        item { BulletPoint("Request access, modification, or deletion of your personal data") }
+                        item { BulletPoint("Request to suspend or object to the processing of your data") }
+                        item { BulletPoint("Withdraw consent for data collection and usage") }
+
+                        item {
+                            Text(
+                                text = "If you wish to exercise your rights or have any questions about this policy, please contact the application provider.",
+                                color = Color.Black,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+
+                        // Add extra padding at the bottom to ensure content can be fully scrolled
+                        item { Spacer(modifier = Modifier.height(50.dp)) }
+                    }
+
+                    // Fixed overlay gradient with scroll indicator
+                    if (!canAccept) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .height(60.dp)
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(Color.Transparent, Color.White),
+                                        startY = 0f,
+                                        endY = 120f
+                                    )
+                                )
+                        ) {
+                            Icon(
+                                Icons.Default.KeyboardArrowDown,
+                                contentDescription = "Scroll down to continue",
+                                modifier = Modifier.align(Alignment.Center),
+                                tint = Color.Gray
+                            )
+                        }
+                    }
+                }
+
+                // Fixed buttons area
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.White)
+                        .padding(horizontal = 20.dp, vertical = 25.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(
+                        onClick = onCancel,
+                        modifier = Modifier
+                            .weight(1f)
+                            .background(
+                                color = Color(0xFFFFFFFF),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .border(
+                                width = 1.dp, // ความหนาของขอบ
+                                color = Color.Black, // สีของขอบ
+                                shape = RoundedCornerShape(8.dp) // รูปร่างขอบให้โค้งมน
+                            )
+                    ) {
+                        Text("Cancel", color = Color.Black)
+                    }
+
+                    Spacer(modifier = Modifier.width(10.dp))
+                    TextButton(
+                        onClick = {
+                            onConfirm()
+                            onCancel()
+                        },
+                        enabled = canAccept,
+                        modifier = Modifier
+                            .weight(1f)
+                            .background(
+                                color = if (canAccept) Color(0xFF3961AA) else Color.Gray,
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .border(
+                                width = 1.dp, // ความหนาของขอบ
+                                color = Color(0xFF3961AA), // สีของขอบ
+                                shape = RoundedCornerShape(8.dp) // รูปร่างขอบให้โค้งมน
+                            )
+                    ){
+                        Text("Accept", color = Color.White)
+                    }
+                }
+            }
+
+        }
+    }
 }
 
 @Composable
@@ -648,13 +854,13 @@ private fun BulletPoint(text: String) {
     ) {
         Text(
             text = "•",
-            color = Color.White,
+            color = Color.Black,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(end = 8.dp, top = 0.dp)
         )
         Text(
             text = text,
-            color = Color.White
+            color = Color.Black
         )
     }
 }
@@ -715,9 +921,10 @@ fun AddUserDialog(
                         modifier = Modifier
                             .weight(1f)
                             .background(Color.Transparent),
+                        singleLine = true,
                         colors = TextFieldDefaults.textFieldColors(
                             backgroundColor = Color.Transparent,
-                            focusedIndicatorColor = Color.White,
+                            focusedIndicatorColor = if (validationAttempted && isNameEmpty) Color.Red else Color.White,
                             unfocusedIndicatorColor = if (validationAttempted && isNameEmpty) Color.Red else Color.White
                         )
                     )
@@ -736,12 +943,13 @@ fun AddUserDialog(
                                 onPhoneChange(newValue)
                             }
                         },
+                        singleLine = true,
                         label = { Text("Phone Number", color = Color.White) },
                         textStyle = TextStyle(color = Color.White),
                         modifier = Modifier.weight(1f),
                         colors = TextFieldDefaults.textFieldColors(
                             backgroundColor = Color.Transparent,
-                            focusedIndicatorColor = Color.White,
+                            focusedIndicatorColor = if (validationAttempted && (!isPhoneValid || isPhoneEmpty)) Color.Red else Color.White,
                             unfocusedIndicatorColor = if (validationAttempted && (!isPhoneValid || isPhoneEmpty)) Color.Red else Color.White
                         )
                     )
@@ -758,7 +966,7 @@ fun AddUserDialog(
                     TextButton(
                         onClick = {
                             validationAttempted = true
-                            if (isFormNull) {
+                            if (isFormNull && isPhoneValid) {
                                 onStartFaceRecognition()
                             }
                         },
@@ -791,11 +999,11 @@ fun EditAccountDialog(
     val isNameEmpty = name.isEmpty()
     val isRoleEmpty = role.isEmpty()
     val isPhoneEmpty = phone.isEmpty()
+    val isPhoneValid = isValidPhoneNumber(phone)
     val isFormNull = !isNameEmpty && !isRoleEmpty && !isPhoneEmpty
     if (isVisible) {
         Card(
-            modifier = Modifier
-                .fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(bottomEnd = 16.dp, bottomStart = 16.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
             colors = CardDefaults.cardColors(containerColor = Color(0xFF2A3D4F))
@@ -808,12 +1016,14 @@ fun EditAccountDialog(
                     TextField(
                         value = name,
                         onValueChange = onNameChange,
+
                         label = { Text("Name", color = Color.White) },
                         textStyle = TextStyle(color = Color.White),
                         modifier = Modifier.weight(1f),
+                        singleLine = true,
                         colors = TextFieldDefaults.textFieldColors(
                             backgroundColor = Color.Transparent,
-                            focusedIndicatorColor = Color.White,
+                            focusedIndicatorColor = if (validationAttempted && isNameEmpty) Color.Red else Color.White,
                             unfocusedIndicatorColor = if (validationAttempted && isNameEmpty) Color.Red else Color.White
                         )
                     )
@@ -827,98 +1037,98 @@ fun EditAccountDialog(
 
                     TextField(
                         value = phone,
-                        onValueChange = onPhoneChange,
+                        onValueChange = { onPhoneChange ->
+                            if (onPhoneChange.length <= 10 && onPhoneChange.all { it.isDigit() }) {
+                                onPhoneChange(onPhoneChange)
+                            }
+                        },
+                        singleLine = true,
                         label = { Text("Phone", color = Color.White) },
                         textStyle = TextStyle(color = Color.White),
                         modifier = Modifier.weight(1f),
                         colors = TextFieldDefaults.textFieldColors(
                             backgroundColor = Color.Transparent,
-                            focusedIndicatorColor = Color.White,
-                            unfocusedIndicatorColor = if (validationAttempted && isPhoneEmpty) Color.Red else Color.White
+                            focusedIndicatorColor = if (validationAttempted && (!isPhoneValid || isPhoneEmpty)) Color.Red else Color.White,
+                            unfocusedIndicatorColor = if (validationAttempted && (!isPhoneValid || isPhoneEmpty)) Color.Red else Color.White
                         )
                     )
                 }
-            }
 
-            Row(
-                horizontalArrangement = Arrangement.End,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                TextButton(onClick = onCancel, modifier = Modifier.padding(top = 16.dp)) {
-                    Text("Cancel", color = Color.White)
-                }
-
-                TextButton(
-                    onClick = {
-                        validationAttempted = true
-                        if (isFormNull) {
-                            onApply()
-                        }
-                    },
-                    modifier = Modifier
-                        .padding(start = 8.dp, top = 16.dp)
-                        .background(Color.White, shape = RoundedCornerShape(8.dp))
+                Row(
+                    horizontalArrangement = Arrangement.End,
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
                 ) {
-                    Text("Apply", color = Color(0xFF2A3D4F))
+                    TextButton(onClick = onCancel) {
+                        Text("Cancel", color = Color.White)
+                    }
+
+                    TextButton(
+                        onClick = {
+                            validationAttempted = true
+                            if (isFormNull && isPhoneValid) {
+                                onApply()
+                            }
+                        },
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .background(Color.White, shape = RoundedCornerShape(8.dp))
+                    ) {
+                        Text("Apply", color = Color(0xFF2A3D4F))
+                    }
                 }
             }
         }
     }
 }
-
-@OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun DropdownUser(viewModel: LockerViewModel) {
-
-    val lockers by viewModel.lockers.collectAsState()
-    var selectedLocker by remember { mutableStateOf(0) }
-    var expanded by remember { mutableStateOf(false) }
-
-    androidx.compose.material.ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = !expanded }) {
-        Box(
-            modifier = Modifier
-                .wrapContentWidth()
-                .height(48.dp) // ตั้งค่าความสูงให้เหมือนปุ่ม
-                .border(2.dp, Color.Black, RoundedCornerShape(15.dp)) // เพิ่มขอบมน
-                .clickable { expanded = true }
-                .padding(horizontal = 16.dp, vertical = 12.dp), // จัดการ padding
-            contentAlignment = Alignment.CenterStart
+fun DeleteUserDialog(
+    isVisible: Boolean,
+    user: Account?,
+    onConfirmDelete: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    if (isVisible) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(bottomEnd = 16.dp, bottomStart = 16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFB71C1C)) // สีแดงเข้ม
         ) {
-            Row(
-                modifier = Modifier.wrapContentWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier.padding(30.dp),
+                horizontalAlignment = Alignment.Start
             ) {
+
                 Text(
-                    text = if (selectedLocker == 0) "All Lockers" else "Locker $selectedLocker",
-                    style = MaterialTheme.typography.body1
+                    text = buildAnnotatedString {
+                        append("Do you want to ")
+                        withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                            append("DELETE Name: ${user?.Name} Role: ${user?.Role} Phone: ${user?.Phone} ?")
+                        }
+                    },
+                    color = Color.White,
+                    style = MaterialTheme.typography.body1.copy(fontSize = 18.sp)
                 )
-                Icon(
-                    imageVector = Icons.Filled.KeyboardArrowDown, // เปลี่ยนไอคอนเป็นลูกศรลง
-                    contentDescription = "Dropdown Icon"
-                )
-            }
-        }
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.wrapContentSize()
-        ) {
-            lockers.forEach { locker ->
-                androidx.compose.material.DropdownMenuItem(onClick = {
-                    selectedLocker = locker.LockerID
-                    expanded = false
-                }) {
-                    Text("Locker ${locker.LockerID}")
+
+                Row(
+                    horizontalArrangement = Arrangement.End,
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel", color = Color.White)
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    TextButton(
+                        onClick = onConfirmDelete,
+                        modifier = Modifier
+                            .background(Color.White, shape = RoundedCornerShape(8.dp))
+                            .padding(horizontal = 8.dp)
+                    ) {
+                        Text("Delete", color = Color(0xFFB71C1C))
+                    }
                 }
-            }
-            androidx.compose.material.DropdownMenuItem(onClick = {
-                selectedLocker = 0 // เลือก All Lockers
-                expanded = false
-            }) {
-                Text("All User")
             }
         }
     }

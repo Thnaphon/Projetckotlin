@@ -34,10 +34,13 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.camera.view.PreviewView
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.LockerApp.R
+import com.example.LockerApp.model.ManageAccount
 import com.example.LockerApp.utils.CameraManager
 import com.example.LockerApp.viewmodel.FaceRegisterViewModel
+import com.example.LockerApp.viewmodel.ManageAccountViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
@@ -54,6 +57,7 @@ fun FaceCapturePage(
     accountid: Int
 ) {
     //camera variable setup
+    Log.d("value", "$adminname , $adminrole , $participantName , $participantRole , $participantPhone")
     val context = LocalContext.current
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
@@ -66,7 +70,7 @@ fun FaceCapturePage(
     var insufficientLandmarks by remember { mutableStateOf(false) }
     var capturingFace by remember { mutableStateOf(false) }
     var capturedFace by remember { mutableStateOf<Bitmap?>(null) }
-    var countdownSeconds by remember { mutableStateOf(5) }
+    var countdownSeconds by remember { mutableStateOf(3) }
     var isCountingDown by remember { mutableStateOf(false) }
 
     //brightness of user
@@ -84,7 +88,7 @@ fun FaceCapturePage(
     var faceRect by remember { mutableStateOf<RectF?>(null) }
     var imageWidth by remember { mutableStateOf(0) }
     var imageHeight by remember { mutableStateOf(0) }
-
+    val manageAccountViewModel: ManageAccountViewModel = viewModel()
     // Clear any previous face capture and prepare camera with proper delay
     LaunchedEffect(Unit) {
 
@@ -142,7 +146,7 @@ fun FaceCapturePage(
             isCountingDown = false
 
             // Reset countdown for next face
-            countdownSeconds = 5
+            countdownSeconds = 3
         }
 
         // Hide countdown if user is in database
@@ -155,10 +159,8 @@ fun FaceCapturePage(
     }
 
     // main logic of faceboundary and face in frame
-    LaunchedEffect(isFaceWithinBoundary, recognizedName, faceDetected) {
-
+    LaunchedEffect(isFaceWithinBoundary, recognizedName, faceDetected, insufficientLandmarks) {
         /*
-
             Start countdown for capture the face in sequence by if:
          1. Face is within boundary rectangle
          2. Face is detected (That must be face of something Error of my project is
@@ -170,7 +172,6 @@ fun FaceCapturePage(
          6. face not enough information like ear , eye , mouth and nose
          7. No face already captured
          8. Camera Must active
-
          */
 
         if (isFaceWithinBoundary &&
@@ -184,7 +185,7 @@ fun FaceCapturePage(
         ) {
 
             isCountingDown = true
-            countdownSeconds = 5
+            countdownSeconds = 3
 
             // Countdown loop
             while (countdownSeconds > 0 && isCountingDown && isFaceWithinBoundary && !insufficientLandmarks) {
@@ -194,6 +195,7 @@ fun FaceCapturePage(
                 // If during countdown we detect a face in database or face leaves boundary, insufficientLandmarks , cancel countdown
                 if (recognizedName.isNotEmpty() || !isFaceWithinBoundary || insufficientLandmarks) {
                     isCountingDown = false
+                    delay(1500)
                     break
                 }
             }
@@ -206,7 +208,7 @@ fun FaceCapturePage(
         } else if (!isFaceWithinBoundary && isCountingDown) {
             // Cancel countdown if face moves out of boundary
             isCountingDown = false
-            countdownSeconds = 5
+            countdownSeconds = 3
         }
     }
 
@@ -242,9 +244,20 @@ fun FaceCapturePage(
                     bitmap
                 )
 
+                // Log the account creation action using the existing ManageAccountViewModel
+                val usageTime = System.currentTimeMillis().toString()
+                val manageAccount = ManageAccount(
+                    name_user = participantName,
+                    actoin_username = adminname,
+                    UsageTime = usageTime,
+                    Usage = "Insert Account"
+                )
+                manageAccountViewModel.insertManageAccount(manageAccount)
+
+
                 // Navigate back to main menu after capture and preview
                 navController.navigate("main_menu/$accountid/$adminname/$adminrole") {
-                    popUpTo("face_register") { inclusive = true }
+                    popUpTo("face_capture") { inclusive = true }
                 }
             }
         }
@@ -260,15 +273,21 @@ fun FaceCapturePage(
             delay(250) // Check every 1/4 second
             val currentTime = System.currentTimeMillis()
 
-            // If no face detected for more than half second and a face was previously detected
-            if (currentTime - lastFaceDetectionTime > 500 && faceDetected) {
+            //reset counting when insufficent landmark
+            if (insufficientLandmarks && isCountingDown) {
+                isCountingDown = false
+                countdownSeconds = 3
+            }
+
+            // If no face detected for more than one second and a face was previously detected
+            if (currentTime - lastFaceDetectionTime > 1000 && faceDetected) {
                 faceDetected = false
                 isFaceWithinBoundary = false
 
                 // Reset counting state when face leaves frame
                 if (isCountingDown && capturedFace == null) {
                     isCountingDown = false
-                    countdownSeconds = 5
+                    countdownSeconds = 3
                 }
             }
         }
@@ -283,8 +302,8 @@ fun FaceCapturePage(
                 if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
                     == PackageManager.PERMISSION_GRANTED
                 ) {
-                    delay(500)
 
+                    delay(1000)
                     // Ensure we're still active after the delay
                     if (!isCameraActive) {
                         Log.d(
@@ -317,6 +336,7 @@ fun FaceCapturePage(
                                     imageHeight = bitmap.height
 
                                     // Update face detection state and timestamp
+
                                     faceDetected = true
                                     lastFaceDetectionTime = System.currentTimeMillis()
 
@@ -346,6 +366,7 @@ fun FaceCapturePage(
 
                                     // perform recognition all time
                                     viewModel.recognizeFace(faceBitmap)
+                                    insufficientLandmarks = false
 
                                     // If capture is requested, save the face
                                     if (capturingFace) {
@@ -360,7 +381,7 @@ fun FaceCapturePage(
                                     insufficientLandmarks = true
 
                                     scope.launch {
-                                        delay(1500)
+                                        delay(1750)
                                         insufficientLandmarks = false
                                     }
                                 }
@@ -424,7 +445,7 @@ fun FaceCapturePage(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Button(
-                            onClick = { navController.navigate("main_menu/$accountid") },
+                            onClick = { navController.navigate("main_menu/$accountid/$adminname/$adminrole") },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFF3F51B5)
                             ),
@@ -514,6 +535,7 @@ fun FaceCapturePage(
                                         ) {
                                             val overlayResId = when {
                                                 recognizedName.isNotEmpty() && isFaceWithinBoundary -> R.drawable.rectangleerror
+                                                insufficientLandmarks && isFaceWithinBoundary -> R.drawable.rectangleerror
                                                 isFaceWithinBoundary -> R.drawable.rectangleok
                                                 else -> R.drawable.rectangle
                                             }
@@ -571,7 +593,9 @@ fun FaceCapturePage(
                                         .padding(16.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    if (isCountingDown || !cameraInitialized || (faceDetected && !isFaceWithinBoundary && recognizedName.isEmpty()) || capturedFace != null) {
+                                    if (insufficientLandmarks || isCountingDown || !cameraInitialized ||
+                                        (faceDetected && !isFaceWithinBoundary && recognizedName.isEmpty()) ||
+                                        capturedFace != null) {
                                         Card(
                                             modifier = Modifier.padding(
                                                 horizontal = 16.dp,
@@ -589,13 +613,13 @@ fun FaceCapturePage(
                                                 when {
                                                     capturedFace != null -> {
                                                         Text(
-                                                            text = "จัดเก็บใบหน้าของ!",
+                                                            text = "Capturing!",
                                                             fontSize = 22.sp,
                                                             fontWeight = FontWeight.Bold,
                                                             color = Color.Green
                                                         )
                                                         Text(
-                                                            text = "กำลังบันทึกข้อมูลของ $participantName",
+                                                            text = "On capturing process : $participantName",
                                                             fontSize = 18.sp,
                                                             color = Color.Black,
                                                             textAlign = TextAlign.Center
@@ -604,28 +628,13 @@ fun FaceCapturePage(
 
                                                     insufficientLandmarks -> {
                                                         Text(
-                                                            text = "ไม่สามารถตรวจจับใบหน้าได้ครบถ้วน",
+                                                            text = "Not enough informtation",
                                                             fontSize = 22.sp,
                                                             fontWeight = FontWeight.Bold,
                                                             color = Color.Red
                                                         )
                                                         Text(
-                                                            text = "โปรดตรวจสอบให้แน่ใจว่าใบหน้าของคุณอยู่ในกรอบและมองตรงไปที่กล้อง",
-                                                            fontSize = 18.sp,
-                                                            color = Color.Black,
-                                                            textAlign = TextAlign.Center
-                                                        )
-                                                    }
-
-                                                    isCountingDown -> {
-                                                        Text(
-                                                            text = "กำลังจะบันทึกข้อมูล",
-                                                            fontSize = 22.sp,
-                                                            fontWeight = FontWeight.Bold,
-                                                            color = Color(0xFFA15600)
-                                                        )
-                                                        Text(
-                                                            text = "ท่านกำลังจะถูกเก็บใบหน้าในอีก $countdownSeconds วินาที...",
+                                                            text = "Please make take mask/glasses off",
                                                             fontSize = 18.sp,
                                                             color = Color.Black,
                                                             textAlign = TextAlign.Center
@@ -634,22 +643,39 @@ fun FaceCapturePage(
 
                                                     faceDetected && !isFaceWithinBoundary -> {
                                                         Text(
-                                                            text = "ใบหน้าไม่อยู่ในกรอบ",
+                                                            text = "Alignment",
                                                             fontSize = 22.sp,
                                                             fontWeight = FontWeight.Bold,
-                                                            color = Color(0xFFA15600)
+                                                            color = Color.Red
                                                         )
                                                         Text(
-                                                            text = "โปรดจัดตำแหน่งใบหน้าของท่านให้อยู่ในกรอบ",
+                                                            text = "Please alignment your face center in boundary",
                                                             fontSize = 18.sp,
                                                             color = Color.Black,
                                                             textAlign = TextAlign.Center
                                                         )
                                                     }
 
+                                                    isCountingDown -> {
+                                                        Text(
+                                                            text = "Storing Data",
+                                                            fontSize = 22.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = Color(0xFFA15600)
+                                                        )
+                                                        Text(
+                                                            text = "Capturing Your face in $countdownSeconds Sec...",
+                                                            fontSize = 18.sp,
+                                                            color = Color.Black,
+                                                            textAlign = TextAlign.Center
+                                                        )
+                                                    }
+
+
+
                                                     !cameraInitialized && isCameraActive -> {
                                                         Text(
-                                                            text = "กำลังรอกล้องใช้งาน...",
+                                                            text = "Setting Camera...",
                                                             fontSize = 22.sp,
                                                             fontWeight = FontWeight.Bold,
                                                             color = Color.Black
@@ -661,7 +687,7 @@ fun FaceCapturePage(
                                     }
 
                                     if (capturedFace == null) {
-                                        if ((recognizedName.isNotEmpty() && isFaceWithinBoundary) || (recognizedName.isNotEmpty() && !isFaceWithinBoundary)) {
+                                        if ((recognizedName.isNotEmpty() && isFaceWithinBoundary)) {
                                             Card(
                                                 modifier = Modifier.padding(
                                                     horizontal = 16.dp,
@@ -679,13 +705,13 @@ fun FaceCapturePage(
                                                     when {
                                                         faceDetected -> {
                                                             Text(
-                                                                text = "ทำรายการไม่ได้",
+                                                                text = "Duplicate",
                                                                 fontSize = 22.sp,
                                                                 fontWeight = FontWeight.Bold,
                                                                 color = Color.Red
                                                             )
                                                             Text(
-                                                                text = "ชื่อผู้ใช้งานในระบบของท่านคือ : $recognizedName",
+                                                                text = "We identify you as : $recognizedName in our database ",
                                                                 fontSize = 18.sp,
                                                                 color = Color.Red,
                                                                 textAlign = TextAlign.Center

@@ -63,6 +63,7 @@ import com.example.LockerApp.viewmodel.LockerViewModel
 import com.example.LockerApp.viewmodel.MqttViewModel
 import com.example.LockerApp.viewmodel.UsageLockerViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -73,7 +74,7 @@ import java.io.File
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLockerViewModel: UsageLockerViewModel,accountid: Int) {
+fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLockerViewModel: UsageLockerViewModel,accountid: Int,accountname:String) {
     var selectedLocker by remember { mutableStateOf(0) } // เริ่มต้นที่ All Lockers
     val lockers by viewModel.lockers.collectAsState() // ใช้ StateFlow ในการเก็บค่า locker
     val compartments by viewModel.compartments.collectAsState(initial = emptyList())
@@ -81,6 +82,7 @@ fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLocke
     var expanded by remember { mutableStateOf(false) }
     var isWaitingForClose by remember { mutableStateOf(false) }
     val compartmentNumber by viewModel.getAllCompartmentNumber(selectedLocker).observeAsState(initial = emptyList())
+    var nameSelectedLocker by remember {mutableStateOf(" ")}
 
     LaunchedEffect(Unit) {
         viewModel.loadCompartments(selectedLocker)
@@ -109,7 +111,7 @@ fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLocke
         verticalArrangement = Arrangement.Top
 
     ) {
-        Text("Borrow", style = MaterialTheme.typography.h5.copy(fontWeight = FontWeight.Bold), color = Color.Black)
+        Text("Return", style = MaterialTheme.typography.h5.copy(fontWeight = FontWeight.Bold), color = Color.Black)
 
         Spacer(modifier = Modifier.height(10.dp))
 
@@ -117,7 +119,15 @@ fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLocke
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("${compartments.size} Compartments", style = MaterialTheme.typography.h6.copy(fontWeight = FontWeight.SemiBold), color = Color.Black)
+            Text(
+                "${compartments.filter { compartment ->
+                    compartment.usagestatus == "borrow" &&
+                            compartment.status == "available" &&
+                            lockers.find { it.LockerID == compartment.LockerID }?.status == "available" && (compartment.Usage_By == accountid.toString() || compartment.Usage_By=="Default")
+                }.size} Compartments",
+                style = MaterialTheme.typography.h6.copy(fontWeight = FontWeight.SemiBold),
+                color = Color.Black
+            )
 
             ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
                 Box(
@@ -135,7 +145,7 @@ fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLocke
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = if (selectedLocker == 0) "All Lockers" else "Locker $selectedLocker",
+                            text = if (selectedLocker == 0) "All Lockers" else "Locker $nameSelectedLocker",
                             style = MaterialTheme.typography.body1
                         )
                         Icon(
@@ -152,9 +162,10 @@ fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLocke
                     lockers.forEach { locker ->
                         DropdownMenuItem(onClick = {
                             selectedLocker = locker.LockerID
+                            nameSelectedLocker = locker.Lockername
                             expanded = false
                         }) {
-                            Text("Locker ${locker.LockerID}")
+                            Text("Locker ${locker.Lockername}")
                         }
                     }
                     DropdownMenuItem(onClick = {
@@ -172,13 +183,20 @@ fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLocke
             modifier = Modifier.width(1000.dp),
             columns = GridCells.Fixed(4), // กำหนดจำนวนคอลัมน์เป็น 3
             content = {
-                items(compartments.filter { it.usagestatus == "borrowed" && it.status == "available" }) { compartment ->
+                items(
+                    compartments.filter { compartment ->
+                        compartment.usagestatus == "borrow" &&
+                                compartment.status == "available" &&
+                                lockers.find { it.LockerID == compartment.LockerID }?.status == "available" && (compartment.Usage_By == accountid.toString() || compartment.Usage_By=="Default")
+                    }
+                ){ compartment ->
                     CompartmentCardReturn(
                         compartment = compartment,
                         mqttViewModel = mqttViewModel,  // ส่ง mqttViewModel
                         viewModel = viewModel,          // ส่ง viewModel
                         usageLockerViewModel = usageLockerViewModel, // ส่ง usageLockerViewModel
                         accountid = accountid,          // ส่ง accountid
+                        accountname=accountname,
                         onStatusChange = { status -> isWaitingForClose = status }
 
                     )
@@ -199,6 +217,7 @@ fun CompartmentCardReturn(
     viewModel: LockerViewModel,
     usageLockerViewModel: UsageLockerViewModel,
     accountid: Int,
+    accountname:String,
     onStatusChange: (Boolean) -> Unit
 ) {
     var showDialog by remember { mutableStateOf(false) } // State สำหรับแสดง Dialog
@@ -209,10 +228,12 @@ fun CompartmentCardReturn(
 
     var Topic = remember { mutableStateOf(" ") }
 
-
-
+    val lockerName by viewModel.getLockername(compartment.LockerID).collectAsState(initial = "Loading...")
+    val safeLockerName = lockerName ?: "Unknown"
+    var IsClick by remember { mutableStateOf(false) }
 
     LaunchedEffect(mqttData) {
+        IsClick = false
         Log.d("mqttData", "MQTT Topic: ${mqttData.first}, Message: ${mqttData.second}")
         if (mqttData.first == Topic.value && mqttData.second == "OPEN") {
             val splitData = mqttData.first.split("/")
@@ -237,23 +258,61 @@ fun CompartmentCardReturn(
                 viewModel.updateCompartmentStatus(
                     compartment_Id,
                     action,
-                    compartment.LockerID
+                    compartment.LockerID,
+                    "Default"
                 )
 
                 // Insert usageLocker data in background thread
                 usageLockerViewModel.insertUsageLocker(
-                    compartment.LockerID,
-                    compartment_Id,
+                    lockerName.toString(),
+                    compartmentId,
                     usageTime,
-                    action,
-                    accountid,
-                    status
+                    "Return",
+                    accountname,
+                    "Success",
+                    compartment.Name_Item,
+                    accountid
                 )
             }
 
         }
     }
 
+    LaunchedEffect(IsClick) {
+        while (IsClick == true){
+            Log.d("Loop", "กำลังทำงานในลูป...")
+
+            // รอ 1 วินาทีก่อนทำซ้ำ (ป้องกันลูปเร็วเกินไป)
+            delay(8000)
+
+            val splitData = Topic.value.split("/")
+            val usageTime = System.currentTimeMillis().toString()
+            val topicMap = mapOf(
+                "token" to splitData[0],
+                "action" to splitData[1],
+                "compartmentId" to splitData[2].toInt(),
+                "status" to splitData[3]
+            )
+            val compartmentId = topicMap["compartmentId"] as? Int ?: 0
+            val action = topicMap["action"] as? String ?: ""
+
+
+            val compartment_Id = viewModel.getCompartmentId(compartment.LockerID, compartmentId).first()
+            usageLockerViewModel.insertUsageLocker(
+                lockerName.toString(),
+                compartment_Id,
+                usageTime,
+                action,
+                accountname,
+                "Fail",
+                compartment.Name_Item,
+                accountid
+            )
+            IsClick = false
+        }
+
+
+    }
 
 
 
@@ -296,7 +355,7 @@ fun CompartmentCardReturn(
                     ) {
                         Row (Modifier.wrapContentSize().padding(bottom = 8.dp)){
                             Text(
-                                "Locker ${compartment.LockerID} | Compartment ${compartment.number_compartment}",
+                                text = "Locker ${safeLockerName.take(11)}${if (safeLockerName.length > 11) "..." else ""} | Comp ${compartment.number_compartment}",
                                 fontSize = 13.sp
                             )
                         }
@@ -367,8 +426,7 @@ fun CompartmentCardReturn(
 
                                 TextButton(
                                     onClick = {
-
-
+                                        IsClick = true
                                         coroutineScope.launch {
                                             viewModel.getMqttTopicFromDatabase(compartment.LockerID)
                                                 .collect { topicMqtt -> // เปลี่ยนจาก onEach เป็น collect ตรงๆ

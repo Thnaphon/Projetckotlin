@@ -42,7 +42,10 @@ class FaceRegisterViewModel(application: Application) : AndroidViewModel(applica
         _registrationState.value = RegistrationState.Initial
     }
 
-    fun registerFace(name: String, role: String, phone: String, faceBitmap: Bitmap) {
+    // In FaceRegisterViewModel.kt, modify the registerFace method:
+
+    fun registerFace(name: String, role: String, phone: String, faceBitmap: Bitmap): Int {
+        var newAccountId = 0
         viewModelScope.launch {
             try {
                 _registrationState.value = RegistrationState.Processing
@@ -62,7 +65,9 @@ class FaceRegisterViewModel(application: Application) : AndroidViewModel(applica
                             _similarityCheck.value = SimilarityCheckResult.Similar(similarity.existingName)
                         }
                         else -> {
-                            repository.registerFace(name, role, phone, it)
+                            // Get the newly created account ID after registration
+                            newAccountId = repository.registerFace(name, role, phone, it)
+
                             _registrationState.value = RegistrationState.Success("Face registered for $name")
                             _similarityCheck.value = SimilarityCheckResult.Unique
                         }
@@ -74,6 +79,8 @@ class FaceRegisterViewModel(application: Application) : AndroidViewModel(applica
                 _registrationState.value = RegistrationState.Error("Registration failed: ${e.message}")
             }
         }
+
+        return newAccountId
     }
 
     fun recognizeFace(faceBitmap: Bitmap) {
