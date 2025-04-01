@@ -57,7 +57,6 @@ fun FaceLoginOverlay(
     var isScanningVisible by remember { mutableStateOf(true) }
     var isSuccessVisible by remember { mutableStateOf(false) }
     var isFailedVisible by remember { mutableStateOf(false) }
-    val errorcolor = Color(0xFFff9796)
 
     // Handle login state changes
     LaunchedEffect(loginState) {
@@ -143,7 +142,7 @@ fun FaceLoginOverlay(
                 .background(Color.Transparent),
             contentAlignment = Alignment.Center
         ) {
-            // Hidden camera preview (still active for face detection)
+            //camera preview
             AndroidView(
                 factory = { previewView.apply {
                     layoutParams = android.view.ViewGroup.LayoutParams(1, 1) // Tiny size to hide it
@@ -152,7 +151,6 @@ fun FaceLoginOverlay(
                 modifier = Modifier.size(1.dp) // Minimal size
             )
 
-            // Centered content column
             Column(
                 modifier = Modifier
                     .fillMaxWidth(0.8f)
@@ -204,9 +202,9 @@ fun FaceLoginOverlay(
                         shape = RoundedCornerShape(0.dp),
                         modifier = Modifier
                             .width(220.dp)
-                            .wrapContentHeight(), // เอา background ออกจาก Modifier
+                            .wrapContentHeight(),
                         colors = CardDefaults.cardColors(
-                            containerColor = Color.White // กำหนดสีพื้นหลังของ Card ที่นี่
+                            containerColor = Color.White
                         )
                     )
                     {
@@ -248,7 +246,6 @@ fun FaceLoginOverlay(
                     }
                 }
 
-                // Button row
                 Row(
                     modifier = Modifier
                         .width(width = 220.dp)

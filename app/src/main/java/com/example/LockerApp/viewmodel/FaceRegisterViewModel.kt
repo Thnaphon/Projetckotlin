@@ -7,32 +7,22 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.example.LockerApp.repository.FaceRegisterRepository
-import com.example.LockerApp.utils.LivenessDetector
-import com.google.mlkit.vision.face.Face
 import kotlinx.coroutines.launch
 
 class FaceRegisterViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = FaceRegisterRepository(application)
-    private val livenessDetector = LivenessDetector()
 
     //state
     private val _registrationState = MutableLiveData<RegistrationState>()
-    val registrationState: LiveData<RegistrationState> = _registrationState
 
     //name checking recognize with database
     private val _recognizedName = MutableLiveData<String>()
     val recognizedName: LiveData<String> = _recognizedName
 
     private val _capturedFace = MutableLiveData<Bitmap?>()
-    val capturedFace: LiveData<Bitmap?> = _capturedFace
-
-    //liveness Progress
-    private val _livenessState = MutableLiveData<LivenessDetector.LivenessState>()
-    val livenessState: LiveData<LivenessDetector.LivenessState> = _livenessState
 
     //register check with database
     private val _similarityCheck = MutableLiveData<SimilarityCheckResult>()
-    val similarityCheck: LiveData<SimilarityCheckResult> = _similarityCheck
 
     init {
         // Set initial states
@@ -41,8 +31,6 @@ class FaceRegisterViewModel(application: Application) : AndroidViewModel(applica
         _similarityCheck.value = SimilarityCheckResult.Initial
         _registrationState.value = RegistrationState.Initial
     }
-
-    // In FaceRegisterViewModel.kt, modify the registerFace method:
 
     fun registerFace(name: String, role: String, phone: String, faceBitmap: Bitmap): Int {
         var newAccountId = 0
@@ -108,20 +96,6 @@ class FaceRegisterViewModel(application: Application) : AndroidViewModel(applica
                 _recognizedName.value = ""
             }
         }
-    }
-
-    fun processFrame(face: Face, faceBitmap: Bitmap) {
-        val livenessResult = livenessDetector.processFrame(face)
-        _livenessState.value = livenessResult
-
-        if (livenessResult.isComplete) {
-            recognizeFace(faceBitmap)
-        }
-    }
-
-    fun resetLivenessCheck() {
-        livenessDetector.reset()
-        _livenessState.value = LivenessDetector.LivenessState()
     }
 
     fun setCapturedFace(bitmap: Bitmap?) {

@@ -11,7 +11,6 @@ import com.example.LockerApp.model.LockerDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.tensorflow.lite.Interpreter
 import java.io.FileInputStream
 import java.io.IOException
@@ -21,7 +20,6 @@ import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.lang.ref.WeakReference
 
 interface FaceClassifier {
     fun register(name: String?, role: String?, phone: String?, recognition: Recognition?):Int
@@ -160,12 +158,9 @@ class TFLiteFaceRecognition private constructor(context: Context) : FaceClassifi
 
         var newAccountId = 0
 
-        // We'll use runBlocking here to make this method synchronous
-        // so we can return the new account ID
         kotlinx.coroutines.runBlocking {
             try {
                 newAccountId = accountDao.insertAccountAndGetId(account).toInt()
-                // Update local cache immediately
                 if (rec != null) {
                     registered[name] = rec
                     Log.d("FaceRec", "Registered new face for $name with ID: $newAccountId")
@@ -176,13 +171,12 @@ class TFLiteFaceRecognition private constructor(context: Context) : FaceClassifi
                 Log.e("FaceRec", "Error registering face: ${e.message}")
             }
         }
-
         return newAccountId
     }
 
     private suspend fun loadRegisteredFaces() {
         try {
-            // Clear existing cache first
+            // Clear existing cache
             registered.values.forEach { it.recycle() }
             registered.clear()
 
@@ -195,7 +189,7 @@ class TFLiteFaceRecognition private constructor(context: Context) : FaceClassifi
                         .map { it.toFloat() }
                         .toFloatArray()
 
-                    // Create wrapper array
+                    // wrapper array
                     val embeddingWrapper = Array(1) { embeddingArray }
 
                     registered[account.Name] = FaceClassifier.Recognition(
@@ -236,7 +230,7 @@ class TFLiteFaceRecognition private constructor(context: Context) : FaceClassifi
 
                 imgData?.clear() // Reset position
 
-                // Make sure intValues array is properly sized
+                // Valid intValues array is properly sized
                 if (!::intValues.isInitialized || intValues.size != bitmap.width * bitmap.height) {
                     intValues = IntArray(bitmap.width * bitmap.height)
                 }
@@ -287,14 +281,13 @@ class TFLiteFaceRecognition private constructor(context: Context) : FaceClassifi
                     RectF()
                 )
 
-
                 if (getExtra) {
                     // Create a copy to prevent modifying the original
                     val embeddingsCopy = Array(1) { embeedings[0].clone() }
                     rec.embeeding = embeddingsCopy
                 }
 
-                // Only set crop if requested and create a copy to manage independently
+                // set crop if requested and create a copy to manage independently
                 if (getExtra && bitmap != null) {
                     rec.crop = bitmap.copy(bitmap.config, true)
                 }
@@ -326,7 +319,6 @@ class TFLiteFaceRecognition private constructor(context: Context) : FaceClassifi
                 }
             } catch (e: Exception) {
                 Log.e("TFLiteFaceRecognition", "Error comparing with $name", e)
-                // Continue with next registration
             }
         }
         return ret

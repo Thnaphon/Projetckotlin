@@ -2,28 +2,28 @@ package com.example.LockerApp.utils
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Matrix
 import android.graphics.Rect
+import android.media.Image
 import android.util.Log
 import androidx.annotation.OptIn
-import androidx.camera.core.*
+import androidx.camera.core.Camera
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ExperimentalGetImage
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageProxy
+import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.face.FaceContour
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
-import android.media.Image
-import java.util.concurrent.Executor
-import android.graphics.Matrix
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.Preview
-import com.google.mlkit.vision.face.FaceContour
 import com.google.mlkit.vision.face.FaceLandmark
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.suspendCancellableCoroutine
+import java.util.concurrent.Executor
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -35,12 +35,13 @@ class CameraManager(private val context: Context) {
     private var imageAnalysis: ImageAnalysis? = null
     private var preview: Preview? = null
 
-    // Track when insufficient landmarks were detected to prevent rapid toast displays
+    // Track when insufficient landmarks were detected
     private var lastInsufficientLandmarksTime = 0L
     private val MINIMUM_TIME_BETWEEN_INSUFFICIENT_LANDMARKS = 3000L // 3 seconds
     private var insufficientLandmarksNotified = false
 
-    // Allow configuration of face detector options to support different use cases
+    //a configuration of face detector options in different use
+    //More detail in https://developers.google.com/ml-kit/vision/face-detection/android
     fun createFaceDetector(
         performanceMode: Int = FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE,
         landmarkMode: Int = FaceDetectorOptions.LANDMARK_MODE_ALL,
@@ -53,10 +54,9 @@ class CameraManager(private val context: Context) {
             .setClassificationMode(classificationMode)
             .build()
     )
-
-    // Default face detector for backward compatibility
     private val faceDetector = createFaceDetector()
 
+    //Method for Register
     suspend fun startCamera(
         lifecycleOwner: LifecycleOwner,
         previewView: PreviewView,
@@ -96,6 +96,7 @@ class CameraManager(private val context: Context) {
                 CameraSelector.DEFAULT_FRONT_CAMERA
             } catch (e: Exception) {
                 Log.w("CameraManager", "Front camera not available, falling back", e)
+                // Force use front camera again
                 CameraSelector.DEFAULT_FRONT_CAMERA
             }
 
@@ -118,13 +119,12 @@ class CameraManager(private val context: Context) {
         }
     }
 
-    // New overlay-specific method for face login and verification
+    // A method for face login and verification
     suspend fun startCameraForOverlay(
         lifecycleOwner: LifecycleOwner,
         previewView: PreviewView,
         cameraExecutor: Executor,
         onFaceBitmapCaptured: (Bitmap) -> Unit, // Simplified callback for overlays
-        hidePreview: Boolean = true // Optional parameter to hide preview
     ) {
         try {
             Log.d("CameraManager", "Starting camera setup for overlay")
@@ -135,7 +135,7 @@ class CameraManager(private val context: Context) {
             // Unbind all use cases before binding new ones
             cameraProvider?.unbindAll()
 
-            // Create the preview with potentially minimal size for hidden mode
+            // Create the preview and analyzer
             preview = Preview.Builder()
                 .build()
                 .also {
@@ -158,6 +158,7 @@ class CameraManager(private val context: Context) {
                 CameraSelector.DEFAULT_FRONT_CAMERA
             } catch (e: Exception) {
                 Log.w("CameraManager", "Front camera not available, using default camera", e)
+                // Force use front camera again
                 CameraSelector.DEFAULT_FRONT_CAMERA
             }
 
@@ -199,7 +200,7 @@ class CameraManager(private val context: Context) {
         }
     }
 
-    // Helper method to check if all required landmarks are present with confidence values
+    // A method to check if all required landmarks are present
     private fun validateRequiredLandmarks(face: com.google.mlkit.vision.face.Face): Boolean {
         val lefteye = face.getLandmark(FaceLandmark.LEFT_EYE)
         val righteye = face.getLandmark(FaceLandmark.RIGHT_EYE)
@@ -389,7 +390,7 @@ class CameraManager(private val context: Context) {
         }
     }
 
-    // New method for overlay processing that returns just the face bitmap
+    // method for overlay processing
     @OptIn(ExperimentalGetImage::class)
     private fun processImageForOverlay(
         imageProxy: ImageProxy,
@@ -415,7 +416,6 @@ class CameraManager(private val context: Context) {
                                 val bitmap = mediaImageToBitmap(mediaImage, imageProxy.imageInfo.rotationDegrees)
 
                                 // Validate all required landmarks are present
-                                    // Extract and resize the face bitmap
                                     val faceBitmap = Bitmap.createBitmap(
                                         bitmap,
                                         face.boundingBox.left.coerceAtLeast(0),
@@ -424,8 +424,6 @@ class CameraManager(private val context: Context) {
                                         face.boundingBox.height().coerceAtMost(bitmap.height - face.boundingBox.top)
                                     )
                                     val resizedFaceBitmap = Bitmap.createScaledBitmap(faceBitmap, 160, 160, false)
-
-                                    // Pass only the face bitmap to the callback
                                     onFaceBitmapCaptured(resizedFaceBitmap)
 
                             } catch (e: Exception) {
@@ -447,7 +445,7 @@ class CameraManager(private val context: Context) {
         }
     }
 
-    // Central media image conversion method - now available to all components
+    // Convert media image to bitmap
     fun mediaImageToBitmap(mediaImage: Image, rotationDegrees: Int): Bitmap {
         try {
             val width = mediaImage.width
@@ -466,7 +464,6 @@ class CameraManager(private val context: Context) {
             val uPixelStride = uPlane.pixelStride
             val uRowStride = uPlane.rowStride
             val vPixelStride = vPlane.pixelStride
-            val vRowStride = vPlane.rowStride
             // Create output buffer
             val outputArray = IntArray(width * height)
             var outputIndex = 0
@@ -508,7 +505,7 @@ class CameraManager(private val context: Context) {
         }
     }
 
-    // Consolidated shutdown method
+    // safe shutdown method
     fun shutdown() {
         try {
             Log.d("CameraManager", "Shutting down camera")

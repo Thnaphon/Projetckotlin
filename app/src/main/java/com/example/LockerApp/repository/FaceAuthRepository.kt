@@ -2,7 +2,6 @@ package com.example.LockerApp.repository
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.util.Log
 import com.example.LockerApp.model.AccountDao
 import com.example.LockerApp.model.LockerDatabase
@@ -12,9 +11,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
-import java.io.ByteArrayOutputStream
-import java.io.File
-import java.io.FileOutputStream
 
 class FaceAuthRepository(private val context: Context) {
     private val accountDao: AccountDao = LockerDatabase.getDatabase(context).accountDao()
@@ -41,7 +37,7 @@ class FaceAuthRepository(private val context: Context) {
         }
     }
 
-    // Public method to refresh the face database - call this when returning to welcome page
+    //method to refresh the face database
     suspend fun refreshFaceData() = withContext(Dispatchers.IO) {
         try {
             Log.d("FaceAuthRepository", "Refreshing face recognition data")
@@ -49,22 +45,6 @@ class FaceAuthRepository(private val context: Context) {
             initializeClassifier()
         } catch (e: Exception) {
             Log.e("FaceAuthRepository", "Error refreshing face data", e)
-        }
-    }
-
-    suspend fun registerFace(
-        name: String,
-        role: String,
-        phone: String,
-        recognition: FaceClassifier.Recognition
-    ) {
-        withContext(Dispatchers.IO) {
-            try {
-                faceClassifier?.register(name, role, phone, recognition)
-            } catch (e: Exception) {
-                Log.e("FaceAuthRepository", "Error registering face", e)
-                throw e
-            }
         }
     }
 
@@ -91,6 +71,7 @@ class FaceAuthRepository(private val context: Context) {
                     return@withTimeout RecognitionResult.Failure("Recognition failed: ${e.message}")
                 }
 
+                //Adjust distance < xxx if you want to make more confident to that person lower mean more confident more mean less strict (can be other person)
                 if (recognition?.title != null && recognition.title != "Unknown" && recognition.distance!! < 0.75f) {
                     try {
                         val user = accountDao.getUserByName(recognition.title)
@@ -126,7 +107,7 @@ class FaceAuthRepository(private val context: Context) {
         }
     }
 
-    // Helper method to preprocess bitmap for more consistent results
+    //method to preprocess bitmap for more consistent results
     private fun preprocessBitmap(original: Bitmap): Bitmap {
         try {
             // Ensure consistent size and format to avoid memory issues

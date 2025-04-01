@@ -7,13 +7,10 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.example.LockerApp.repository.FaceAuthRepository
-import com.example.LockerApp.utils.LivenessDetector
-import com.google.mlkit.vision.face.Face
 import kotlinx.coroutines.launch
 
 class FaceLoginViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = FaceAuthRepository(application)
-    private val livenessDetector = LivenessDetector()
 
     private val _loginState = MutableLiveData<LoginState>()
     val loginState: LiveData<LoginState> = _loginState
@@ -45,10 +42,13 @@ class FaceLoginViewModel(application: Application) : AndroidViewModel(applicatio
         data class Success(val accountid:Int,val name: String, val role: String, val phone: String) : LoginState()
         data class Error(val message: String) : LoginState()
     }
+
+    //Reset to scan state
     fun resetToScanning() {
         _loginState.value = LoginState.Scanning
     }
 
+    //Reset face
     fun refreshFaceData() {
         viewModelScope.launch {
             try {

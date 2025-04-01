@@ -50,7 +50,6 @@ fun FaceVerificationOverlay(
     Log.d("value", "$adminname , $adminrole , $name , $role , $phone")
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val coroutineScope = rememberCoroutineScope()
     val cameraManager = remember { CameraManager(context) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
     val previewView = remember { androidx.camera.view.PreviewView(context) }
@@ -83,7 +82,8 @@ fun FaceVerificationOverlay(
             is FaceLoginViewModel.LoginState.Success -> {
                 val state = loginState as FaceLoginViewModel.LoginState.Success
                 if (state.accountid == expectedAccountId) {
-                    // Verification successful - same person as original login
+
+                    // Verification successful
                     isScanningVisible = false
                     isSuccessVisible = true
                     isFailedVisible = false
@@ -109,7 +109,7 @@ fun FaceVerificationOverlay(
                         onVerificationSuccess()
                     }
                 } else {
-                    // Verification failed - different person
+                    // Verification failed
                     isScanningVisible = false
                     isSuccessVisible = false
                     isFailedVisible = true
@@ -180,16 +180,13 @@ fun FaceVerificationOverlay(
             usePlatformDefaultWidth = false
         )
     ) {
-        // ... The rest of the UI code remains the same as in your FaceVerificationOverlay
-        // Just ensure you use the previewView setup above instead of creating a new one
-
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = 0.5f)),
             contentAlignment = Alignment.Center
         ) {
-            // Hidden camera preview (still active for face detection)
+            //Camera Preview
             AndroidView(
                 factory = { previewView.apply {
                     layoutParams = android.view.ViewGroup.LayoutParams(1, 1) // Tiny size to hide it
@@ -271,7 +268,7 @@ fun FaceVerificationOverlay(
                                 fontSize = 16.sp,
                                 textAlign = TextAlign.Center,
                                 color = when {
-                                    isSuccessVisible -> Color(0xFF4CAF50) // Green
+                                    isSuccessVisible -> Color(0xFF4CAF50)
                                     isFailedVisible -> Color.Red
                                     else -> Color.Unspecified
                                 }
