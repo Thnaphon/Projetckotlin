@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Card
@@ -27,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -73,7 +75,9 @@ fun EditPasswordScreen(navController: NavController) {
                             onValueChange = { oldPassword = it },
                             label = { Text("Current Password") },
                             modifier = Modifier.fillMaxWidth(),
-                            visualTransformation = PasswordVisualTransformation()
+                            visualTransformation = PasswordVisualTransformation(),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
                         )
                     }
 
@@ -84,7 +88,9 @@ fun EditPasswordScreen(navController: NavController) {
                             onValueChange = { newPassword = it },
                             label = { Text("New Password") },
                             modifier = Modifier.fillMaxWidth(),
-                            visualTransformation = PasswordVisualTransformation()
+                            visualTransformation = PasswordVisualTransformation(),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
                         )
                     }
 
@@ -97,7 +103,9 @@ fun EditPasswordScreen(navController: NavController) {
                             onValueChange = { confirmPassword = it },
                             label = { Text("Confirm New Password") },
                             modifier = Modifier.fillMaxWidth(),
-                            visualTransformation = PasswordVisualTransformation()
+                            visualTransformation = PasswordVisualTransformation(),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
                         )
                     }
 

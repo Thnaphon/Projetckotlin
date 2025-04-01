@@ -46,7 +46,8 @@ data class Compartment(
     val status: String,
     val LockerID: Int,
     val Name_Item: String,
-    val pic_item: String
+    val pic_item: String,
+    val Usage_By: String,
 )
 
 
@@ -76,7 +77,8 @@ data class UsageLocker(
     val name_user: String,
     val UsageTime: String,
     val Usage : String,
-    val Status: String
+    val Status: String,
+    val accountID: Int
 
 )
 
@@ -210,8 +212,8 @@ interface CompartmentDao {
         numCompartmen : Int
     )
 
-    @Query("UPDATE compartment SET usagestatus = :newStatus WHERE CompartmentID = :compartmentID AND LockerID = :lockerID")
-    suspend fun updateCompartmentStatus(compartmentID: Int, newStatus: String, lockerID: Int)
+    @Query("UPDATE compartment SET usagestatus = :newStatus ,Usage_By= :Usage_By WHERE CompartmentID = :compartmentID AND LockerID = :lockerID")
+    suspend fun updateCompartmentStatus(compartmentID: Int, newStatus: String, lockerID: Int,Usage_By:String)
 
     @Query("SELECT COUNT(*) FROM locker WHERE LockerID = :lockerID")
     suspend fun checkLockerExists(lockerID: Int): Boolean
@@ -274,8 +276,8 @@ interface AccountDao {
     @Query("SELECT * FROM account WHERE AccountID = :accountID LIMIT 1")
     suspend fun getUserAccountID(accountID: Int): Account?
 
-    @Query("SELECT Name FROM Account WHERE AccountID = :accountId LIMIT 1")
-    fun getAccountNameById(accountId: Int): LiveData<String>
+    @Query("SELECT AccountID FROM Account WHERE Name = :Name LIMIT 1")
+    fun getAccountNameById(Name: String): LiveData<Int>
 
     @Query("UPDATE account SET Name = :name, Phone = :phone, Role = :role WHERE AccountID = :accountId")
     suspend fun updateAccountFields(accountId: Int, name: String, phone: String, role: String)

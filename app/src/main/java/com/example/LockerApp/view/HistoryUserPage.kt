@@ -1,8 +1,8 @@
 package com.example.LockerApp.view
 
 
-import android.util.Log
-import androidx.compose.foundation.Image
+
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,98 +16,67 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 
-import androidx.compose.material.Card
+
 import androidx.compose.material.Icon
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
 
-import androidx.compose.material.icons.filled.List
+
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.background
+
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-
-import androidx.compose.material.AlertDialog
 import androidx.compose.material.Divider
-import androidx.compose.material.DropdownMenuItem
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.ExposedDropdownMenuBox
 import androidx.compose.material3.Card
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
-import androidx.compose.material.TextField
 import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
-import coil.compose.rememberImagePainter
-import com.example.LockerApp.model.Compartment
+import com.example.LockerApp.Component.DropdownLocker
+import com.example.LockerApp.Component.HeaderRowuser
+import com.example.LockerApp.model.combine
+import com.example.LockerApp.utils.formatDateHistory
+import com.example.LockerApp.utils.formatTimestamp
 import com.example.LockerApp.viewmodel.AccountViewModel
 import com.example.LockerApp.viewmodel.LockerViewModel
 import com.example.LockerApp.viewmodel.ManageAccountViewModel
 import com.example.LockerApp.viewmodel.UsageLockerViewModel
-import java.text.SimpleDateFormat
-import java.time.Instant
-import java.time.LocalDateTime
-import java.time.ZoneId
-import java.util.Date
-import java.util.Locale
-import kotlin.math.log
 
-@OptIn(ExperimentalMaterialApi::class)
+
+
 @Composable
-fun UsageHistoryScreenUser(usageLockerViewModel: UsageLockerViewModel,viewModel: LockerViewModel,accountname:String) {
+fun UsageHistoryScreenUser(usageLockerViewModel: UsageLockerViewModel,viewModel: LockerViewModel,accountname:String,accountid:Int) {
     var searchQuery by remember { mutableStateOf("") }
     val manageAccountViewModel : ManageAccountViewModel = viewModel()
-    // ดึงข้อมูลจาก ViewModel
+
     val usageLockers by usageLockerViewModel.allUsageLockers.observeAsState(emptyList())
-    val manageLockers by usageLockerViewModel.allManageLockers.observeAsState(emptyList())
-    val manageAccounts by manageAccountViewModel.manageAccounts.observeAsState(emptyList())
-    var filterShowcolumn by remember { mutableStateOf("All History") }
     var selectedlocker by remember { mutableStateOf("all locker") }
+
     val filteredUsageLockers = usageLockers.filter {
         (selectedlocker == "all locker" || it.locker_name == selectedlocker) &&
                 (it.Usage.contains(searchQuery, ignoreCase = true) ||
-                        it.locker_name.contains(searchQuery, ignoreCase = true) ||it.name_equipment.contains(searchQuery, ignoreCase = true)||it.Status.contains(searchQuery, ignoreCase = true)) &&(it.name_user==accountname)
+                        it.locker_name.contains(searchQuery, ignoreCase = true) ||it.name_equipment.contains(searchQuery, ignoreCase = true)||it.Status.contains(searchQuery, ignoreCase = true)) &&(it.accountID==accountid)
 
     }
     val filteredUsageLockersTransformed = filteredUsageLockers.map {
@@ -315,7 +284,7 @@ fun UsageHistoryScreenUser(usageLockerViewModel: UsageLockerViewModel,viewModel:
                                             overflow = TextOverflow.Ellipsis,
                                             textAlign = TextAlign.Center,
 
-                                        )
+                                            )
                                     }
                                     Column(modifier = Modifier.width(130.dp)) {
                                         Text(
@@ -343,67 +312,3 @@ fun UsageHistoryScreenUser(usageLockerViewModel: UsageLockerViewModel,viewModel:
         }
     }
 }
-@Composable
-fun HeaderRowuser() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(50.dp)
-            .background(Color(0xFFEEEEEE))
-            .padding(start = 26.dp, end = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-
-        Column(modifier = Modifier.width(100.dp)) {
-            Text(
-                "Locker",
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                textAlign = TextAlign.Center
-            )
-        }
-        Column(modifier = Modifier.width(45.dp)) {
-            Text(
-                "Com.",
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                textAlign = TextAlign.Center
-            )
-        }
-        Column(modifier = Modifier.width(130.dp)) {
-            Text(
-                "Equipment",
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                textAlign = TextAlign.Center
-            )
-        }
-        Column(modifier = Modifier.width(100.dp)) {
-            Text(
-                "Date/Time",
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                textAlign = TextAlign.Center
-            )
-        }
-        Column(modifier = Modifier.width(130.dp)) {
-            Text(
-                "Usage",
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                textAlign = TextAlign.Center
-            )
-        }
-        Column(modifier = Modifier.width(130.dp)) {
-            Text(
-                "Status",
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                textAlign = TextAlign.Center
-            )
-        }
-    }
-
-}
-

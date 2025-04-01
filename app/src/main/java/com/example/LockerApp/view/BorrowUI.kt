@@ -148,7 +148,7 @@ fun BorrowUI(
                 "${compartments.filter { compartment ->
                     compartment.usagestatus == "return" &&
                             compartment.status == "available" &&
-                            lockers.find { it.LockerID == compartment.LockerID }?.status == "available" // เช็คสถานะของ locker
+                            lockers.find { it.LockerID == compartment.LockerID }?.status == "available" && (compartment.Usage_By == accountid.toString() || compartment.Usage_By=="Default")
                 }.size} Compartments",
                 style = MaterialTheme.typography.h6.copy(fontWeight = FontWeight.SemiBold),
                 color = Color.Black
@@ -212,7 +212,7 @@ fun BorrowUI(
                     compartments.filter { compartment ->
                         compartment.usagestatus == "return" &&
                                 compartment.status == "available" &&
-                                lockers.find { it.LockerID == compartment.LockerID }?.status == "available" // เช็คสถานะของ locker ด้วย
+                                lockers.find { it.LockerID == compartment.LockerID }?.status == "available" && (compartment.Usage_By == accountid.toString() || compartment.Usage_By=="Default")
                     }
                 ) { compartment ->
                     CompartmentCard(
@@ -281,7 +281,8 @@ fun CompartmentCard(
                 viewModel.updateCompartmentStatus(
                     compartment_Id,
                     action,
-                    compartment.LockerID
+                    compartment.LockerID,
+                    accountid.toString()
                 )
 
                 // Insert usageLocker data in background thread
@@ -292,7 +293,8 @@ fun CompartmentCard(
                     "Borrow",
                     accountname,
                     "Success",
-                    compartment.Name_Item
+                    compartment.Name_Item,
+                    accountid
                 )
             }
         }
@@ -324,7 +326,8 @@ fun CompartmentCard(
                 action,
                 accountname,
                 "Fail",
-                compartment.Name_Item
+                compartment.Name_Item,
+                accountid
             )
             IsClick = false
         }

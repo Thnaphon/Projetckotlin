@@ -128,7 +128,8 @@ fun CompartmentUI(lockerId: Int, viewModel: LockerViewModel = viewModel(),accoun
                         "Create Compartment",
                         accountname,
                         "Success",
-                        it.Name_Item
+                        it.Name_Item,
+                        accountid
                     )
                 }
             }
@@ -184,7 +185,8 @@ fun CompartmentUI(lockerId: Int, viewModel: LockerViewModel = viewModel(),accoun
                                         status = "available",
                                         LockerID = lockerId,
                                         Name_Item = nameItem,
-                                        pic_item = selectedImagePath
+                                        pic_item = selectedImagePath,
+                                        Usage_By = "Default"
                                     )
 
 
@@ -245,7 +247,8 @@ fun CompartmentCard(compartment: Compartment, viewModel: LockerViewModel = viewM
                 "Delete Compartment",
                 accountname,
                 "Success",
-                compartment.Name_Item
+                compartment.Name_Item,
+                accountid
             )
             viewModel.delteCompartment(compartment.LockerID, compartment.CompartmentID)
 
@@ -477,7 +480,8 @@ fun EditCompartmentForm(compartment: Compartment, onCancel: () -> Unit,viewModel
                                 "Edit Compartment",
                                 accountname,
                                 "Success",
-                                compartment.Name_Item
+                                compartment.Name_Item,
+                                accountid
                             )
                             onCancel()
                         } else {

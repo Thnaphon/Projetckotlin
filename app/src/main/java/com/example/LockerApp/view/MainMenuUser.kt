@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.example.LockerApp.Component.MenuItem
 import com.example.LockerApp.model.CompartmentDao
 import com.example.LockerApp.model.LockerDao
 import com.example.LockerApp.viewmodel.AccountViewModel
@@ -233,7 +234,7 @@ fun MainMenuUser(
 
 
                 showUsageHistoryScreen -> {
-                    UsageHistoryScreenUser(usageLockerViewModel=  usageLockerViewModel ,viewModel=viewModel,accountname=nameUser) // แสดงหน้า Participant ที่นี่
+                    UsageHistoryScreenUser(usageLockerViewModel=  usageLockerViewModel ,viewModel=viewModel,accountname=nameUser,accountid = accountid) // แสดงหน้า Participant ที่นี่
                 }
 
 

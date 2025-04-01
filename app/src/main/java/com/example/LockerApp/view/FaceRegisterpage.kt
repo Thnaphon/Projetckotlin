@@ -445,7 +445,7 @@ fun FaceCapturePage(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Button(
-                            onClick = { navController.navigate("main_menu/$accountid") },
+                            onClick = { navController.navigate("main_menu/$accountid/$adminname/$adminrole") },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFF3F51B5)
                             ),

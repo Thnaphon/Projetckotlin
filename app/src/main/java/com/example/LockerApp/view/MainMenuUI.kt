@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.example.LockerApp.Component.MenuItem
 import com.example.LockerApp.model.CompartmentDao
 import com.example.LockerApp.model.LockerDao
 import com.example.LockerApp.viewmodel.AccountViewModel
@@ -397,51 +398,6 @@ fun MainMenuUI(
                 }
             }
         }
-    }
-}
-
-
-@Composable
-fun MenuItem(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit,
-    iconTint: Color = Color.White, // สีของไอคอน
-    iconSize: Dp = 24.dp, // ขนาดของไอคอน
-    backgroundColor: Color = Color.LightGray,
-    selected: Boolean// สีพื้นหลังของไอคอน
-) {
-    val bgColor = if (selected) Color(0xFF3A4750) else Color.Transparent
-    val textColor = if (selected) Color.White else Color.Black
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-
-            .clickable(onClick = onClick)
-            .background(bgColor, shape = RoundedCornerShape(15.dp))
-
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(iconSize * 1.65f) // ให้ขนาด Box ใหญ่กว่าไอคอนนิดหน่อย
-                .background(
-                    backgroundColor,
-                    shape = RoundedCornerShape(10.dp)
-                ) // กำหนดสีพื้นหลังและขอบมน
-                .padding(8.dp), // ให้มีระยะห่างระหว่างขอบกับไอคอน
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                icon,
-                contentDescription = label,
-                tint = iconTint, // กำหนดสีของไอคอน
-                modifier = Modifier.size(iconSize) // กำหนดขนาดของไอคอน
-            )
-        }
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(label, color = textColor)
     }
 }
 

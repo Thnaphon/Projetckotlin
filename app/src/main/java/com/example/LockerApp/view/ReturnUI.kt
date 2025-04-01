@@ -123,7 +123,7 @@ fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLocke
                 "${compartments.filter { compartment ->
                     compartment.usagestatus == "borrow" &&
                             compartment.status == "available" &&
-                            lockers.find { it.LockerID == compartment.LockerID }?.status == "available" // เช็คสถานะของ locker
+                            lockers.find { it.LockerID == compartment.LockerID }?.status == "available" && (compartment.Usage_By == accountid.toString() || compartment.Usage_By=="Default")
                 }.size} Compartments",
                 style = MaterialTheme.typography.h6.copy(fontWeight = FontWeight.SemiBold),
                 color = Color.Black
@@ -187,7 +187,7 @@ fun ReturnUI(viewModel: LockerViewModel, mqttViewModel: MqttViewModel,usageLocke
                     compartments.filter { compartment ->
                         compartment.usagestatus == "borrow" &&
                                 compartment.status == "available" &&
-                                lockers.find { it.LockerID == compartment.LockerID }?.status == "available" // เช็คสถานะของ locker ด้วย
+                                lockers.find { it.LockerID == compartment.LockerID }?.status == "available" && (compartment.Usage_By == accountid.toString() || compartment.Usage_By=="Default")
                     }
                 ){ compartment ->
                     CompartmentCardReturn(
@@ -258,7 +258,8 @@ fun CompartmentCardReturn(
                 viewModel.updateCompartmentStatus(
                     compartment_Id,
                     action,
-                    compartment.LockerID
+                    compartment.LockerID,
+                    "Default"
                 )
 
                 // Insert usageLocker data in background thread
@@ -269,7 +270,8 @@ fun CompartmentCardReturn(
                     "Return",
                     accountname,
                     "Success",
-                    compartment.Name_Item
+                    compartment.Name_Item,
+                    accountid
                 )
             }
 
@@ -303,7 +305,8 @@ fun CompartmentCardReturn(
                 action,
                 accountname,
                 "Fail",
-                compartment.Name_Item
+                compartment.Name_Item,
+                accountid
             )
             IsClick = false
         }

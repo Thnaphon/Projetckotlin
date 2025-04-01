@@ -79,6 +79,8 @@ import com.example.LockerApp.model.BackupLog
 import com.example.LockerApp.model.BackupSettings
 import com.example.LockerApp.model.LockerDatabase
 import com.example.LockerApp.service.MqttService
+import com.example.LockerApp.utils.formatDateHistory
+import com.example.LockerApp.utils.formatTimestamp
 import com.example.LockerApp.viewmodel.AccountViewModel
 import com.example.LockerApp.viewmodel.BackupViewModel
 import java.text.SimpleDateFormat

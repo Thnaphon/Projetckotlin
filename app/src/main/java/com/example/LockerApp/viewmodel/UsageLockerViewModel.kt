@@ -48,7 +48,7 @@ class UsageLockerViewModel(application: Application) : AndroidViewModel(applicat
             mqttService.subscribeToTopic("respond/locker")
 
         }
-        insertUsageLocker("msadop",1,"1743309504099","Edit Compartment","sadjoai","Success","sada")
+
 
     }
 
@@ -79,7 +79,7 @@ class UsageLockerViewModel(application: Application) : AndroidViewModel(applicat
             }
         }
     }
-    fun insertUsageLocker(locker_name: String, compartmentId: Int, usageTime: String, usage: String, name_user: String,Status: String,name_equipment:String) {
+    fun insertUsageLocker(locker_name: String, compartmentId: Int, usageTime: String, usage: String, name_user: String,Status: String,name_equipment:String,accountID:Int) {
         val usageLocker = UsageLocker(
             locker_name = locker_name,
             name_user = name_user,
@@ -88,6 +88,7 @@ class UsageLockerViewModel(application: Application) : AndroidViewModel(applicat
             Usage = usage,
             Status = Status,
             name_equipment= name_equipment,
+            accountID=accountID
         )
         viewModelScope.launch {
             usageLockerDao.insert(usageLocker)  // เรียกใช้งาน DAO แทน repository

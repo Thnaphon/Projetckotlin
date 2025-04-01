@@ -91,7 +91,7 @@ class FaceAuthRepository(private val context: Context) {
                     return@withTimeout RecognitionResult.Failure("Recognition failed: ${e.message}")
                 }
 
-                if (recognition?.title != null && recognition.title != "Unknown" && recognition.distance!! < 0.7f) {
+                if (recognition?.title != null && recognition.title != "Unknown" && recognition.distance!! < 0.75f) {
                     try {
                         val user = accountDao.getUserByName(recognition.title)
                         if (user != null) {

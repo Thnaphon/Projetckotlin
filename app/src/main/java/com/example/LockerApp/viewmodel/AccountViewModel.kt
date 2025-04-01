@@ -73,8 +73,8 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun getAccountNameById(accountId: Int): LiveData<String> {
-        return accountDao.getAccountNameById(accountId)
+    fun getAccountNameById(name: String): LiveData<Int> {
+        return accountDao.getAccountNameById(name)
     }
 
     fun updateAccountFields(accountId: Int, name: String, phone: String, role: String) {

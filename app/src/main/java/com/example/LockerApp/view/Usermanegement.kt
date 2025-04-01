@@ -63,8 +63,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.LockerApp.Component.DropdownUser
 import com.example.LockerApp.model.Account
 import com.example.LockerApp.model.ManageAccount
+import com.example.LockerApp.utils.formatDate
 import com.example.LockerApp.viewmodel.AccountViewModel
 import com.example.LockerApp.viewmodel.FaceLoginViewModel
 import com.example.LockerApp.viewmodel.LockerViewModel
@@ -1130,76 +1132,4 @@ fun DeleteUserDialog(
             }
         }
     }
-}
-@OptIn(ExperimentalMaterialApi::class)
-@Composable
-fun DropdownUser(
-    selectedRole: String,
-    onRoleChange: (String) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val roles = listOf("All Users", "User", "Owner")
-    Box( modifier = Modifier.width(130.dp),contentAlignment = Alignment.Center ) {
-        androidx.compose.material.ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = !expanded }) {
-            Box(
-                modifier = Modifier
-                    .width(130.dp)
-                    .height(56.dp)
-                    .border(2.dp, Color(0xFF8D8B8B), RoundedCornerShape(15.dp))
-                    .clickable { expanded = true }
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Row(
-                    modifier = Modifier.wrapContentWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = selectedRole,
-                        style = MaterialTheme.typography.body1
-                    )
-                    Icon(
-                        imageVector = Icons.Filled.KeyboardArrowDown,
-                        contentDescription = "Dropdown Icon"
-                    )
-                }
-            }
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false },
-                modifier = Modifier.width(130.dp)
-            ) {
-                roles.forEach { role ->
-                    androidx.compose.material.DropdownMenuItem(onClick = {
-                        onRoleChange(role)
-                        expanded = false
-                    }) {
-                        Text(role)
-                    }
-                }
-            }
-        }
-    }
-}
-
-fun formatDate(dateString: String): String {
-    val possibleFormats = listOf(
-        "yyyy-MM-dd" // ถ้าไม่มีเวลา
-    )
-
-    val outputFormat = SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH) // ใช้ Locale.ENGLISH
-
-    for (format in possibleFormats) {
-        try {
-            val inputFormat = SimpleDateFormat(format, Locale.getDefault())
-            val date = inputFormat.parse(dateString)
-            if (date != null) return outputFormat.format(date)
-        } catch (_: Exception) {
-        }
-    }
-
-    return dateString // คืนค่าเดิมถ้าแปลงไม่ได้
 }
