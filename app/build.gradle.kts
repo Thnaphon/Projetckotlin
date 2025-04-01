@@ -6,11 +6,11 @@ plugins {
 
 
 android {
-    namespace = "com.example.LockerApp"
+    namespace = "com.Locker.LockerApp"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.LockerApp"
+        applicationId = "com.Locker.LockerApp"
         minSdk = 33
         targetSdk = 34
         versionCode = 1
