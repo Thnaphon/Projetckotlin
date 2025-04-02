@@ -2,14 +2,9 @@ package com.example.LockerApp.view
 
 import android.annotation.SuppressLint
 import android.app.Application
-import android.util.Log
-import androidx.compose.foundation.layout.Box
+
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -27,13 +22,7 @@ import com.example.LockerApp.viewmodel.LockerViewModelFactory
 import com.example.LockerApp.viewmodel.MqttViewModel
 import com.example.LockerApp.viewmodel.UsageLockerViewModel
 import com.example.LockerApp.viewmodel.FaceRegisterViewModel
-import kotlinx.coroutines.delay
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material.Text
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
+
 
 @SuppressLint("SuspiciousIndentation")
 @Composable
@@ -67,93 +56,6 @@ fun LockerApp() {
     )
 
 
-//    val mqttData by mqttViewModel.mqttData.collectAsState()
-//    var Topic = lockerViewModel.topic
-//    LaunchedEffect(mqttData) {
-//        Log.d("mqttData", "MQTT Topic: ${mqttData.first}, Message: ${mqttData.second}")
-//        Log.d("checkmqttdata","${mqttData.first}  ${Topic.value}")
-//        Log.d("checkmqttdata","${mqttData.second} == CLOSE")
-//        if(mqttData.first == Topic.value && mqttData.second == "CLOSE"){
-//            val splitData = mqttData.first.split("/")
-//            val usageTime = System.currentTimeMillis().toString()
-//            val topicMap = mapOf(
-//                "token" to splitData[0],
-//                "action" to splitData[1]+"ed",
-//                "compartmentId" to splitData[2].toInt(),
-//                "status" to splitData[3]
-//            )
-//            val compartmentId = topicMap["compartmentId"] as? Int ?: 0
-//            val action = topicMap["action"] as? String ?: ""
-//            val status =  topicMap["status"] as? String ?: ""
-//            lockerViewModel.updateCompartmentStatus(
-//                compartmentId,
-//                action,
-//                compartment.LockerID
-//            )
-//            usageLockerViewModel.insertUsageLocker(
-//                compartment.LockerID,
-//                compartmentId,
-//                usageTime,
-//                action,
-//                accountid,
-//                status
-//            )
-//
-//        }
-//    }
-
-
-//    val lastInteractionTime = remember { mutableStateOf(System.currentTimeMillis()) }
-//    val timeoutDuration = 1 * 60 * 1000L // 1 นาที
-//    var isSessionTimeout by remember { mutableStateOf(false) }
-//
-//    fun onUserInteraction() {
-//        Log.d("SessionTimeout", "User interacted!")
-//        lastInteractionTime.value = System.currentTimeMillis() // อัพเดตเวลาการโต้ตอบล่าสุด
-//        isSessionTimeout = false // รีเซ็ตสถานะหมดเวลา
-//        Log.d("SessionTimeout", "Timeout status: $isSessionTimeout")
-//    }
-
-// เช็คการหมดเวลา
-//    LaunchedEffect(lastInteractionTime.value) {
-//        while (true) {
-//            delay(1000) // ตรวจสอบทุกวินาที
-//            val currentTime = System.currentTimeMillis()
-//            Log.d("SessionTimeout", "Current time: $currentTime, Last interaction time: ${lastInteractionTime.value}")
-//
-//            // ตรวจสอบว่าเวลาปัจจุบันห่างจากการโต้ตอบล่าสุดเกินเวลาหมดเวลาแล้วหรือไม่
-//            if (currentTime - lastInteractionTime.value > timeoutDuration) {
-//                // ถ้าไม่มีการโต้ตอบภายใน 3 นาที
-//                isSessionTimeout = true // กำหนดสถานะหมดเวลา
-//                Log.d("SessionTimeout", "Session expired, navigating to WelcomePage")
-//
-//                navController.navigate("WelcomePage") {
-//                    popUpTo("WelcomePage") { inclusive = true }
-//                }
-//                break // หยุด loop หลังจากที่เกิด timeout
-//            }
-//        }
-//    }
-//
-//    Box(
-//        modifier = Modifier
-//            .fillMaxSize()  // เพื่อให้ Box มีขนาดเต็มหน้าจอ
-//            .pointerInput(Unit) {
-//                detectTapGestures(
-//                    onTap = { // เปลี่ยนจาก onPress เป็น onTap
-//                        onUserInteraction() // รีเซ็ตเวลาการโต้ตอบเมื่อมีการคลิก
-//                    }
-//                )
-//            }
-//    ) {
-//        // เพิ่มข้อความหรือ UI ที่แสดงเมื่อ session หมดเวลา
-//        if (isSessionTimeout) {
-//            Text("Session expired. Please log in again.", modifier = Modifier.align(Alignment.Center))
-//        }
-//    }
-
-
-    // ฟังก์ชันที่จัดการการโต้ตอบ
 
 
     NavHost(

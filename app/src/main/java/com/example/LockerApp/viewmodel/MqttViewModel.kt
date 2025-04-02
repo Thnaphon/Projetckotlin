@@ -11,8 +11,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.LockerApp.model.Locker
 import com.example.LockerApp.model.LockerDao
 import com.example.LockerApp.model.LockerDatabase
+import com.example.LockerApp.model.MessageForweb
 import com.example.LockerApp.service.MqttService
-import com.example.LockerApp.view.Message
+
 import com.google.gson.Gson
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -101,7 +102,7 @@ class MqttViewModel( application: Application) : AndroidViewModel(application) {
 
         }
     }
-    fun sendMessageJson(topic: String, message: Message) {
+    fun sendMessageJson(topic: String, message: MessageForweb) {
         viewModelScope.launch {
             val gson = Gson()
 

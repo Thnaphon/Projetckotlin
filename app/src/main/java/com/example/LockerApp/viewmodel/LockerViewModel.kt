@@ -1,16 +1,13 @@
 package com.example.LockerApp.viewmodel
 
-import android.content.Context
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import android.util.Log
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.liveData
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.LockerApp.model.Compartment
 import com.example.LockerApp.model.CompartmentDao
 import com.example.LockerApp.model.Locker
@@ -19,18 +16,13 @@ import com.example.LockerApp.service.MqttService
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-
 import kotlinx.coroutines.launch
-
 import kotlinx.coroutines.flow.MutableStateFlow
-
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import org.eclipse.paho.client.mqttv3.MqttClient
 
-import kotlinx.coroutines.flow.stateIn
 
 class LockerViewModel(private val lockerDao: LockerDao,private val compartmentDao: CompartmentDao) : ViewModel() {
 

@@ -5,44 +5,24 @@ import android.app.Application
 import android.content.Context
 import android.os.Environment
 import android.util.Log
-
 import androidx.compose.runtime.mutableStateOf
-
-
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-
 import com.example.LockerApp.model.BackupSettings
-
 import com.example.LockerApp.model.LockerDatabase
 import com.example.LockerApp.service.MqttService
-
 import kotlinx.coroutines.launch
 import java.io.File
-import java.io.FileInputStream
-
-
 import java.io.IOException
-
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import android.util.Base64
 import androidx.lifecycle.AndroidViewModel
 import com.example.LockerApp.model.BackupDao
 import com.example.LockerApp.model.BackupLog
 import com.example.LockerApp.model.BackupLogDao
-import com.example.LockerApp.model.ManageAccountDao
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
-import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
-import org.eclipse.paho.client.mqttv3.MqttCallback
 import org.eclipse.paho.client.mqttv3.MqttMessage
 import java.io.FileOutputStream
 import java.util.concurrent.CountDownLatch
