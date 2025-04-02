@@ -40,7 +40,8 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                     Phone = "0813028111",
                     Role = "service",
                     embedding = "",
-                    CreatedDate = currentDate
+                    CreatedDate = currentDate,
+                    consent_pdda = true
                 )
 
                 accountDao.insertAccount(serviceAccount) // บันทึกและรับค่า ID กลับมา

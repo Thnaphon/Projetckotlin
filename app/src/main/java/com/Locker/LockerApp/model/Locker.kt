@@ -1,6 +1,7 @@
 package com.Locker.LockerApp.model
 
 import android.content.Context
+import androidx.camera.core.processing.SurfaceProcessorNode.In
 import androidx.lifecycle.LiveData
 import androidx.room.Dao
 import androidx.room.Database
@@ -58,7 +59,8 @@ data class Account(
     val Phone: String,
     val Role: String,
     val embedding: String,
-    val CreatedDate: String // ควรใช้ date หรือ datetime format
+    val CreatedDate: String,
+    val consent_pdda : Boolean
 )
 
 

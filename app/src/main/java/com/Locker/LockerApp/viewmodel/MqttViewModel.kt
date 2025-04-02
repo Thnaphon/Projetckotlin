@@ -8,8 +8,8 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.Locker.LockerApp.model.Locker
 import com.Locker.LockerApp.model.LockerDatabase
-import com.Locker.LockerApp.service.MqttService
 import com.Locker.LockerApp.model.MessageForweb
+import com.Locker.LockerApp.service.MqttService
 import com.google.gson.Gson
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -121,22 +121,6 @@ class MqttViewModel( application: Application) : AndroidViewModel(application) {
         }
     }
 
-//    fun waitForMessages(topic: String, onMessageReceived: (String) -> Unit) {
-//        job?.cancel()  // Canc
-//        job = viewModelScope.launch {
-//            // Subscribe to the topic
-//            receivedMessage.collect { message ->
-//                if (message.isNotEmpty()) {
-//                    onMessageReceived(message) //0t]v'
-//                    Log.d("MqttViewModelwiatfor", "Message received from topic: $topic with message: $message")
-//                }
-//                clearMessage()  // Clear ข้อความหลังจากรับแล้ว
-//            }
-//        }
-//    }
-
-
-
     fun clearMessage() {
         mqttService.clearMessage()
     }
@@ -161,15 +145,6 @@ class MqttViewModel( application: Application) : AndroidViewModel(application) {
     private val _statusLiveData = MutableLiveData<String>()
     val statusLiveData: LiveData<String> = _statusLiveData
 
-    // ฟังก์ชันในการสังเกต topic
-
-
-    //    fun clearReceivedMessage() {
-//        viewModelScope.launch {
-//            _receivedMessageTopic.emit("")
-//
-//        }
-//    }
     var job: Job? = null
 
     fun observeMqttData() {

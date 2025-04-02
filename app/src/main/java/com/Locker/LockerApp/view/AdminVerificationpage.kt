@@ -42,7 +42,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.Locker.LockerApp.model.KeystoreManager
+import com.Locker.LockerApp.utils.KeystoreManager
 
 @Composable
 fun AdminVerificationPage(

@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
-import com.Locker.LockerApp.model.KeystoreManager
+import com.Locker.LockerApp.utils.KeystoreManager
 import com.Locker.LockerApp.viewmodel.AccountViewModel
 import com.Locker.LockerApp.viewmodel.FaceLoginViewModel
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -53,7 +53,6 @@ fun WelcomePage(
     navController: NavController
 ) {
 
-    val coroutineScope = rememberCoroutineScope()
 
     val context = LocalContext.current
     var showPermissionDialog by remember { mutableStateOf(false) }
@@ -63,7 +62,6 @@ fun WelcomePage(
     val (modechange, setModechange) = remember { mutableStateOf(false) }
 
     val sharedPreferences = context.getSharedPreferences("LockerAppPrefs", Context.MODE_PRIVATE)
-    val (isPasswordVisible, setIsPasswordVisible) = remember { mutableStateOf(false) }
     val (enteredPassword, setEnteredPassword) = remember { mutableStateOf("") }
     var masterPassword by remember {
         mutableStateOf(
@@ -82,15 +80,13 @@ fun WelcomePage(
         )
     }
     val encryptedData = remember { mutableStateOf<Pair<ByteArray, ByteArray>?>(null) }
-    val maskedChars = remember { mutableStateListOf<Boolean>() }
+    remember { mutableStateListOf<Boolean>() }
 
     val permissions = arrayOf(
         Manifest.permission.CAMERA,
         Manifest.permission.READ_MEDIA_IMAGES
     )
 
-    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
-    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
 
 
     LaunchedEffect(Unit) {
@@ -115,8 +111,6 @@ fun WelcomePage(
     ) { permissions ->
         val allPermissionsGranted = permissions.values.all { it }
         if (allPermissionsGranted) {
-            // Show face login overlay instead of navigating
-//            showFaceLoginOverlay = true
         } else {
             // annoying user What is going on now you have to do it your own
             permissionDenialCount++
@@ -143,14 +137,6 @@ fun WelcomePage(
     fun checkAndRequestPermissions() {
         if (arePermissionsGranted()) {
             showFaceLoginOverlay = true
-        } else {
-            permissionLauncher.launch(permissions)
-        }
-    }
-
-    fun checkAndRequestFormaster() {
-        if (arePermissionsGranted()) {
-            //
         } else {
             permissionLauncher.launch(permissions)
         }

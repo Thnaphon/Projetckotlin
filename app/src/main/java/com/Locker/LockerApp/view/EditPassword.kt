@@ -3,6 +3,7 @@ package com.Locker.LockerApp.view
 import android.content.Context
 import android.util.Base64
 import android.widget.Toast
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -31,7 +32,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.Locker.LockerApp.model.KeystoreManager
+import com.Locker.LockerApp.utils.KeystoreManager
 
 @Composable
 fun EditPasswordScreen(navController: NavController) {
@@ -43,10 +44,10 @@ fun EditPasswordScreen(navController: NavController) {
     var confirmPassword by remember { mutableStateOf("") }
 
     Column(modifier = Modifier
-            .fillMaxHeight()
-            .fillMaxWidth()
-            .padding(horizontal = 238.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.Center
+        .fillMaxHeight()
+        .fillMaxWidth()
+        .padding(horizontal = 238.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.Center
     ) {
         Row {
             Card(

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,23 +19,28 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+
 import androidx.compose.material.Card
+
 import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.ExposedDropdownMenuBox
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
+
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
 import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material.icons.Icons
+
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.RestorePage
 import androidx.compose.material.icons.outlined.Backup
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -49,13 +55,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+
 import com.Locker.LockerApp.utils.formatDateHistory
 import com.Locker.LockerApp.utils.formatTimestamp
 import com.Locker.LockerApp.viewmodel.AccountViewModel
 import com.Locker.LockerApp.viewmodel.BackupViewModel
+
 
 @Composable
 fun BackupScreen(viewModel: BackupViewModel,accountname: String) {
@@ -273,7 +282,7 @@ fun ScheduledBackupCard(viewModel: BackupViewModel) {
             ) {
                 Column(modifier = Modifier
                     .width(150.dp)
-                    ) {
+                ) {
 
                     Text("Backup", color = if (isEditing) Color.White else Color.Black, fontWeight = FontWeight.Bold)
                 }
@@ -291,7 +300,7 @@ fun ScheduledBackupCard(viewModel: BackupViewModel) {
                 }
                 Column(modifier = Modifier
                     .width(150.dp)
-                    ) {
+                ) {
                     if (isEditing) {
                         SecheduledDropdownMenu(
                             selectedFrequency = frequency,
@@ -303,7 +312,7 @@ fun ScheduledBackupCard(viewModel: BackupViewModel) {
                 }
                 Column(modifier = Modifier
                     .width(200.dp)
-                    ) {
+                ) {
                     if (isEditing) {
                         // แสดง TextField สำหรับแก้ไข "Full Backup"
                         TextField(
@@ -324,7 +333,7 @@ fun ScheduledBackupCard(viewModel: BackupViewModel) {
                 }
                 Column(modifier = Modifier
                     .width(120.dp)
-                    ) {
+                ) {
                     if (isEditing) {
                         Row (
                             verticalAlignment = Alignment.CenterVertically,horizontalArrangement = Arrangement.SpaceBetween,modifier = Modifier.fillMaxWidth()){
@@ -441,7 +450,7 @@ fun RecentBackupCard(viewModel: BackupViewModel) {
     Card(
         modifier = Modifier.fillMaxWidth(),
 
-    ) {
+        ) {
         LazyColumn {
             items(backupLogs) { backupLogs ->
                 val splitDateTime = formatTimestamp(backupLogs.date_time).split(" ")

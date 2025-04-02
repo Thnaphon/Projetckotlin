@@ -153,7 +153,8 @@ class TFLiteFaceRecognition private constructor(context: Context) : FaceClassifi
             Role = role ?: "Unassign",
             Phone = phone ?: "Unassign",
             embedding = embeddingString,
-            CreatedDate = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+            CreatedDate = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+            consent_pdda = true
         )
 
         var newAccountId = 0

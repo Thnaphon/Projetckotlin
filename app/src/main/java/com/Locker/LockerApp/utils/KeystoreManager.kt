@@ -1,4 +1,4 @@
-package com.Locker.LockerApp.model
+package com.Locker.LockerApp.utils
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties

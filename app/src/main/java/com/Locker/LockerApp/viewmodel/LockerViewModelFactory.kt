@@ -3,8 +3,6 @@ package com.Locker.LockerApp.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.Locker.LockerApp.model.LockerDao
-
-
 import com.Locker.LockerApp.model.CompartmentDao  // เพิ่มการนำเข้า CompartmentDao
 
 class LockerViewModelFactory(

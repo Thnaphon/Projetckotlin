@@ -5,23 +5,14 @@ import android.app.Application
 import android.content.Context
 import android.os.Environment
 import android.util.Log
-
 import androidx.compose.runtime.mutableStateOf
-
-
 import androidx.lifecycle.viewModelScope
-
 import com.Locker.LockerApp.model.BackupSettings
-
 import com.Locker.LockerApp.model.LockerDatabase
 import com.Locker.LockerApp.service.MqttService
-
 import kotlinx.coroutines.launch
 import java.io.File
-
-
 import java.io.IOException
-
 import android.util.Base64
 import androidx.lifecycle.AndroidViewModel
 import com.Locker.LockerApp.model.BackupDao
