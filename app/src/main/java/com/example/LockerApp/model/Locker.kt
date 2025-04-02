@@ -59,7 +59,8 @@ data class Account(
     val Phone: String,
     val Role: String,
     val embedding: String,
-    val CreatedDate: String // ควรใช้ date หรือ datetime format
+    val CreatedDate: String,
+    val consent_pdda : Boolean
 )
 
 
